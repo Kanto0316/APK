@@ -13,6 +13,8 @@ jobs:
     env:
       GRADLE_VERSION: "8.11.1"
       ANDROID_GRADLE_PLUGIN_VERSION: "8.9.2"
+      ANDROID_COMPILE_SDK: "35"
+      ANDROID_BUILD_TOOLS: "35.0.0"
 
     steps:
       - name: Checkout repository
@@ -25,14 +27,23 @@ jobs:
           java-version: "17"
           cache: gradle
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Verify Android SDK command-line tools
+        run: sdkmanager --version
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-${ANDROID_COMPILE_SDK}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}"
+
       - name: Set up Gradle without wrapper
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: ${{ env.GRADLE_VERSION }}
-
-      - name: Install Android SDK packages
-        run: |
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
 
       - name: Configure Android Gradle plugin version
         run: |
@@ -47,7 +58,7 @@ jobs:
           EOF_INIT
 
       - name: Build debug APK with Gradle
-        run: gradle --init-script android-gradle-plugin.init.gradle :app:assembleDebug --no-daemon --stacktrace
+        run: gradle --init-script android-gradle-plugin.init.gradle assembleDebug --no-daemon --stacktrace
 
       - name: Locate generated APK
         id: apk
