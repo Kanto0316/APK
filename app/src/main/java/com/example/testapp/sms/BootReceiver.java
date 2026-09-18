@@ -10,15 +10,14 @@ import android.util.Log;
 
 import androidx.core.content.ContextCompat;
 
-/** Ensures the manifest SMS receiver is enabled again after a reboot or app update. */
+/** Re-enables the manifest SMS receiver after a completed device boot. */
 public class BootReceiver extends BroadcastReceiver {
     private static final String TAG = "SmsBootReceiver";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent == null ? null : intent.getAction();
-        if (!Intent.ACTION_BOOT_COMPLETED.equals(action)
-                && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
+        if (!Intent.ACTION_BOOT_COMPLETED.equals(action)) {
             return;
         }
 

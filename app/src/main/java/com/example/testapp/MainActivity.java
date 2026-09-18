@@ -263,7 +263,7 @@ public class MainActivity extends AppCompatActivity {
                 ? "Capture SMS : INACTIVE — autorisation non accordée"
                 : "Capture SMS active • SMS capturés par Suivi SMS : " + messages.size();
         capturedCountText.setText(captureState);
-        lastSmsBroadcastText.setText(formatDiagnostic("Dernière réception du Broadcast SMS",
+        lastSmsBroadcastText.setText(formatDiagnostic("Dernier SMS capturé en arrière-plan",
                 SmsReceptionDiagnostics.getLastReceiverInvocation(this)));
         lastRoomInsertionText.setText(formatDiagnostic("Dernière insertion Room",
                 SmsReceptionDiagnostics.getLastRoomInsertion(this)));

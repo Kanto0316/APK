@@ -21,48 +21,53 @@ public class SmsReceiver extends BroadcastReceiver {
             Log.w(TAG, "Diffusion ignorée : action reçue différente de SMS_RECEIVED");
             return;
         }
-        Log.i(TAG, "SMS Receiver déclenché");
-        SmsReceptionDiagnostics.recordReceiverInvocation(context, System.currentTimeMillis());
 
-        Bundle extras = intent.getExtras();
-        Object rawPdusValue = extras == null ? null : extras.get("pdus");
-        Object[] rawPdus = rawPdusValue instanceof Object[] ? (Object[]) rawPdusValue : null;
-        int bundlePartCount = rawPdus == null ? 0 : rawPdus.length;
-        Log.i(TAG, "Nombre de PDUs reçu : " + bundlePartCount);
-
-        SmsMessage[] parts = Telephony.Sms.Intents.getMessagesFromIntent(intent);
-        if (parts == null || parts.length == 0) {
-            Log.w(TAG, "SMS_RECEIVED sans segment décodable");
-            return;
-        }
-        Log.i(TAG, "Nombre de PDUs décodé : " + parts.length);
-
-        StringBuilder completeBody = new StringBuilder();
-        SmsMessage first = null;
-        for (SmsMessage part : parts) {
-            if (part != null) {
-                if (first == null) first = part;
-            }
-            if (part != null && part.getMessageBody() != null) {
-                completeBody.append(part.getMessageBody());
-            }
-        }
-        if (first == null) {
-            Log.w(TAG, "Tous les segments SMS sont nuls, réception ignorée");
-            return;
-        }
-
-        String sender = first.getDisplayOriginatingAddress();
-        long receivedAt = first.getTimestampMillis();
-        String body = completeBody.toString();
-        Log.d(TAG, "SMS extrait ; date=" + receivedAt + ", longueur=" + body.length());
-
+        // Acquire the PendingResult before doing any work. A manifest receiver can start a fresh
+        // process with no Activity, and this is the token that keeps that process eligible to run
+        // until the asynchronous Room insertion has completed.
         PendingResult pendingResult = goAsync();
-        com.example.testapp.database.SmsMessage localMessage =
-                com.example.testapp.database.SmsMessage.create(
-                        sender, body, receivedAt, false);
+        Log.i(TAG, "SMS Receiver déclenché");
+        Context appContext = context.getApplicationContext();
         try {
-            Context appContext = context.getApplicationContext();
+            SmsReceptionDiagnostics.recordReceiverInvocation(
+                    appContext, System.currentTimeMillis());
+
+            Bundle extras = intent.getExtras();
+            Object rawPdusValue = extras == null ? null : extras.get("pdus");
+            Object[] rawPdus = rawPdusValue instanceof Object[] ? (Object[]) rawPdusValue : null;
+            int bundlePartCount = rawPdus == null ? 0 : rawPdus.length;
+            Log.i(TAG, "Nombre de PDUs reçu : " + bundlePartCount);
+
+            SmsMessage[] parts = Telephony.Sms.Intents.getMessagesFromIntent(intent);
+            if (parts == null || parts.length == 0) {
+                Log.w(TAG, "SMS_RECEIVED sans segment décodable");
+                pendingResult.finish();
+                return;
+            }
+            Log.i(TAG, "Nombre de PDUs décodé : " + parts.length);
+
+            StringBuilder completeBody = new StringBuilder();
+            SmsMessage first = null;
+            for (SmsMessage part : parts) {
+                if (part != null && first == null) first = part;
+                if (part != null && part.getMessageBody() != null) {
+                    completeBody.append(part.getMessageBody());
+                }
+            }
+            if (first == null) {
+                Log.w(TAG, "Tous les segments SMS sont nuls, réception ignorée");
+                pendingResult.finish();
+                return;
+            }
+
+            String sender = first.getDisplayOriginatingAddress();
+            long receivedAt = first.getTimestampMillis();
+            String body = completeBody.toString();
+            Log.d(TAG, "SMS extrait ; date=" + receivedAt + ", longueur=" + body.length());
+
+            com.example.testapp.database.SmsMessage localMessage =
+                    com.example.testapp.database.SmsMessage.create(
+                            sender, body, receivedAt, false);
             Log.i(TAG, "Planification de l'insertion Room ; clé=" + localMessage.uniqueKey);
             new SmsRepository(appContext).insert(localMessage, (rowId, error) -> {
                 try {
@@ -85,8 +90,8 @@ public class SmsReceiver extends BroadcastReceiver {
                     pendingResult.finish();
                 }
             });
-        } catch (RuntimeException schedulingFailure) {
-            Log.e(TAG, "Impossible de planifier l'insertion Room", schedulingFailure);
+        } catch (RuntimeException receiverFailure) {
+            Log.e(TAG, "Impossible de traiter ou planifier le SMS", receiverFailure);
             pendingResult.finish();
         }
     }

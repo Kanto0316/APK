@@ -62,7 +62,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Dernière réception du Broadcast SMS : jamais"
+                android:text="Dernier SMS capturé en arrière-plan : jamais"
                 android:textColor="@color/sms_text_secondary"
                 android:textSize="13sp" />
 

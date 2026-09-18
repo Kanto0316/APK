@@ -29,8 +29,8 @@ Le projet ne dépend d’aucun serveur ni de Firebase.
 
 `SmsReceiver` est déclaré dans le manifeste : il reçoit `SMS_RECEIVED` sans que l’écran soit
 ouvert, y compris après retrait de l’application des récents. Son travail asynchrone reste actif
-avec `goAsync()` jusqu’à la fin de l’insertion Room. Après un redémarrage ou une mise à jour,
-`BootReceiver` réactive explicitement ce composant. Android ne livre toutefois aucune diffusion
+avec `goAsync()` jusqu’à la fin de l’insertion Room. Après un redémarrage,
+`BootReceiver` réactive explicitement ce composant ; aucun service n’est nécessaire. Android ne livre toutefois aucune diffusion
 à une application arrêtée de force par l’utilisateur tant qu’elle n’a pas été relancée.
 
 La capture est clairement signalée comme inactive si `RECEIVE_SMS` n’est pas accordée. Suivi SMS
@@ -48,8 +48,8 @@ seule fois dans la liste :
 4. téléphone verrouillé lors de la réception, puis déverrouillé pour contrôler la liste ;
 5. téléphone redémarré et session utilisateur déverrouillée.
 
-La section temporaire de diagnostic affiche les jalons persistants « Dernière réception du
-Broadcast SMS » et « Dernière insertion Room ». Elle permet de distinguer immédiatement un problème
+La section temporaire de diagnostic affiche les jalons persistants « Dernier SMS capturé en
+arrière-plan » et « Dernière insertion Room ». Elle permet de distinguer immédiatement un problème
 de diffusion d'un échec de base de données. Logcat détaille l'action, le nombre de segments, les
 champs extraits et le résultat de l'insertion ; filtrer avec `SmsReceiver`.
 
