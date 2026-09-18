@@ -31,6 +31,19 @@ public class TransactionDaoTest {
         assertEquals(1, saved.size());
         assertEquals(5000, saved.get(0).montant, 0);
     }
+    @Test public void ignoresDuplicateSmsAndSortsNewestFirst() throws InterruptedException {
+        SmsMessage oldMessage = SmsMessage.create("TELCO", "ancien", 10L, true);
+        SmsMessage newMessage = SmsMessage.create("BANK", "nouveau", 20L, false);
+        database.smsDao().insert(oldMessage);
+        database.smsDao().insert(oldMessage);
+        database.smsDao().insert(newMessage);
+
+        List<SmsMessage> saved = await(database.smsDao().observeAllNewestFirst());
+        assertNotNull(saved);
+        assertEquals(2, saved.size());
+        assertEquals("nouveau", saved.get(0).messageBody);
+        assertEquals("ancien", saved.get(1).messageBody);
+    }
     private static <T> T await(LiveData<T> liveData) throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(1);
         Object[] value = new Object[1];
