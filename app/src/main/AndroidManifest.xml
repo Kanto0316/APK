@@ -5,7 +5,8 @@
     <application
         android:theme="@style/AppTheme"
         android:label="Application Test"
-        android:allowBackup="true">
+        android:allowBackup="false"
+        android:fullBackupContent="false">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
