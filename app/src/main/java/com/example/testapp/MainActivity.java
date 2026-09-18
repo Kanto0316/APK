@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.testapp.database.SmsMessage;
 import com.example.testapp.backup.SmsBackupManager;
+import com.example.testapp.sms.SmsReceptionDiagnostics;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -254,11 +255,22 @@ public class MainActivity extends AppCompatActivity {
         permissionText.setVisibility(denied ? View.VISIBLE : View.GONE);
         loadingIndicator.setVisibility(loading ? View.VISIBLE : View.GONE);
         adapter.submitList(denied ? new ArrayList<>() : messages);
-        capturedCountText.setText(denied
+        String captureState = denied
                 ? "Capture SMS : INACTIVE — autorisation non accordée"
-                : "Capture SMS active • SMS capturés par Suivi SMS : " + messages.size());
+                : "Capture SMS active • SMS capturés par Suivi SMS : " + messages.size();
+        capturedCountText.setText(captureState + "\n"
+                + formatDiagnostic("Dernier SMS reçu par Receiver",
+                        SmsReceptionDiagnostics.getLastReceiverInvocation(this)) + "\n"
+                + formatDiagnostic("Dernière insertion Room",
+                        SmsReceptionDiagnostics.getLastRoomInsertion(this)));
         emptyText.setVisibility(!denied && !loading && messages.isEmpty()
                 ? View.VISIBLE : View.GONE);
+    }
+
+    private String formatDiagnostic(String label, long timestamp) {
+        if (timestamp == 0L) return label + " : jamais";
+        return label + " : " + new SimpleDateFormat(
+                "d MMM yyyy • HH:mm:ss", Locale.FRENCH).format(timestamp);
     }
 
     private static class SmsAdapter extends RecyclerView.Adapter<SmsViewHolder> {
