@@ -12,7 +12,6 @@ jobs:
 
     env:
       GRADLE_VERSION: "8.11.1"
-      ANDROID_GRADLE_PLUGIN_VERSION: "8.9.2"
       ANDROID_COMPILE_SDK: "35"
       ANDROID_BUILD_TOOLS: "35.0.0"
 
@@ -33,6 +32,9 @@ jobs:
       - name: Verify Android SDK command-line tools
         run: sdkmanager --version
 
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
       - name: Install Android SDK packages
         run: |
           sdkmanager --install \
@@ -45,20 +47,14 @@ jobs:
         with:
           gradle-version: ${{ env.GRADLE_VERSION }}
 
-      - name: Configure Android Gradle plugin version
-        run: |
-          cat > android-gradle-plugin.init.gradle <<'EOF_INIT'
-          settingsEvaluated { settings ->
-              settings.pluginManagement.resolutionStrategy.eachPlugin {
-                  if (requested.id.id == "com.android.application") {
-                      useVersion(System.getenv("ANDROID_GRADLE_PLUGIN_VERSION"))
-                  }
-              }
-          }
-          EOF_INIT
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper --gradle-version "${GRADLE_VERSION}"
 
-      - name: Build debug APK with Gradle
-        run: gradle --init-script android-gradle-plugin.init.gradle assembleDebug --no-daemon --stacktrace
+      - name: Ensure Gradle Wrapper is executable
+        run: chmod +x ./gradlew
+
+      - name: Build debug APK with Gradle Wrapper
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Locate generated APK
         id: apk
