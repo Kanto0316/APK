@@ -39,6 +39,8 @@ public final class SmsBackupManager {
 
     public interface Callback<T> { void complete(T result, Exception error); }
 
+    public enum AutomaticRestoreResult { RESTORED, PASSWORD_REQUIRED, NO_BACKUP }
+
     public void backup(char[] password, boolean rememberForAutomaticBackup, Callback<Date> callback) {
         char[] passwordCopy = Arrays.copyOf(password, password.length);
         EXECUTOR.execute(() -> {
@@ -68,11 +70,37 @@ public final class SmsBackupManager {
                 byte[] data = readBackup();
                 if (data == null) throw new BackupCodec.BackupException("Aucune sauvegarde trouvée");
                 List<SmsMessage> messages = BackupCodec.decode(data, passwordCopy);
-                AppDatabase.getInstance(context).smsDao().insertAll(messages);
+                List<Long> insertions = AppDatabase.getInstance(context).smsDao().insertAll(messages);
                 vault.save(passwordCopy);
-                callback.complete(messages.size(), null);
+                callback.complete(countInserted(insertions), null);
             } catch (Exception error) { callback.complete(null, error); }
             finally { Arrays.fill(passwordCopy, '\0'); }
+        });
+    }
+
+    /** Restores without interaction when this installation still owns the Keystore password. */
+    public void restoreAutomatically(Callback<AutomaticRestoreResult> callback) {
+        EXECUTOR.execute(() -> {
+            char[] password = null;
+            try {
+                byte[] data = readBackup();
+                if (data == null) {
+                    callback.complete(AutomaticRestoreResult.NO_BACKUP, null);
+                    return;
+                }
+                password = vault.load();
+                if (password == null) {
+                    callback.complete(AutomaticRestoreResult.PASSWORD_REQUIRED, null);
+                    return;
+                }
+                List<SmsMessage> messages = BackupCodec.decode(data, password);
+                AppDatabase.getInstance(context).smsDao().insertAll(messages);
+                callback.complete(AutomaticRestoreResult.RESTORED, null);
+            } catch (Exception error) {
+                callback.complete(null, error);
+            } finally {
+                if (password != null) Arrays.fill(password, '\0');
+            }
         });
     }
 
@@ -81,6 +109,14 @@ public final class SmsBackupManager {
             try { callback.complete(getLastBackupDate(), null); }
             catch (Exception error) { callback.complete(null, error); }
         });
+    }
+
+    private static int countInserted(List<Long> insertionResults) {
+        int inserted = 0;
+        for (Long result : insertionResults) {
+            if (result != null && result != -1L) inserted++;
+        }
+        return inserted;
     }
 
     private void writeBackup(byte[] data) throws Exception {

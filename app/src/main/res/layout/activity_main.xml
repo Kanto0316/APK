@@ -52,14 +52,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Sauvegarder" />
+                android:text="Sauvegarder maintenant" />
 
             <Button
                 android:id="@+id/restoreButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Restaurer" />
+                android:text="Restaurer sauvegarde" />
         </LinearLayout>
     </LinearLayout>
 
