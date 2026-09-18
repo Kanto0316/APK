@@ -31,6 +31,36 @@
             android:text="Vos messages, du plus récent au plus ancien"
             android:textColor="@color/sms_text_secondary"
             android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/lastBackupText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Dernière sauvegarde : aucune"
+            android:textColor="@color/sms_text_secondary"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/backupButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Sauvegarder" />
+
+            <Button
+                android:id="@+id/restoreButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Restaurer" />
+        </LinearLayout>
     </LinearLayout>
 
     <TextView

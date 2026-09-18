@@ -10,6 +10,7 @@ import androidx.lifecycle.LiveData;
 import com.example.testapp.database.AppDatabase;
 import com.example.testapp.database.SmsDao;
 import com.example.testapp.database.SmsMessage;
+import com.example.testapp.backup.SmsBackupManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,13 +36,17 @@ public class SmsRepository {
     }
 
     public void insert(SmsMessage message) {
-        DATABASE_EXECUTOR.execute(() -> dao.insert(message));
+        DATABASE_EXECUTOR.execute(() -> {
+            dao.insert(message);
+            new SmsBackupManager(appContext).automaticBackup();
+        });
     }
 
     public void insert(SmsMessage message, Runnable onComplete) {
         DATABASE_EXECUTOR.execute(() -> {
             try {
                 dao.insert(message);
+                new SmsBackupManager(appContext).automaticBackup();
             } finally {
                 if (onComplete != null) onComplete.run();
             }
@@ -73,6 +78,7 @@ public class SmsRepository {
                 }
                 dao.insertAll(messages);
                 preferences.edit().putBoolean(INITIAL_IMPORT_DONE, true).apply();
+                new SmsBackupManager(appContext).automaticBackup();
                 if (onComplete != null) onComplete.run();
             } catch (SecurityException denied) {
                 if (onPermissionDenied != null) onPermissionDenied.run();
