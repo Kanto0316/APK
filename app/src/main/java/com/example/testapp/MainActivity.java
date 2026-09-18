@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.testapp.database.SmsMessage;
 import com.example.testapp.backup.SmsBackupManager;
+import com.example.testapp.background.BackgroundExecutionManager;
 import com.example.testapp.sms.SmsReceptionDiagnostics;
 
 import androidx.appcompat.app.AlertDialog;
@@ -35,7 +36,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String INSTALLATION_STATE = "state";
     private static final String STATE_CONFIGURED = "configured";
     private static final String STATE_RESTORE_PENDING = "restore_pending";
+    private static final String BACKGROUND_PREFERENCES = "background_execution";
+    private static final String BACKGROUND_PROMPT_SHOWN = "initial_prompt_shown";
     private TextView permissionText;
+    private TextView backgroundExecutionText;
     private TextView emptyText;
     private TextView capturedCountText;
     private TextView lastSmsBroadcastText;
@@ -48,6 +52,9 @@ public class MainActivity extends AppCompatActivity {
     private List<SmsMessage> messages = new ArrayList<>();
     private boolean roomLoaded;
     private boolean startupRestoreFinished;
+    private BackgroundExecutionManager backgroundExecutionManager;
+    private boolean backgroundSettingsOpened;
+    private boolean firstResume = true;
 
     private final ActivityResultLauncher<String[]> permissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
@@ -66,6 +73,9 @@ public class MainActivity extends AppCompatActivity {
 
         permissionText = findViewById(R.id.permissionText);
         permissionText.setOnClickListener(view -> requestRequiredPermissions());
+        backgroundExecutionText = findViewById(R.id.backgroundExecutionText);
+        backgroundExecutionManager = new BackgroundExecutionManager(this);
+        backgroundExecutionText.setOnClickListener(view -> showBackgroundPermissionDialog(false));
         emptyText = findViewById(R.id.emptyText);
         capturedCountText = findViewById(R.id.capturedCountText);
         lastSmsBroadcastText = findViewById(R.id.lastSmsBroadcastText);
@@ -88,12 +98,49 @@ public class MainActivity extends AppCompatActivity {
         });
         requestRequiredPermissions();
         initializeInstallation();
+        boolean initialPromptShown = getSharedPreferences(BACKGROUND_PREFERENCES, MODE_PRIVATE)
+                .getBoolean(BACKGROUND_PROMPT_SHOWN, false);
+        if (savedInstanceState == null && !initialPromptShown
+                && !backgroundExecutionManager.isBackgroundExecutionAllowed()) {
+            getSharedPreferences(BACKGROUND_PREFERENCES, MODE_PRIVATE).edit()
+                    .putBoolean(BACKGROUND_PROMPT_SHOWN, true).apply();
+            showBackgroundPermissionDialog(true);
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         refreshPermissionState();
+        if (firstResume) {
+            firstResume = false;
+            return;
+        }
+        if (backgroundSettingsOpened) {
+            backgroundSettingsOpened = false;
+            boolean allowed = backgroundExecutionManager.isBackgroundExecutionAllowed();
+            Toast.makeText(this, allowed ? "Capture SMS active"
+                    : "L’exécution en arrière-plan reste limitée. Appuyez sur le rappel pour réessayer.",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showBackgroundPermissionDialog(boolean firstLaunchCheck) {
+        if (isFinishing() || backgroundExecutionManager.isBackgroundExecutionAllowed()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Activer la capture en arrière-plan")
+                .setMessage("Pour capturer les SMS reçus même lorsque l'application est fermée, "
+                        + "veuillez autoriser l'exécution en arrière-plan.\n\nDans la page suivante, "
+                        + "activez si disponibles « Démarrage automatique » et « Exécution en arrière-plan ». ")
+                .setNegativeButton(firstLaunchCheck ? "Plus tard" : "Annuler", null)
+                .setPositiveButton("Autoriser maintenant", (dialog, which) -> {
+                    backgroundSettingsOpened = backgroundExecutionManager.openBackgroundSettings();
+                    if (!backgroundSettingsOpened) {
+                        Toast.makeText(this, "Impossible d’ouvrir les réglages sur cet appareil.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                })
+                .show();
     }
 
     private void requestRequiredPermissions() {
@@ -257,6 +304,9 @@ public class MainActivity extends AppCompatActivity {
         boolean denied = !hasSmsPermissions();
         boolean loading = !denied && (!roomLoaded || !startupRestoreFinished);
         permissionText.setVisibility(denied ? View.VISIBLE : View.GONE);
+        boolean backgroundAllowed = backgroundExecutionManager != null
+                && backgroundExecutionManager.isBackgroundExecutionAllowed();
+        backgroundExecutionText.setVisibility(backgroundAllowed ? View.GONE : View.VISIBLE);
         loadingIndicator.setVisibility(loading ? View.VISIBLE : View.GONE);
         adapter.submitList(denied ? new ArrayList<>() : messages);
         String captureState = denied
