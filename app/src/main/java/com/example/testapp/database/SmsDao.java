@@ -17,6 +17,9 @@ public interface SmsDao {
     List<Long> insertAll(List<SmsMessage> messages);
 
     @Query("SELECT * FROM sms_messages ORDER BY receivedDate DESC, id DESC")
+    List<SmsMessage> getAllNewestFirst();
+
+    @Query("SELECT * FROM sms_messages ORDER BY receivedDate DESC, id DESC")
     LiveData<List<SmsMessage>> observeAllNewestFirst();
 
     // These queries keep future search/filter features behind the database abstraction.
