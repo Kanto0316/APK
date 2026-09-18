@@ -21,6 +21,7 @@ public class SmsReceiver extends BroadcastReceiver {
             Log.w(TAG, "Diffusion ignorée : action reçue différente de SMS_RECEIVED");
             return;
         }
+        Log.i(TAG, "SMS Receiver déclenché");
         SmsReceptionDiagnostics.recordReceiverInvocation(context, System.currentTimeMillis());
 
         Bundle extras = intent.getExtras();
@@ -72,6 +73,7 @@ public class SmsReceiver extends BroadcastReceiver {
                         } else {
                             SmsReceptionDiagnostics.recordRoomInsertion(
                                     appContext, System.currentTimeMillis());
+                            Log.i(TAG, "SMS enregistré Room");
                             Log.i(TAG, "Insertion Room réussie ; rowId=" + rowId + " ("
                                     + parts.length + " segment(s))");
                         }
