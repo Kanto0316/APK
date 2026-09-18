@@ -33,6 +33,15 @@
             android:textSize="14sp" />
 
         <TextView
+            android:id="@+id/capturedCountText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Nombre de SMS capturés par Suivi SMS : 0"
+            android:textColor="@color/sms_text_secondary"
+            android:textSize="14sp" />
+
+        <TextView
             android:id="@+id/lastBackupText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
