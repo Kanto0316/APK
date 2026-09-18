@@ -47,8 +47,14 @@ public class MainActivity extends AppCompatActivity {
     private boolean startupRestoreFinished;
 
     private final ActivityResultLauncher<String[]> permissionLauncher =
-            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result ->
-                    refreshPermissionState());
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                refreshPermissionState();
+                if (!hasSmsPermissions()) {
+                    Toast.makeText(this,
+                            "Capture SMS inactive : accordez l’autorisation SMS dans les réglages.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         permissionText = findViewById(R.id.permissionText);
+        permissionText.setOnClickListener(view -> requestRequiredPermissions());
         emptyText = findViewById(R.id.emptyText);
         capturedCountText = findViewById(R.id.capturedCountText);
         loadingIndicator = findViewById(R.id.loadingIndicator);
@@ -247,7 +254,9 @@ public class MainActivity extends AppCompatActivity {
         permissionText.setVisibility(denied ? View.VISIBLE : View.GONE);
         loadingIndicator.setVisibility(loading ? View.VISIBLE : View.GONE);
         adapter.submitList(denied ? new ArrayList<>() : messages);
-        capturedCountText.setText("Nombre de SMS capturés par Suivi SMS : " + messages.size());
+        capturedCountText.setText(denied
+                ? "Capture SMS : INACTIVE — autorisation non accordée"
+                : "Capture SMS active • SMS capturés par Suivi SMS : " + messages.size());
         emptyText.setVisibility(!denied && !loading && messages.isEmpty()
                 ? View.VISIBLE : View.GONE);
     }

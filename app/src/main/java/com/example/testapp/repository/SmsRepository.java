@@ -37,12 +37,26 @@ public class SmsRepository {
     }
 
     public void insert(SmsMessage message, Runnable onComplete) {
+        insert(message, error -> {
+            if (onComplete != null) onComplete.run();
+        });
+    }
+
+    /** Callback used by short-lived components such as broadcast receivers. */
+    public interface InsertCallback {
+        void onComplete(RuntimeException error);
+    }
+
+    public void insert(SmsMessage message, InsertCallback callback) {
         DATABASE_EXECUTOR.execute(() -> {
+            RuntimeException error = null;
             try {
                 dao.insert(message);
                 new SmsBackupManager(appContext).automaticBackup();
+            } catch (RuntimeException failure) {
+                error = failure;
             } finally {
-                if (onComplete != null) onComplete.run();
+                if (callback != null) callback.onComplete(error);
             }
         });
     }
