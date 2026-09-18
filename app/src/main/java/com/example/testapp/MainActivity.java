@@ -36,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_RESTORE_PENDING = "restore_pending";
     private TextView permissionText;
     private TextView emptyText;
+    private TextView capturedCountText;
     private ProgressBar loadingIndicator;
     private SmsAdapter adapter;
     private SmsViewModel viewModel;
@@ -43,7 +44,6 @@ public class MainActivity extends AppCompatActivity {
     private SmsBackupManager backupManager;
     private List<SmsMessage> messages = new ArrayList<>();
     private boolean roomLoaded;
-    private boolean importRunning;
     private boolean startupRestoreFinished;
 
     private final ActivityResultLauncher<String[]> permissionLauncher =
@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
 
         permissionText = findViewById(R.id.permissionText);
         emptyText = findViewById(R.id.emptyText);
+        capturedCountText = findViewById(R.id.capturedCountText);
         loadingIndicator = findViewById(R.id.loadingIndicator);
         lastBackupText = findViewById(R.id.lastBackupText);
         backupManager = new SmsBackupManager(this);
@@ -85,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void requestRequiredPermissions() {
         List<String> missing = new ArrayList<>();
-        if (!hasPermission(Manifest.permission.READ_SMS)) missing.add(Manifest.permission.READ_SMS);
         if (!hasPermission(Manifest.permission.RECEIVE_SMS)) missing.add(Manifest.permission.RECEIVE_SMS);
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
                 && !hasPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
@@ -234,28 +234,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean hasSmsPermissions() {
-        return hasPermission(Manifest.permission.READ_SMS)
-                && hasPermission(Manifest.permission.RECEIVE_SMS);
+        return hasPermission(Manifest.permission.RECEIVE_SMS);
     }
 
     private void refreshPermissionState() {
-        if (startupRestoreFinished && hasSmsPermissions() && !importRunning) {
-            importRunning = true;
-            renderState();
-            viewModel.importInboxOnce(
-                    () -> runOnUiThread(() -> { importRunning = false; renderState(); }),
-                    () -> runOnUiThread(() -> { importRunning = false; renderState(); }));
-        } else {
-            renderState();
-        }
+        renderState();
     }
 
     private void renderState() {
         boolean denied = !hasSmsPermissions();
-        boolean loading = !denied && (!roomLoaded || importRunning || !startupRestoreFinished);
+        boolean loading = !denied && (!roomLoaded || !startupRestoreFinished);
         permissionText.setVisibility(denied ? View.VISIBLE : View.GONE);
         loadingIndicator.setVisibility(loading ? View.VISIBLE : View.GONE);
         adapter.submitList(denied ? new ArrayList<>() : messages);
+        capturedCountText.setText("Nombre de SMS capturés par Suivi SMS : " + messages.size());
         emptyText.setVisibility(!denied && !loading && messages.isEmpty()
                 ? View.VISIBLE : View.GONE);
     }

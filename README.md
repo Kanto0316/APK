@@ -1,15 +1,15 @@
 # SMS Tracker
 
-Application Android locale qui importe et conserve les SMS dans une base Room.
+Application Android locale qui capture les nouveaux SMS reçus et les conserve dans une base Room privée et indépendante de la boîte SMS du téléphone.
 
 ## Sauvegarde locale
 
 L’écran principal contient une section de sauvegarde avec la date du dernier export et les actions **Sauvegarder** et **Restaurer**.
 
 - Le premier export demande un mot de passe d’au moins huit caractères. Le fichier `Download/SmsTracker/sms-history.smsbackup` est chiffré avec AES-256-GCM ; la clé est dérivée du mot de passe avec PBKDF2-HMAC-SHA-256 et un sel aléatoire. Les expéditeurs et contenus ne sont jamais écrits en clair.
-- Le mot de passe retenu pour les exports automatiques est lui-même protégé par Android Keystore. Une sauvegarde automatique est déclenchée après la réception ou l’import de SMS.
+- Le mot de passe retenu pour les exports automatiques est lui-même protégé par Android Keystore. Une sauvegarde automatique est déclenchée après la réception d’un SMS.
 - Le fichier est placé dans le stockage partagé (`MediaStore.Downloads` sur Android 10 et versions ultérieures), et n’est donc pas supprimé avec l’application. Le mot de passe, lui, n’est pas exporté : Android supprimant la clé Keystore lors d’une désinstallation, il doit être saisi une fois dans le dialogue ouvert automatiquement après une réinstallation. Si la clé est encore disponible, la restauration s’effectue sans interaction.
-- Au premier lancement, l’application distingue une installation neuve, une restauration en attente et une installation déjà configurée. Elle recherche le fichier avant l’import de la boîte Android et lance la restauration automatiquement. Une restauration manuelle reste disponible à tout moment. Les doublons sont ignorés par l’index unique Room.
+- Au premier lancement, l’application distingue une installation neuve, une restauration en attente et une installation déjà configurée. Elle ne lit jamais la boîte SMS Android : sans sauvegarde restaurée, l’historique est donc vide. Une restauration manuelle reste disponible à tout moment. Les doublons sont ignorés par l’index unique Room.
 - Le format contient ses propres versions de fichier et de schéma. Les fichiers tronqués, altérés, issus d’une version future ou ouverts avec un mauvais mot de passe sont refusés sans modifier les données existantes.
 
 Sur Android 6 à 9, l’accès au dossier public de téléchargement nécessite l’autorisation de stockage demandée par l’application.

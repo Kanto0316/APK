@@ -23,7 +23,4 @@ public class SmsViewModel extends AndroidViewModel {
 
     public LiveData<List<SmsMessage>> getMessages() { return messages; }
 
-    public void importInboxOnce(Runnable onComplete, Runnable onPermissionDenied) {
-        repository.importInboxOnce(onComplete, onPermissionDenied);
-    }
 }
