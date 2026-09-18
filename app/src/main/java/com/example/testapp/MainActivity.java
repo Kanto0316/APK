@@ -174,7 +174,7 @@ public class MainActivity extends AppCompatActivity {
             SmsItem item = items.get(position);
             holder.sender.setText(item.sender == null || item.sender.isEmpty()
                     ? "Expéditeur inconnu" : item.sender);
-            holder.date.setText(new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+            holder.date.setText(new SimpleDateFormat("d MMM yyyy • HH:mm", Locale.FRENCH)
                     .format(item.receivedAt));
             holder.body.setText(item.body);
         }
