@@ -24,3 +24,30 @@ Sur Android 6 à 9, l’accès au dossier public de téléchargement nécessite 
 6. Vérifier que le SMS réapparaît et qu’une nouvelle réception actualise automatiquement la sauvegarde.
 
 Le projet ne dépend d’aucun serveur ni de Firebase.
+
+## Réception en arrière-plan
+
+`SmsReceiver` est déclaré dans le manifeste : il reçoit `SMS_RECEIVED` sans que l’écran soit
+ouvert, y compris après retrait de l’application des récents. Son travail asynchrone reste actif
+avec `goAsync()` jusqu’à la fin de l’insertion Room. Après un redémarrage ou une mise à jour,
+`BootReceiver` réactive explicitement ce composant. Android ne livre toutefois aucune diffusion
+à une application arrêtée de force par l’utilisateur tant qu’elle n’a pas été relancée.
+
+La capture est clairement signalée comme inactive si `RECEIVE_SMS` n’est pas accordée. Suivi SMS
+ne lit jamais l’historique du fournisseur `Telephony.Sms` : seuls les nouveaux messages livrés au
+receiver (ou ceux provenant d’une sauvegarde explicitement restaurée) figurent dans Room.
+
+### Scénarios de validation de la capture
+
+Pour chaque étape, envoyer un **nouveau** SMS, puis ouvrir Suivi SMS et vérifier qu’il apparaît une
+seule fois dans la liste :
+
+1. application ouverte au premier plan ;
+2. application fermée avec le bouton Retour ;
+3. application retirée des applications récentes ;
+4. téléphone redémarré et session utilisateur déverrouillée.
+
+Refuser ensuite l’autorisation SMS : l’écran doit afficher « Capture SMS : INACTIVE », aucun SMS
+reçu pendant ce refus ne doit être importé rétrospectivement. Réaccorder l’autorisation et vérifier
+uniquement avec un nouveau SMS. Les traces `SmsReceiver` et `SmsBootReceiver` dans Logcat permettent
+de confirmer respectivement la réception, l’insertion Room et la réactivation au démarrage.
