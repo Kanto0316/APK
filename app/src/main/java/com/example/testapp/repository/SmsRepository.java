@@ -1,6 +1,7 @@
 package com.example.testapp.repository;
 
 import android.content.Context;
+import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 
@@ -15,6 +16,7 @@ import java.util.concurrent.Executors;
 
 /** Single local-only data source for SMS history. */
 public class SmsRepository {
+    private static final String TAG = "SmsRepository";
     private static final ExecutorService DATABASE_EXECUTOR = Executors.newSingleThreadExecutor();
 
     private final Context appContext;
@@ -37,26 +39,35 @@ public class SmsRepository {
     }
 
     public void insert(SmsMessage message, Runnable onComplete) {
-        insert(message, error -> {
+        insert(message, (rowId, error) -> {
             if (onComplete != null) onComplete.run();
         });
     }
 
     /** Callback used by short-lived components such as broadcast receivers. */
     public interface InsertCallback {
-        void onComplete(RuntimeException error);
+        void onComplete(long rowId, RuntimeException error);
     }
 
     public void insert(SmsMessage message, InsertCallback callback) {
         DATABASE_EXECUTOR.execute(() -> {
             RuntimeException error = null;
+            long rowId = -1L;
             try {
-                dao.insert(message);
-                new SmsBackupManager(appContext).automaticBackup();
+                rowId = dao.insert(message);
             } catch (RuntimeException failure) {
                 error = failure;
             } finally {
-                if (callback != null) callback.onComplete(error);
+                if (callback != null) callback.onComplete(rowId, error);
+            }
+            if (error == null) {
+                try {
+                    new SmsBackupManager(appContext).automaticBackup();
+                } catch (RuntimeException backupFailure) {
+                    // The Room transaction already succeeded; a backup issue must not report it as failed.
+                    Log.e(TAG, "Insertion Room réussie, mais sauvegarde automatique impossible",
+                            backupFailure);
+                }
             }
         });
     }
