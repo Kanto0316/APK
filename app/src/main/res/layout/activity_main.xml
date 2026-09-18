@@ -41,6 +41,41 @@
             android:textColor="@color/sms_text_secondary"
             android:textSize="14sp" />
 
+        <LinearLayout
+            android:id="@+id/smsDiagnosticsSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical"
+            android:contentDescription="Diagnostic temporaire de réception SMS">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Diagnostic réception SMS"
+                android:textColor="@color/sms_text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/lastSmsBroadcastText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Dernière réception du Broadcast SMS : jamais"
+                android:textColor="@color/sms_text_secondary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/lastRoomInsertionText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Dernière insertion Room : jamais"
+                android:textColor="@color/sms_text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/lastBackupText"
             android:layout_width="wrap_content"

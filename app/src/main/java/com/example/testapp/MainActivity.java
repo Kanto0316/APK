@@ -38,6 +38,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView permissionText;
     private TextView emptyText;
     private TextView capturedCountText;
+    private TextView lastSmsBroadcastText;
+    private TextView lastRoomInsertionText;
     private ProgressBar loadingIndicator;
     private SmsAdapter adapter;
     private SmsViewModel viewModel;
@@ -66,6 +68,8 @@ public class MainActivity extends AppCompatActivity {
         permissionText.setOnClickListener(view -> requestRequiredPermissions());
         emptyText = findViewById(R.id.emptyText);
         capturedCountText = findViewById(R.id.capturedCountText);
+        lastSmsBroadcastText = findViewById(R.id.lastSmsBroadcastText);
+        lastRoomInsertionText = findViewById(R.id.lastRoomInsertionText);
         loadingIndicator = findViewById(R.id.loadingIndicator);
         lastBackupText = findViewById(R.id.lastBackupText);
         backupManager = new SmsBackupManager(this);
@@ -258,11 +262,11 @@ public class MainActivity extends AppCompatActivity {
         String captureState = denied
                 ? "Capture SMS : INACTIVE — autorisation non accordée"
                 : "Capture SMS active • SMS capturés par Suivi SMS : " + messages.size();
-        capturedCountText.setText(captureState + "\n"
-                + formatDiagnostic("Dernier SMS reçu par Receiver",
-                        SmsReceptionDiagnostics.getLastReceiverInvocation(this)) + "\n"
-                + formatDiagnostic("Dernière insertion Room",
-                        SmsReceptionDiagnostics.getLastRoomInsertion(this)));
+        capturedCountText.setText(captureState);
+        lastSmsBroadcastText.setText(formatDiagnostic("Dernière réception du Broadcast SMS",
+                SmsReceptionDiagnostics.getLastReceiverInvocation(this)));
+        lastRoomInsertionText.setText(formatDiagnostic("Dernière insertion Room",
+                SmsReceptionDiagnostics.getLastRoomInsertion(this)));
         emptyText.setVisibility(!denied && !loading && messages.isEmpty()
                 ? View.VISIBLE : View.GONE);
     }

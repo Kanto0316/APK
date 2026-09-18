@@ -24,16 +24,17 @@ public class SmsReceiver extends BroadcastReceiver {
         SmsReceptionDiagnostics.recordReceiverInvocation(context, System.currentTimeMillis());
 
         Bundle extras = intent.getExtras();
-        Object[] rawPdus = extras == null ? null : (Object[]) extras.get("pdus");
+        Object rawPdusValue = extras == null ? null : extras.get("pdus");
+        Object[] rawPdus = rawPdusValue instanceof Object[] ? (Object[]) rawPdusValue : null;
         int bundlePartCount = rawPdus == null ? 0 : rawPdus.length;
-        Log.i(TAG, "Action SMS_RECEIVED confirmée ; " + bundlePartCount
-                + " segment(s) présent(s) dans le bundle");
+        Log.i(TAG, "Nombre de PDUs reçu : " + bundlePartCount);
 
         SmsMessage[] parts = Telephony.Sms.Intents.getMessagesFromIntent(intent);
         if (parts == null || parts.length == 0) {
             Log.w(TAG, "SMS_RECEIVED sans segment décodable");
             return;
         }
+        Log.i(TAG, "Nombre de PDUs décodé : " + parts.length);
 
         StringBuilder completeBody = new StringBuilder();
         SmsMessage first = null;
@@ -53,8 +54,7 @@ public class SmsReceiver extends BroadcastReceiver {
         String sender = first.getDisplayOriginatingAddress();
         long receivedAt = first.getTimestampMillis();
         String body = completeBody.toString();
-        Log.d(TAG, "SMS extrait ; expéditeur=" + sender + ", date=" + receivedAt
-                + ", contenu=" + body);
+        Log.d(TAG, "SMS extrait ; date=" + receivedAt + ", longueur=" + body.length());
 
         PendingResult pendingResult = goAsync();
         com.example.testapp.database.SmsMessage localMessage =
@@ -72,13 +72,14 @@ public class SmsReceiver extends BroadcastReceiver {
                         } else {
                             SmsReceptionDiagnostics.recordRoomInsertion(
                                     appContext, System.currentTimeMillis());
-                            Log.i(TAG, "Insertion Room confirmée ; rowId=" + rowId + " ("
+                            Log.i(TAG, "Insertion Room réussie ; rowId=" + rowId + " ("
                                     + parts.length + " segment(s))");
                         }
                     } else {
                         Log.e(TAG, "Échec exact de l'insertion Room : " + error, error);
                     }
                 } finally {
+                    Log.d(TAG, "Insertion Room terminée ; libération de goAsync()");
                     pendingResult.finish();
                 }
             });

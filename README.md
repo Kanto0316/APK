@@ -48,10 +48,10 @@ seule fois dans la liste :
 4. téléphone verrouillé lors de la réception, puis déverrouillé pour contrôler la liste ;
 5. téléphone redémarré et session utilisateur déverrouillée.
 
-Sous le compteur, les diagnostics persistants « Dernier SMS reçu par Receiver » et « Dernière
-insertion Room » permettent de distinguer immédiatement un problème de diffusion d'un échec de
-base de données. Logcat détaille l'action, le nombre de segments, les champs extraits et le résultat
-de l'insertion ; filtrer avec `SmsReceiver`.
+La section temporaire de diagnostic affiche les jalons persistants « Dernière réception du
+Broadcast SMS » et « Dernière insertion Room ». Elle permet de distinguer immédiatement un problème
+de diffusion d'un échec de base de données. Logcat détaille l'action, le nombre de segments, les
+champs extraits et le résultat de l'insertion ; filtrer avec `SmsReceiver`.
 
 Refuser ensuite l’autorisation SMS : l’écran doit afficher « Capture SMS : INACTIVE », aucun SMS
 reçu pendant ce refus ne doit être importé rétrospectivement. Réaccorder l’autorisation et vérifier
