@@ -53,4 +53,19 @@ public class BackupCodecTest {
             // Expected corruption path.
         }
     }
+
+
+    @Test
+    public void futureBackupFormatIsRejected() throws Exception {
+        byte[] backup = BackupCodec.encode(Arrays.asList(
+                SmsMessage.create("Service", "Message", 99L, false)), PASSWORD);
+        // The format version follows the eight-byte magic header.
+        backup[11] = 2;
+        try {
+            BackupCodec.decode(backup, PASSWORD);
+            fail("A future backup version must not be accepted");
+        } catch (BackupCodec.BackupException expected) {
+            assertEquals("Version de sauvegarde non prise en charge", expected.getMessage());
+        }
+    }
 }

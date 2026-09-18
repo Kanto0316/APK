@@ -30,6 +30,10 @@ import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String INSTALLATION_PREFERENCES = "installation_restore";
+    private static final String INSTALLATION_STATE = "state";
+    private static final String STATE_CONFIGURED = "configured";
+    private static final String STATE_RESTORE_PENDING = "restore_pending";
     private TextView permissionText;
     private TextView emptyText;
     private ProgressBar loadingIndicator;
@@ -40,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private List<SmsMessage> messages = new ArrayList<>();
     private boolean roomLoaded;
     private boolean importRunning;
+    private boolean startupRestoreFinished;
 
     private final ActivityResultLauncher<String[]> permissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result ->
@@ -55,8 +60,8 @@ public class MainActivity extends AppCompatActivity {
         loadingIndicator = findViewById(R.id.loadingIndicator);
         lastBackupText = findViewById(R.id.lastBackupText);
         backupManager = new SmsBackupManager(this);
-        findViewById(R.id.backupButton).setOnClickListener(view -> requestPassword(false));
-        findViewById(R.id.restoreButton).setOnClickListener(view -> requestPassword(true));
+        findViewById(R.id.backupButton).setOnClickListener(view -> requestPassword(false, null));
+        findViewById(R.id.restoreButton).setOnClickListener(view -> requestPassword(true, null));
         RecyclerView list = findViewById(R.id.transactionsList);
         adapter = new SmsAdapter();
         list.setLayoutManager(new LinearLayoutManager(this));
@@ -69,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
             renderState();
         });
         requestRequiredPermissions();
-        refreshBackupStatus(true);
+        initializeInstallation();
     }
 
     @Override
@@ -90,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         else permissionLauncher.launch(missing.toArray(new String[0]));
     }
 
-    private void refreshBackupStatus(boolean offerRestore) {
+    private void refreshBackupStatus() {
         backupManager.findBackup((date, error) -> runOnUiThread(() -> {
             if (error != null) {
                 lastBackupText.setText("Sauvegarde indisponible");
@@ -102,18 +107,69 @@ public class MainActivity extends AppCompatActivity {
             }
             lastBackupText.setText("Dernière sauvegarde : "
                     + new SimpleDateFormat("d MMM yyyy • HH:mm", Locale.FRENCH).format(date));
-            boolean alreadyOffered = getPreferences(MODE_PRIVATE).getBoolean("restore_offered", false);
-            if (offerRestore && !alreadyOffered) {
-                getPreferences(MODE_PRIVATE).edit().putBoolean("restore_offered", true).apply();
-                new AlertDialog.Builder(this).setTitle("Sauvegarde trouvée")
-                        .setMessage("Restaurer l’historique SMS sauvegardé sur cet appareil ?")
-                        .setNegativeButton("Plus tard", null)
-                        .setPositiveButton("Restaurer", (dialog, which) -> requestPassword(true)).show();
-            }
         }));
     }
 
-    private void requestPassword(boolean restore) {
+    private void initializeInstallation() {
+        String state = getSharedPreferences(INSTALLATION_PREFERENCES, MODE_PRIVATE)
+                .getString(INSTALLATION_STATE, null);
+        if (STATE_CONFIGURED.equals(state)) {
+            finishStartupRestore();
+            refreshBackupStatus();
+            return;
+        }
+        backupManager.findBackup((date, lookupError) -> runOnUiThread(() -> {
+            if (lookupError != null) {
+                Toast.makeText(this, "Sauvegarde inaccessible. Démarrage sans restauration.",
+                        Toast.LENGTH_LONG).show();
+                markConfigured();
+                finishStartupRestore();
+            } else if (date == null) {
+                markConfigured();
+                finishStartupRestore();
+            } else {
+                getSharedPreferences(INSTALLATION_PREFERENCES, MODE_PRIVATE).edit()
+                        .putString(INSTALLATION_STATE, STATE_RESTORE_PENDING).apply();
+                attemptAutomaticRestore();
+            }
+            refreshBackupStatus();
+        }));
+    }
+
+    private void attemptAutomaticRestore() {
+        backupManager.restoreAutomatically((result, error) -> runOnUiThread(() -> {
+            if (error != null) {
+                Toast.makeText(this, "Restauration automatique impossible : " + error.getMessage(),
+                        Toast.LENGTH_LONG).show();
+                finishStartupRestore();
+            } else if (result == SmsBackupManager.AutomaticRestoreResult.RESTORED) {
+                markConfigured();
+                finishStartupRestore();
+                Toast.makeText(this, "Historique SMS restauré automatiquement", Toast.LENGTH_LONG).show();
+            } else if (result == SmsBackupManager.AutomaticRestoreResult.PASSWORD_REQUIRED) {
+                finishStartupRestore();
+                requestPassword(true, () -> Toast.makeText(this,
+                        "La restauration reste disponible avec Restaurer sauvegarde.",
+                        Toast.LENGTH_LONG).show());
+            } else {
+                markConfigured();
+                finishStartupRestore();
+            }
+            refreshBackupStatus();
+        }));
+    }
+
+    private void finishStartupRestore() {
+        startupRestoreFinished = true;
+        refreshPermissionState();
+    }
+
+    private void markConfigured() {
+        getSharedPreferences(INSTALLATION_PREFERENCES, MODE_PRIVATE).edit()
+                .putString(INSTALLATION_STATE, STATE_CONFIGURED).apply();
+    }
+
+    private void requestPassword(boolean restore, Runnable onCancel) {
         EditText input = new EditText(this);
         input.setHint("8 caractères minimum");
         input.setSingleLine(true);
@@ -125,7 +181,9 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage(restore
                         ? "Saisissez le mot de passe utilisé lors de la sauvegarde."
                         : "Ce mot de passe sera requis après une réinstallation. Il ne peut pas être récupéré.")
-                .setView(input).setNegativeButton("Annuler", null)
+                .setView(input).setNegativeButton("Annuler", (ignored, which) -> {
+                    if (onCancel != null) onCancel.run();
+                })
                 .setPositiveButton(restore ? "Restaurer" : "Sauvegarder", null).create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
             char[] password = input.getText().toString().toCharArray();
@@ -141,7 +199,7 @@ public class MainActivity extends AppCompatActivity {
         backupManager.backup(password, true, (date, error) -> runOnUiThread(() -> {
             Toast.makeText(this, error == null ? "Sauvegarde chiffrée créée"
                     : "Échec : " + error.getMessage(), Toast.LENGTH_LONG).show();
-            if (error == null) refreshBackupStatus(false);
+            if (error == null) refreshBackupStatus();
         }));
     }
 
@@ -149,7 +207,10 @@ public class MainActivity extends AppCompatActivity {
         backupManager.restore(password, (count, error) -> runOnUiThread(() -> {
             Toast.makeText(this, error == null ? count + " messages restaurés"
                     : "Restauration impossible : " + error.getMessage(), Toast.LENGTH_LONG).show();
-            if (error == null) refreshBackupStatus(false);
+            if (error == null) {
+                markConfigured();
+                refreshBackupStatus();
+            }
         }));
     }
 
@@ -163,7 +224,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void refreshPermissionState() {
-        if (hasSmsPermissions() && !importRunning) {
+        if (startupRestoreFinished && hasSmsPermissions() && !importRunning) {
             importRunning = true;
             renderState();
             viewModel.importInboxOnce(
@@ -176,7 +237,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void renderState() {
         boolean denied = !hasSmsPermissions();
-        boolean loading = !denied && (!roomLoaded || importRunning);
+        boolean loading = !denied && (!roomLoaded || importRunning || !startupRestoreFinished);
         permissionText.setVisibility(denied ? View.VISIBLE : View.GONE);
         loadingIndicator.setVisibility(loading ? View.VISIBLE : View.GONE);
         adapter.submitList(denied ? new ArrayList<>() : messages);
