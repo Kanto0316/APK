@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
         lastBackupText = findViewById(R.id.lastBackupText);
         backupManager = new SmsBackupManager(this);
         findViewById(R.id.backupButton).setOnClickListener(view -> requestPassword(false, null));
-        findViewById(R.id.restoreButton).setOnClickListener(view -> requestPassword(true, null));
+        findViewById(R.id.restoreButton).setOnClickListener(view -> requestRestore());
         RecyclerView list = findViewById(R.id.transactionsList);
         adapter = new SmsAdapter();
         list.setLayoutManager(new LinearLayoutManager(this));
@@ -142,11 +142,12 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Restauration automatique impossible : " + error.getMessage(),
                         Toast.LENGTH_LONG).show();
                 finishStartupRestore();
-            } else if (result == SmsBackupManager.AutomaticRestoreResult.RESTORED) {
+            } else if (result.status == SmsBackupManager.AutomaticRestoreStatus.RESTORED) {
                 markConfigured();
                 finishStartupRestore();
-                Toast.makeText(this, "Historique SMS restauré automatiquement", Toast.LENGTH_LONG).show();
-            } else if (result == SmsBackupManager.AutomaticRestoreResult.PASSWORD_REQUIRED) {
+                Toast.makeText(this, "Restauration réussie : " + result.restoredCount + " SMS restaurés",
+                        Toast.LENGTH_LONG).show();
+            } else if (result.status == SmsBackupManager.AutomaticRestoreStatus.PASSWORD_REQUIRED) {
                 finishStartupRestore();
                 requestPassword(true, () -> Toast.makeText(this,
                         "La restauration reste disponible avec Restaurer sauvegarde.",
@@ -195,9 +196,23 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    /** Checks shared storage first so an unnecessary password dialog is never displayed. */
+    private void requestRestore() {
+        backupManager.findBackup((date, error) -> runOnUiThread(() -> {
+            if (error != null) {
+                Toast.makeText(this, "Restauration impossible : " + error.getMessage(),
+                        Toast.LENGTH_LONG).show();
+            } else if (date == null) {
+                Toast.makeText(this, "Aucune sauvegarde trouvée", Toast.LENGTH_LONG).show();
+            } else {
+                requestPassword(true, null);
+            }
+        }));
+    }
+
     private void backup(char[] password) {
         backupManager.backup(password, true, (date, error) -> runOnUiThread(() -> {
-            Toast.makeText(this, error == null ? "Sauvegarde chiffrée créée"
+            Toast.makeText(this, error == null ? "Sauvegarde créée avec succès"
                     : "Échec : " + error.getMessage(), Toast.LENGTH_LONG).show();
             if (error == null) refreshBackupStatus();
         }));
@@ -205,7 +220,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void restore(char[] password) {
         backupManager.restore(password, (count, error) -> runOnUiThread(() -> {
-            Toast.makeText(this, error == null ? count + " messages restaurés"
+            Toast.makeText(this, error == null ? "Restauration réussie : " + count + " SMS restaurés"
                     : "Restauration impossible : " + error.getMessage(), Toast.LENGTH_LONG).show();
             if (error == null) {
                 markConfigured();

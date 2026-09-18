@@ -54,6 +54,26 @@ public class BackupCodecTest {
         }
     }
 
+    @Test
+    public void validEncryptedEnvelopeIsAcceptedWithoutPassword() throws Exception {
+        byte[] backup = BackupCodec.encode(Arrays.asList(
+                SmsMessage.create("Service", "Message", 99L, false)), PASSWORD);
+
+        BackupCodec.validateEnvelope(backup);
+    }
+
+    @Test
+    public void envelopeWithTrailingBytesIsRejected() throws Exception {
+        byte[] backup = BackupCodec.encode(Arrays.asList(
+                SmsMessage.create("Service", "Message", 99L, false)), PASSWORD);
+        try {
+            BackupCodec.validateEnvelope(Arrays.copyOf(backup, backup.length + 1));
+            fail("A backup with trailing data must not be accepted");
+        } catch (BackupCodec.BackupException expected) {
+            // Expected corruption path.
+        }
+    }
+
 
     @Test
     public void futureBackupFormatIsRejected() throws Exception {

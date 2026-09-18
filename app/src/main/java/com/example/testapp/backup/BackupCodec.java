@@ -69,6 +69,7 @@ public final class BackupCodec {
     public static List<SmsMessage> decode(byte[] backup, char[] password)
             throws GeneralSecurityException, IOException, BackupException {
         requirePassword(password);
+        validateEnvelope(backup);
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(backup))) {
             byte[] magic = new byte[MAGIC.length];
             input.readFully(magic);
@@ -91,6 +92,26 @@ public final class BackupCodec {
                 throw new BackupException("Mot de passe incorrect ou sauvegarde corrompue", invalid);
             }
             return readPayload(clear);
+        } catch (java.io.EOFException truncated) {
+            throw new BackupException("Sauvegarde tronquée", truncated);
+        }
+    }
+
+    /** Checks the unencrypted container before a password is requested; payload integrity stays AES-GCM protected. */
+    static void validateEnvelope(byte[] backup) throws IOException, BackupException {
+        try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(backup))) {
+            byte[] magic = new byte[MAGIC.length];
+            input.readFully(magic);
+            if (!java.util.Arrays.equals(magic, MAGIC)) throw new BackupException("Format de sauvegarde inconnu");
+            if (input.readInt() != FORMAT_VERSION) throw new BackupException("Version de sauvegarde non prise en charge");
+            byte[] salt = new byte[16]; input.readFully(salt);
+            byte[] iv = new byte[12]; input.readFully(iv);
+            int encryptedLength = input.readInt();
+            int envelopeLength = MAGIC.length + 4 + salt.length + iv.length + 4;
+            if (encryptedLength < 16 || encryptedLength != backup.length - envelopeLength)
+                throw new BackupException("Sauvegarde tronquée");
+            byte[] encrypted = new byte[encryptedLength]; input.readFully(encrypted);
+            if (input.read() != -1) throw new BackupException("Données inattendues dans la sauvegarde");
         } catch (java.io.EOFException truncated) {
             throw new BackupException("Sauvegarde tronquée", truncated);
         }
