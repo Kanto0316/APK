@@ -7,19 +7,26 @@
     android:paddingBottom="12dp">
 
     <TextView
-        android:id="@+id/itemTypeAmount"
+        android:id="@+id/itemSender"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="17sp"
         android:textStyle="bold" />
 
     <TextView
-        android:id="@+id/itemSenderDate"
+        android:id="@+id/itemDate"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:textColor="#666666"
         android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/itemBody"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:textSize="16sp" />
 
     <View
         android:layout_width="match_parent"
