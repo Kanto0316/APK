@@ -119,14 +119,75 @@
         android:contentDescription="Chargement des messages"
         android:visibility="gone" />
 
+    <LinearLayout
+        android:id="@+id/smsTableHeader"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:background="@color/sms_table_header"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
+
+        <TextView
+            android:layout_width="28dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="#"
+            android:textColor="@color/sms_table_header_text"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:gravity="start"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:text="Numéro"
+            android:textColor="@color/sms_table_header_text"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="4"
+            android:gravity="start"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:text="Message"
+            android:textColor="@color/sms_table_header_text"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="58dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Date"
+            android:textColor="@color/sms_table_header_text"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="44dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Heure"
+            android:textColor="@color/sms_table_header_text"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/transactionsList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingTop="16dp"
-        android:paddingBottom="16dp"
+        android:paddingBottom="8dp"
         android:scrollbars="vertical" />
 
 </LinearLayout>
