@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mainRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/sms_screen_background"
@@ -42,23 +43,6 @@
                 android:tint="@color/sms_text_primary" />
         </LinearLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Vos messages, du plus récent au plus ancien"
-            android:textColor="@color/sms_text_secondary"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/capturedCountText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Capture SMS active • SMS capturés par Suivi SMS : 0"
-            android:textColor="@color/sms_text_secondary"
-            android:textSize="14sp" />
-
     </LinearLayout>
 
     <View
@@ -96,30 +80,6 @@
         android:text="Exécution en arrière-plan limitée. Appuyez ici pour autoriser le démarrage automatique et la capture lorsque l’application est fermée."
         android:textColor="@color/sms_permission_text"
         android:textSize="14sp"
-        android:visibility="gone" />
-
-    <TextView
-        android:id="@+id/emptyText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:paddingStart="24dp"
-        android:paddingTop="48dp"
-        android:paddingEnd="24dp"
-        android:paddingBottom="24dp"
-        android:text="Aucun message enregistré"
-        android:textColor="@color/sms_text_secondary"
-        android:textSize="15sp"
-        android:visibility="gone" />
-
-    <ProgressBar
-        android:id="@+id/loadingIndicator"
-        style="?android:attr/progressBarStyle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="40dp"
-        android:contentDescription="Chargement des messages"
         android:visibility="gone" />
 
     <LinearLayout
@@ -183,6 +143,30 @@
             android:textSize="12sp"
             android:textStyle="bold" />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/emptyText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingStart="24dp"
+        android:paddingTop="24dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="24dp"
+        android:text="Aucun message enregistré"
+        android:textColor="@color/sms_text_secondary"
+        android:textSize="15sp"
+        android:visibility="gone" />
+
+    <ProgressBar
+        android:id="@+id/loadingIndicator"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="24dp"
+        android:contentDescription="Chargement des messages"
+        android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/transactionsList"

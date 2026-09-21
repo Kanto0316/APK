@@ -17,6 +17,10 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -56,7 +60,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView permissionText;
     private TextView backgroundExecutionText;
     private TextView emptyText;
-    private TextView capturedCountText;
     private ProgressBar loadingIndicator;
     private SmsAdapter adapter;
     private SmsViewModel viewModel;
@@ -90,7 +93,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
+        applySystemBarInsets(findViewById(R.id.mainRoot));
 
         permissionText = findViewById(R.id.permissionText);
         permissionText.setOnClickListener(view -> requestRequiredPermissions());
@@ -98,7 +103,6 @@ public class MainActivity extends AppCompatActivity {
         backgroundExecutionManager = new BackgroundExecutionManager(this);
         backgroundExecutionText.setOnClickListener(view -> showBackgroundPermissionDialog(false));
         emptyText = findViewById(R.id.emptyText);
-        capturedCountText = findViewById(R.id.capturedCountText);
         loadingIndicator = findViewById(R.id.loadingIndicator);
         backupManager = new SmsBackupManager(this);
         findViewById(R.id.overflowButton).setOnClickListener(this::showOverflowMenu);
@@ -123,6 +127,20 @@ public class MainActivity extends AppCompatActivity {
                     .putBoolean(BACKGROUND_PROMPT_SHOWN, true).apply();
             showBackgroundPermissionDialog(true);
         }
+    }
+
+    private void applySystemBarInsets(View root) {
+        int initialLeft = root.getPaddingLeft();
+        int initialTop = root.getPaddingTop();
+        int initialRight = root.getPaddingRight();
+        int initialBottom = root.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, windowInsets) -> {
+            Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            view.setPadding(initialLeft + systemBars.left, initialTop + systemBars.top,
+                    initialRight + systemBars.right, initialBottom + systemBars.bottom);
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(root);
     }
 
     private void showOverflowMenu(View anchor) {
@@ -406,10 +424,6 @@ public class MainActivity extends AppCompatActivity {
         backgroundExecutionText.setVisibility(backgroundAllowed ? View.GONE : View.VISIBLE);
         loadingIndicator.setVisibility(loading ? View.VISIBLE : View.GONE);
         adapter.submitList(denied ? new ArrayList<>() : messages);
-        String captureState = denied
-                ? "Capture SMS : INACTIVE — autorisation non accordée"
-                : "Capture SMS active • SMS capturés par Suivi SMS : " + messages.size();
-        capturedCountText.setText(captureState);
         emptyText.setVisibility(!denied && !loading && messages.isEmpty()
                 ? View.VISIBLE : View.GONE);
     }
