@@ -308,8 +308,11 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(SmsViewHolder holder, int position) {
             SmsMessage item = items.get(position);
+            holder.number.setText(String.valueOf(position + 1));
             holder.sender.setText(item.sender);
-            holder.date.setText(new SimpleDateFormat("d MMM yyyy • HH:mm", Locale.FRENCH)
+            holder.date.setText(new SimpleDateFormat("dd/MM/yy", Locale.FRENCH)
+                    .format(item.receivedDate));
+            holder.time.setText(new SimpleDateFormat("HH:mm", Locale.FRENCH)
                     .format(item.receivedDate));
             holder.body.setText(item.messageBody);
         }
@@ -318,14 +321,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static class SmsViewHolder extends RecyclerView.ViewHolder {
+        final TextView number;
         final TextView sender;
         final TextView date;
+        final TextView time;
         final TextView body;
 
         SmsViewHolder(View itemView) {
             super(itemView);
+            number = itemView.findViewById(R.id.itemNumber);
             sender = itemView.findViewById(R.id.itemSender);
             date = itemView.findViewById(R.id.itemDate);
+            time = itemView.findViewById(R.id.itemTime);
             body = itemView.findViewById(R.id.itemBody);
         }
     }
