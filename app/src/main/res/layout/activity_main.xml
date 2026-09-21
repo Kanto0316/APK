@@ -37,58 +37,14 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Nombre de SMS capturés par Suivi SMS : 0"
+            android:text="Capture SMS active • SMS capturés par Suivi SMS : 0"
             android:textColor="@color/sms_text_secondary"
             android:textSize="14sp" />
 
         <LinearLayout
-            android:id="@+id/smsDiagnosticsSection"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:orientation="vertical"
-            android:contentDescription="Diagnostic temporaire de réception SMS">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Diagnostic réception SMS"
-                android:textColor="@color/sms_text_primary"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/lastSmsBroadcastText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Dernier SMS capturé en arrière-plan : jamais"
-                android:textColor="@color/sms_text_secondary"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/lastRoomInsertionText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Dernière insertion Room : jamais"
-                android:textColor="@color/sms_text_secondary"
-                android:textSize="13sp" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/lastBackupText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Dernière sauvegarde : aucune"
-            android:textColor="@color/sms_text_secondary"
-            android:textSize="13sp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
             android:orientation="horizontal">
 
             <Button

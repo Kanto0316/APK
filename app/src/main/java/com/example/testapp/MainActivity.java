@@ -22,7 +22,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.testapp.database.SmsMessage;
 import com.example.testapp.backup.SmsBackupManager;
 import com.example.testapp.background.BackgroundExecutionManager;
-import com.example.testapp.sms.SmsReceptionDiagnostics;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -42,12 +41,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView backgroundExecutionText;
     private TextView emptyText;
     private TextView capturedCountText;
-    private TextView lastSmsBroadcastText;
-    private TextView lastRoomInsertionText;
     private ProgressBar loadingIndicator;
     private SmsAdapter adapter;
     private SmsViewModel viewModel;
-    private TextView lastBackupText;
     private SmsBackupManager backupManager;
     private List<SmsMessage> messages = new ArrayList<>();
     private boolean roomLoaded;
@@ -78,10 +74,7 @@ public class MainActivity extends AppCompatActivity {
         backgroundExecutionText.setOnClickListener(view -> showBackgroundPermissionDialog(false));
         emptyText = findViewById(R.id.emptyText);
         capturedCountText = findViewById(R.id.capturedCountText);
-        lastSmsBroadcastText = findViewById(R.id.lastSmsBroadcastText);
-        lastRoomInsertionText = findViewById(R.id.lastRoomInsertionText);
         loadingIndicator = findViewById(R.id.loadingIndicator);
-        lastBackupText = findViewById(R.id.lastBackupText);
         backupManager = new SmsBackupManager(this);
         findViewById(R.id.backupButton).setOnClickListener(view -> requestPassword(false, null));
         findViewById(R.id.restoreButton).setOnClickListener(view -> requestRestore());
@@ -154,27 +147,11 @@ public class MainActivity extends AppCompatActivity {
         else permissionLauncher.launch(missing.toArray(new String[0]));
     }
 
-    private void refreshBackupStatus() {
-        backupManager.findBackup((date, error) -> runOnUiThread(() -> {
-            if (error != null) {
-                lastBackupText.setText("Sauvegarde indisponible");
-                return;
-            }
-            if (date == null) {
-                lastBackupText.setText("Dernière sauvegarde : aucune");
-                return;
-            }
-            lastBackupText.setText("Dernière sauvegarde : "
-                    + new SimpleDateFormat("d MMM yyyy • HH:mm", Locale.FRENCH).format(date));
-        }));
-    }
-
     private void initializeInstallation() {
         String state = getSharedPreferences(INSTALLATION_PREFERENCES, MODE_PRIVATE)
                 .getString(INSTALLATION_STATE, null);
         if (STATE_CONFIGURED.equals(state)) {
             finishStartupRestore();
-            refreshBackupStatus();
             return;
         }
         backupManager.findBackup((date, lookupError) -> runOnUiThread(() -> {
@@ -191,7 +168,6 @@ public class MainActivity extends AppCompatActivity {
                         .putString(INSTALLATION_STATE, STATE_RESTORE_PENDING).apply();
                 attemptAutomaticRestore();
             }
-            refreshBackupStatus();
         }));
     }
 
@@ -215,7 +191,6 @@ public class MainActivity extends AppCompatActivity {
                 markConfigured();
                 finishStartupRestore();
             }
-            refreshBackupStatus();
         }));
     }
 
@@ -273,7 +248,6 @@ public class MainActivity extends AppCompatActivity {
         backupManager.backup(password, true, (date, error) -> runOnUiThread(() -> {
             Toast.makeText(this, error == null ? "Sauvegarde créée avec succès"
                     : "Échec : " + error.getMessage(), Toast.LENGTH_LONG).show();
-            if (error == null) refreshBackupStatus();
         }));
     }
 
@@ -283,7 +257,6 @@ public class MainActivity extends AppCompatActivity {
                     : "Restauration impossible : " + error.getMessage(), Toast.LENGTH_LONG).show();
             if (error == null) {
                 markConfigured();
-                refreshBackupStatus();
             }
         }));
     }
@@ -313,18 +286,8 @@ public class MainActivity extends AppCompatActivity {
                 ? "Capture SMS : INACTIVE — autorisation non accordée"
                 : "Capture SMS active • SMS capturés par Suivi SMS : " + messages.size();
         capturedCountText.setText(captureState);
-        lastSmsBroadcastText.setText(formatDiagnostic("Dernier SMS capturé en arrière-plan",
-                SmsReceptionDiagnostics.getLastReceiverInvocation(this)));
-        lastRoomInsertionText.setText(formatDiagnostic("Dernière insertion Room",
-                SmsReceptionDiagnostics.getLastRoomInsertion(this)));
         emptyText.setVisibility(!denied && !loading && messages.isEmpty()
                 ? View.VISIBLE : View.GONE);
-    }
-
-    private String formatDiagnostic(String label, long timestamp) {
-        if (timestamp == 0L) return label + " : jamais";
-        return label + " : " + new SimpleDateFormat(
-                "d MMM yyyy • HH:mm:ss", Locale.FRENCH).format(timestamp);
     }
 
     private static class SmsAdapter extends RecyclerView.Adapter<SmsViewHolder> {
