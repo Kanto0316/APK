@@ -15,5 +15,6 @@
     <color name="sms_bottom_bar">#17191F</color>
     <color name="sms_bottom_item">#C7CBD3</color>
     <color name="sms_bottom_item_active">#62A7F7</color>
+    <color name="statistics_grid">#DDE4EA</color>
     <color name="white">#FFFFFF</color>
 </resources>
