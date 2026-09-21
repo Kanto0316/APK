@@ -53,7 +53,10 @@ import java.util.Date;
 import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String STATE_HOME_SELECTED = "home_selected";
+    private static final String STATE_SELECTED_SECTION = "selected_section";
+    private static final int SECTION_MESSAGES = 0;
+    private static final int SECTION_HOME = 1;
+    private static final int SECTION_STATISTICS = 2;
     private static final String INSTALLATION_PREFERENCES = "installation_restore";
     private static final String INSTALLATION_STATE = "state";
     private static final String STATE_CONFIGURED = "configured";
@@ -75,10 +78,14 @@ public class MainActivity extends AppCompatActivity {
     private boolean firstResume = true;
     private View messagesSection;
     private View homeSection;
+    private View statisticsSection;
     private TextView messagesNavigationItem;
+    private TextView statisticsNavigationItem;
+    private TextView statisticsEmptyText;
+    private StatisticsChartView statisticsChart;
     private TextView homeLabel;
     private ImageButton homeButton;
-    private boolean homeSelected;
+    private int selectedSection = SECTION_MESSAGES;
 
     private final ActivityResultLauncher<String> exportLauncher = registerForActivityResult(
             new ActivityResultContracts.CreateDocument("application/json"), uri -> {
@@ -117,16 +124,20 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.overflowButton).setOnClickListener(this::showOverflowMenu);
         messagesSection = findViewById(R.id.messagesSection);
         homeSection = findViewById(R.id.homeSection);
+        statisticsSection = findViewById(R.id.statisticsSection);
         messagesNavigationItem = findViewById(R.id.bottomMessages);
+        statisticsNavigationItem = findViewById(R.id.bottomStatistics);
+        statisticsEmptyText = findViewById(R.id.statisticsEmptyText);
+        statisticsChart = findViewById(R.id.statisticsChart);
         homeLabel = findViewById(R.id.homeLabel);
         homeButton = findViewById(R.id.homeButton);
-        messagesNavigationItem.setOnClickListener(view -> showHome(false));
+        messagesNavigationItem.setOnClickListener(view -> showSection(SECTION_MESSAGES));
         findViewById(R.id.bottomImport).setOnClickListener(view -> launchImport());
-        homeButton.setOnClickListener(view -> showHome(true));
+        homeButton.setOnClickListener(view -> showSection(SECTION_HOME));
         findViewById(R.id.bottomExport).setOnClickListener(view -> launchExport());
-        findViewById(R.id.bottomMenu).setOnClickListener(this::showOverflowMenu);
-        showHome(savedInstanceState != null
-                && savedInstanceState.getBoolean(STATE_HOME_SELECTED, false));
+        statisticsNavigationItem.setOnClickListener(view -> showSection(SECTION_STATISTICS));
+        showSection(savedInstanceState == null ? SECTION_MESSAGES
+                : savedInstanceState.getInt(STATE_SELECTED_SECTION, SECTION_MESSAGES));
         RecyclerView list = findViewById(R.id.transactionsList);
         adapter = new SmsAdapter();
         list.setLayoutManager(new LinearLayoutManager(this));
@@ -137,6 +148,7 @@ public class MainActivity extends AppCompatActivity {
             messages = storedMessages == null ? new ArrayList<>() : storedMessages;
             roomLoaded = true;
             renderState();
+            if (selectedSection == SECTION_STATISTICS) renderStatistics();
         });
         requestRequiredPermissions();
         initializeInstallation();
@@ -165,29 +177,46 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** Switches the content in place; transfer actions and the fixed bottom bar stay untouched. */
-    private void showHome(boolean selected) {
-        homeSelected = selected;
-        homeSection.setVisibility(selected ? View.VISIBLE : View.GONE);
-        messagesSection.setVisibility(selected ? View.GONE : View.VISIBLE);
+    private void showSection(int section) {
+        selectedSection = section;
+        boolean messagesSelected = section == SECTION_MESSAGES;
+        boolean homeSelected = section == SECTION_HOME;
+        boolean statisticsSelected = section == SECTION_STATISTICS;
+        messagesSection.setVisibility(messagesSelected ? View.VISIBLE : View.GONE);
+        homeSection.setVisibility(homeSelected ? View.VISIBLE : View.GONE);
+        statisticsSection.setVisibility(statisticsSelected ? View.VISIBLE : View.GONE);
 
         int active = ContextCompat.getColor(this, R.color.sms_bottom_item_active);
         int inactive = ContextCompat.getColor(this, R.color.sms_bottom_item);
-        messagesNavigationItem.setTextColor(selected ? inactive : active);
+        messagesNavigationItem.setTextColor(messagesSelected ? active : inactive);
         messagesNavigationItem.setCompoundDrawableTintList(
-                ColorStateList.valueOf(selected ? inactive : active));
-        homeLabel.setTextColor(selected ? active : inactive);
-        homeButton.setImageTintList(ColorStateList.valueOf(selected
+                ColorStateList.valueOf(messagesSelected ? active : inactive));
+        statisticsNavigationItem.setTextColor(statisticsSelected ? active : inactive);
+        statisticsNavigationItem.setCompoundDrawableTintList(
+                ColorStateList.valueOf(statisticsSelected ? active : inactive));
+        homeLabel.setTextColor(homeSelected ? active : inactive);
+        homeButton.setImageTintList(ColorStateList.valueOf(homeSelected
                 ? ContextCompat.getColor(this, R.color.white) : inactive));
-        homeButton.setBackgroundResource(selected
+        homeButton.setBackgroundResource(homeSelected
                 ? R.drawable.bg_refresh_button : R.drawable.bg_home_button_inactive);
-        homeButton.setSelected(selected);
-        messagesNavigationItem.setSelected(!selected);
+        homeButton.setSelected(homeSelected);
+        messagesNavigationItem.setSelected(messagesSelected);
+        statisticsNavigationItem.setSelected(statisticsSelected);
+        if (statisticsSelected) renderStatistics();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        outState.putBoolean(STATE_HOME_SELECTED, homeSelected);
+        outState.putInt(STATE_SELECTED_SECTION, selectedSection);
         super.onSaveInstanceState(outState);
+    }
+
+    private void renderStatistics() {
+        List<SmsStatistics.DailyCount> dailyCounts = SmsStatistics.groupByLocalDate(messages);
+        boolean empty = dailyCounts.isEmpty();
+        statisticsEmptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
+        statisticsChart.setVisibility(empty ? View.GONE : View.VISIBLE);
+        statisticsChart.setData(dailyCounts);
     }
 
     private void showOverflowMenu(View anchor) {

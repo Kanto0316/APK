@@ -221,6 +221,68 @@
                 </LinearLayout>
             </LinearLayout>
         </ScrollView>
+
+        <ScrollView
+            android:id="@+id/statisticsSection"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="20dp"
+                android:paddingTop="28dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="24dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Statistiques"
+                    android:textColor="@color/sms_text_primary"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="20dp"
+                    android:text="Activité des messages"
+                    android:textColor="@color/sms_text_secondary"
+                    android:textSize="15sp" />
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_statistics_card"
+                    android:elevation="1dp"
+                    android:minHeight="240dp">
+
+                    <com.example.testapp.StatisticsChartView
+                        android:id="@+id/statisticsChart"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="4dp"
+                        android:paddingTop="4dp"
+                        android:paddingEnd="4dp"
+                        android:paddingBottom="4dp" />
+
+                    <TextView
+                        android:id="@+id/statisticsEmptyText"
+                        android:layout_width="match_parent"
+                        android:layout_height="240dp"
+                        android:gravity="center"
+                        android:text="Aucune donnée statistique"
+                        android:textColor="@color/sms_text_secondary"
+                        android:textSize="15sp"
+                        android:visibility="gone" />
+                </FrameLayout>
+            </LinearLayout>
+        </ScrollView>
     </FrameLayout>
 
     <FrameLayout
@@ -247,7 +309,7 @@
             <TextView android:id="@+id/bottomImport" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_file_download_24" android:text="Importer" />
             <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1.2" />
             <TextView android:id="@+id/bottomExport" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_file_upload_24" android:text="Exporter" />
-            <TextView android:id="@+id/bottomMenu" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_more_horiz_24" android:text="Menu" />
+            <TextView android:id="@+id/bottomStatistics" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_bar_chart_24" android:text="Statistiques" />
         </LinearLayout>
 
         <ImageButton
