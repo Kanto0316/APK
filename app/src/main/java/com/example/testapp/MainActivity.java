@@ -446,8 +446,9 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(SmsViewHolder holder, int position) {
             SmsMessage item = items.get(position);
-            holder.number.setText(String.valueOf(position + 1));
-            holder.sender.setText(item.sender);
+            holder.number.setText(String.valueOf(
+                    SmsDisplayFormatter.listNumber(items.size(), position)));
+            holder.sender.setText(SmsDisplayFormatter.sender(item.sender));
             holder.date.setText(new SimpleDateFormat("dd/MM/yy", Locale.FRENCH)
                     .format(item.receivedDate));
             holder.time.setText(new SimpleDateFormat("HH:mm", Locale.FRENCH)
