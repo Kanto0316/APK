@@ -2,12 +2,14 @@ package com.example.testapp;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
 import android.text.InputType;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -20,15 +22,29 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.testapp.database.SmsMessage;
+import com.example.testapp.database.AppDatabase;
 import com.example.testapp.backup.SmsBackupManager;
 import com.example.testapp.background.BackgroundExecutionManager;
 
 import androidx.appcompat.app.AlertDialog;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Date;
+import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends AppCompatActivity {
     private static final String INSTALLATION_PREFERENCES = "installation_restore";
@@ -51,6 +67,15 @@ public class MainActivity extends AppCompatActivity {
     private BackgroundExecutionManager backgroundExecutionManager;
     private boolean backgroundSettingsOpened;
     private boolean firstResume = true;
+
+    private final ActivityResultLauncher<String> exportLauncher = registerForActivityResult(
+            new ActivityResultContracts.CreateDocument("application/json"), uri -> {
+                if (uri != null) exportMessages(uri);
+            });
+    private final ActivityResultLauncher<String[]> importLauncher = registerForActivityResult(
+            new ActivityResultContracts.OpenDocument(), uri -> {
+                if (uri != null) importMessages(uri);
+            });
 
     private final ActivityResultLauncher<String[]> permissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
@@ -76,8 +101,7 @@ public class MainActivity extends AppCompatActivity {
         capturedCountText = findViewById(R.id.capturedCountText);
         loadingIndicator = findViewById(R.id.loadingIndicator);
         backupManager = new SmsBackupManager(this);
-        findViewById(R.id.backupButton).setOnClickListener(view -> requestPassword(false, null));
-        findViewById(R.id.restoreButton).setOnClickListener(view -> requestRestore());
+        findViewById(R.id.overflowButton).setOnClickListener(this::showOverflowMenu);
         RecyclerView list = findViewById(R.id.transactionsList);
         adapter = new SmsAdapter();
         list.setLayoutManager(new LinearLayoutManager(this));
@@ -99,6 +123,106 @@ public class MainActivity extends AppCompatActivity {
                     .putBoolean(BACKGROUND_PROMPT_SHOWN, true).apply();
             showBackgroundPermissionDialog(true);
         }
+    }
+
+    private void showOverflowMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add("Importer les messages").setOnMenuItemClickListener(item -> {
+            importLauncher.launch(new String[]{"application/json", "text/json", "text/plain"});
+            return true;
+        });
+        menu.getMenu().add("Exporter les messages").setOnMenuItemClickListener(item -> {
+            String date = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.ROOT).format(new Date());
+            exportLauncher.launch("suivi-sms_" + date + ".json");
+            return true;
+        });
+        menu.show();
+    }
+
+    private void exportMessages(Uri destination) {
+        List<SmsMessage> snapshot = new ArrayList<>(messages);
+        new Thread(() -> {
+            try (OutputStream stream = getContentResolver().openOutputStream(destination);
+                 OutputStreamWriter writer = stream == null ? null
+                         : new OutputStreamWriter(stream, StandardCharsets.UTF_8)) {
+                if (writer == null) throw new IOException("Impossible d’ouvrir le fichier");
+                JSONArray entries = new JSONArray();
+                SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yy", Locale.FRENCH);
+                SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.FRENCH);
+                for (SmsMessage sms : snapshot) {
+                    JSONObject entry = new JSONObject();
+                    entry.put("numero", sms.sender);
+                    entry.put("message", sms.messageBody);
+                    entry.put("date", dateFormat.format(sms.receivedDate));
+                    entry.put("heure", timeFormat.format(sms.receivedDate));
+                    entry.put("horodatage", sms.receivedDate);
+                    if (sms.id > 0) entry.put("identifiant", sms.id);
+                    entries.put(entry);
+                }
+                JSONObject root = new JSONObject().put("messages", entries);
+                writer.write(root.toString(2));
+                runOnUiThread(() -> Toast.makeText(this,
+                        snapshot.size() + " messages exportés", Toast.LENGTH_LONG).show());
+            } catch (IOException | JSONException error) {
+                showTransferError("Export impossible", error);
+            }
+        }, "sms-json-export").start();
+    }
+
+    private void importMessages(Uri source) {
+        new Thread(() -> {
+            try {
+                List<SmsMessage> imported = parseImport(source);
+                List<Long> results = AppDatabase.getInstance(this).smsDao().insertAll(imported);
+                int inserted = 0;
+                for (Long result : results) if (result != null && result != -1L) inserted++;
+                int duplicates = imported.size() - inserted;
+                int finalInserted = inserted;
+                runOnUiThread(() -> Toast.makeText(this, finalInserted + " messages importés"
+                                + (duplicates > 0 ? " • " + duplicates + " doublons ignorés" : ""),
+                        Toast.LENGTH_LONG).show());
+            } catch (IOException | JSONException | ParseException error) {
+                showTransferError("Import impossible : fichier JSON invalide", error);
+            }
+        }, "sms-json-import").start();
+    }
+
+    private List<SmsMessage> parseImport(Uri source)
+            throws IOException, JSONException, ParseException {
+        StringBuilder json = new StringBuilder();
+        try (InputStream stream = getContentResolver().openInputStream(source);
+             BufferedReader reader = stream == null ? null : new BufferedReader(
+                     new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+            if (reader == null) throw new IOException("Impossible d’ouvrir le fichier");
+            String line;
+            while ((line = reader.readLine()) != null) json.append(line).append('\n');
+        }
+        JSONObject root = new JSONObject(json.toString());
+        JSONArray entries = root.getJSONArray("messages");
+        SimpleDateFormat format = new SimpleDateFormat("dd/MM/yy HH:mm", Locale.FRENCH);
+        format.setLenient(false);
+        List<SmsMessage> imported = new ArrayList<>();
+        for (int index = 0; index < entries.length(); index++) {
+            JSONObject entry = entries.getJSONObject(index);
+            String sender = entry.getString("numero");
+            String body = entry.getString("message");
+            long timestamp;
+            if (entry.has("horodatage")) {
+                timestamp = entry.getLong("horodatage");
+                if (timestamp <= 0) throw new JSONException("Horodatage invalide à l’index " + index);
+            } else {
+                Date received = format.parse(entry.getString("date") + " " + entry.getString("heure"));
+                if (received == null) throw new ParseException("Date absente", index);
+                timestamp = received.getTime();
+            }
+            imported.add(SmsMessage.create(sender, body, timestamp, true));
+        }
+        return imported;
+    }
+
+    private void showTransferError(String prefix, Exception error) {
+        runOnUiThread(() -> Toast.makeText(this, prefix + " : " + error.getMessage(),
+                Toast.LENGTH_LONG).show());
     }
 
     @Override
@@ -185,7 +309,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (result.status == SmsBackupManager.AutomaticRestoreStatus.PASSWORD_REQUIRED) {
                 finishStartupRestore();
                 requestPassword(true, () -> Toast.makeText(this,
-                        "La restauration reste disponible avec Restaurer sauvegarde.",
+                        "La restauration automatique pourra être réessayée au prochain démarrage.",
                         Toast.LENGTH_LONG).show());
             } else {
                 markConfigured();
