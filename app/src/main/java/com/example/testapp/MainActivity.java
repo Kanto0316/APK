@@ -2,12 +2,14 @@ package com.example.testapp;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
 import android.text.InputType;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -51,6 +53,7 @@ import java.util.Date;
 import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String STATE_HOME_SELECTED = "home_selected";
     private static final String INSTALLATION_PREFERENCES = "installation_restore";
     private static final String INSTALLATION_STATE = "state";
     private static final String STATE_CONFIGURED = "configured";
@@ -70,6 +73,12 @@ public class MainActivity extends AppCompatActivity {
     private BackgroundExecutionManager backgroundExecutionManager;
     private boolean backgroundSettingsOpened;
     private boolean firstResume = true;
+    private View messagesSection;
+    private View homeSection;
+    private TextView messagesNavigationItem;
+    private TextView homeLabel;
+    private ImageButton homeButton;
+    private boolean homeSelected;
 
     private final ActivityResultLauncher<String> exportLauncher = registerForActivityResult(
             new ActivityResultContracts.CreateDocument("application/json"), uri -> {
@@ -106,11 +115,18 @@ public class MainActivity extends AppCompatActivity {
         loadingIndicator = findViewById(R.id.loadingIndicator);
         backupManager = new SmsBackupManager(this);
         findViewById(R.id.overflowButton).setOnClickListener(this::showOverflowMenu);
-        findViewById(R.id.bottomMessages).setOnClickListener(view -> refreshMessages(false));
+        messagesSection = findViewById(R.id.messagesSection);
+        homeSection = findViewById(R.id.homeSection);
+        messagesNavigationItem = findViewById(R.id.bottomMessages);
+        homeLabel = findViewById(R.id.homeLabel);
+        homeButton = findViewById(R.id.homeButton);
+        messagesNavigationItem.setOnClickListener(view -> showHome(false));
         findViewById(R.id.bottomImport).setOnClickListener(view -> launchImport());
-        findViewById(R.id.refreshButton).setOnClickListener(view -> refreshMessages(true));
+        homeButton.setOnClickListener(view -> showHome(true));
         findViewById(R.id.bottomExport).setOnClickListener(view -> launchExport());
         findViewById(R.id.bottomMenu).setOnClickListener(this::showOverflowMenu);
+        showHome(savedInstanceState != null
+                && savedInstanceState.getBoolean(STATE_HOME_SELECTED, false));
         RecyclerView list = findViewById(R.id.transactionsList);
         adapter = new SmsAdapter();
         list.setLayoutManager(new LinearLayoutManager(this));
@@ -146,6 +162,32 @@ public class MainActivity extends AppCompatActivity {
             return windowInsets;
         });
         ViewCompat.requestApplyInsets(root);
+    }
+
+    /** Switches the content in place; transfer actions and the fixed bottom bar stay untouched. */
+    private void showHome(boolean selected) {
+        homeSelected = selected;
+        homeSection.setVisibility(selected ? View.VISIBLE : View.GONE);
+        messagesSection.setVisibility(selected ? View.GONE : View.VISIBLE);
+
+        int active = ContextCompat.getColor(this, R.color.sms_bottom_item_active);
+        int inactive = ContextCompat.getColor(this, R.color.sms_bottom_item);
+        messagesNavigationItem.setTextColor(selected ? inactive : active);
+        messagesNavigationItem.setCompoundDrawableTintList(
+                ColorStateList.valueOf(selected ? inactive : active));
+        homeLabel.setTextColor(selected ? active : inactive);
+        homeButton.setImageTintList(ColorStateList.valueOf(selected
+                ? ContextCompat.getColor(this, R.color.white) : inactive));
+        homeButton.setBackgroundResource(selected
+                ? R.drawable.bg_refresh_button : R.drawable.bg_home_button_inactive);
+        homeButton.setSelected(selected);
+        messagesNavigationItem.setSelected(!selected);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putBoolean(STATE_HOME_SELECTED, homeSelected);
+        super.onSaveInstanceState(outState);
     }
 
     private void showOverflowMenu(View anchor) {
