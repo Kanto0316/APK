@@ -31,6 +31,14 @@ public class SmsRepository {
         return dao.observeAllNewestFirst();
     }
 
+    public interface MessagesCallback {
+        void onLoaded(List<SmsMessage> messages);
+    }
+
+    public void loadMessages(MessagesCallback callback) {
+        DATABASE_EXECUTOR.execute(() -> callback.onLoaded(dao.getAllNewestFirst()));
+    }
+
     public void insert(SmsMessage message) {
         DATABASE_EXECUTOR.execute(() -> {
             dao.insert(message);

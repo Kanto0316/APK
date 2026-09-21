@@ -106,6 +106,11 @@ public class MainActivity extends AppCompatActivity {
         loadingIndicator = findViewById(R.id.loadingIndicator);
         backupManager = new SmsBackupManager(this);
         findViewById(R.id.overflowButton).setOnClickListener(this::showOverflowMenu);
+        findViewById(R.id.bottomMessages).setOnClickListener(view -> refreshMessages(false));
+        findViewById(R.id.bottomImport).setOnClickListener(view -> launchImport());
+        findViewById(R.id.refreshButton).setOnClickListener(view -> refreshMessages(true));
+        findViewById(R.id.bottomExport).setOnClickListener(view -> launchExport());
+        findViewById(R.id.bottomMenu).setOnClickListener(this::showOverflowMenu);
         RecyclerView list = findViewById(R.id.transactionsList);
         adapter = new SmsAdapter();
         list.setLayoutManager(new LinearLayoutManager(this));
@@ -146,15 +151,34 @@ public class MainActivity extends AppCompatActivity {
     private void showOverflowMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
         menu.getMenu().add("Importer les messages").setOnMenuItemClickListener(item -> {
-            importLauncher.launch(new String[]{"application/json", "text/json", "text/plain"});
+            launchImport();
             return true;
         });
         menu.getMenu().add("Exporter les messages").setOnMenuItemClickListener(item -> {
-            String date = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.ROOT).format(new Date());
-            exportLauncher.launch("suivi-sms_" + date + ".json");
+            launchExport();
             return true;
         });
         menu.show();
+    }
+
+    private void launchImport() {
+        importLauncher.launch(new String[]{"application/json", "text/json", "text/plain"});
+    }
+
+    private void launchExport() {
+        String date = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.ROOT).format(new Date());
+        exportLauncher.launch("suivi-sms_" + date + ".json");
+    }
+
+    private void refreshMessages(boolean announce) {
+        viewModel.refresh(latest -> runOnUiThread(() -> {
+            messages = latest == null ? new ArrayList<>() : latest;
+            roomLoaded = true;
+            renderState();
+            if (announce) {
+                Toast.makeText(this, "Liste actualisée", Toast.LENGTH_SHORT).show();
+            }
+        }));
     }
 
     private void exportMessages(Uri destination) {

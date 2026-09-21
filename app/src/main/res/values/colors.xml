@@ -12,4 +12,8 @@
     <color name="sms_category_background">#EAF2FC</color>
     <color name="sms_permission_background">#FDECEA</color>
     <color name="sms_permission_text">#9F271F</color>
+    <color name="sms_bottom_bar">#17191F</color>
+    <color name="sms_bottom_item">#C7CBD3</color>
+    <color name="sms_bottom_item_active">#62A7F7</color>
+    <color name="white">#FFFFFF</color>
 </resources>
