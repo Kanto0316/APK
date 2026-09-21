@@ -23,4 +23,9 @@ public class SmsViewModel extends AndroidViewModel {
 
     public LiveData<List<SmsMessage>> getMessages() { return messages; }
 
+    /** Reads the current Room snapshot without changing capture permissions or storage. */
+    public void refresh(SmsRepository.MessagesCallback onLoaded) {
+        repository.loadMessages(onLoaded);
+    }
+
 }

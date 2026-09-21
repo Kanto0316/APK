@@ -2,9 +2,29 @@
     <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">@color/sms_accent</item>
-        <item name="android:navigationBarColor">@color/sms_surface</item>
+        <item name="android:navigationBarColor">@color/sms_bottom_bar</item>
         <item name="android:statusBarColor">@color/sms_surface</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="SmsBottomNavigationItem">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:drawablePadding">3dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingTop">11dp</item>
+        <item name="android:paddingBottom">7dp</item>
+        <item name="android:textColor">@color/sms_bottom_item</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:maxLines">1</item>
+    </style>
+
+    <style name="SmsBottomNavigationItem.Active">
+        <item name="android:textColor">@color/sms_bottom_item_active</item>
     </style>
 </resources>
