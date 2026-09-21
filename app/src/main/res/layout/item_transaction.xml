@@ -18,7 +18,7 @@
 
         <TextView
             android:id="@+id/itemNumber"
-            android:layout_width="28dp"
+            android:layout_width="@dimen/sms_column_number_width"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:textColor="@color/sms_text_secondary"
@@ -26,23 +26,22 @@
 
         <TextView
             android:id="@+id/itemSender"
-            android:layout_width="0dp"
+            android:layout_width="@dimen/sms_column_sender_width"
             android:layout_height="wrap_content"
-            android:layout_weight="2"
             android:ellipsize="end"
             android:gravity="start|center_vertical"
-            android:maxLines="2"
+            android:maxLines="1"
             android:paddingStart="4dp"
             android:paddingEnd="4dp"
+            android:singleLine="true"
             android:textColor="@color/sms_text_primary"
             android:textSize="13sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/itemBody"
-            android:layout_width="0dp"
+            android:layout_width="@dimen/sms_column_message_width"
             android:layout_height="wrap_content"
-            android:layout_weight="4"
             android:breakStrategy="high_quality"
             android:gravity="start|center_vertical"
             android:hyphenationFrequency="normal"
@@ -54,7 +53,7 @@
 
         <TextView
             android:id="@+id/itemDate"
-            android:layout_width="58dp"
+            android:layout_width="@dimen/sms_column_date_width"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:textColor="@color/sms_text_secondary"
@@ -62,7 +61,7 @@
 
         <TextView
             android:id="@+id/itemTime"
-            android:layout_width="44dp"
+            android:layout_width="@dimen/sms_column_time_width"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:textColor="@color/sms_text_secondary"
