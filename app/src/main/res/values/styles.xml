@@ -27,4 +27,51 @@
     <style name="SmsBottomNavigationItem.Active">
         <item name="android:textColor">@color/sms_bottom_item_active</item>
     </style>
+
+    <style name="SmsTableHeader">
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/sms_table_header_text</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="SmsTableHeader.Number" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_number_width</item><item name="android:gravity">center</item>
+    </style>
+    <style name="SmsTableHeader.Sender" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_sender_width</item><item name="android:paddingStart">4dp</item><item name="android:paddingEnd">4dp</item>
+    </style>
+    <style name="SmsTableHeader.Message" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_message_width</item><item name="android:paddingStart">4dp</item><item name="android:paddingEnd">4dp</item>
+    </style>
+    <style name="SmsTableHeader.Date" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_date_width</item><item name="android:gravity">center</item>
+    </style>
+    <style name="SmsTableHeader.Time" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_time_width</item><item name="android:gravity">center</item>
+    </style>
+
+    <style name="CommercialServiceCard">
+        <item name="android:layout_width">match_parent</item><item name="android:layout_height">96dp</item>
+        <item name="android:layout_marginBottom">14dp</item><item name="android:background">@drawable/bg_service_card</item>
+        <item name="android:clickable">true</item><item name="android:focusable">true</item>
+        <item name="android:elevation">1dp</item><item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item><item name="android:paddingStart">18dp</item><item name="android:paddingEnd">18dp</item>
+    </style>
+    <style name="CommercialServiceIcon">
+        <item name="android:layout_width">52dp</item><item name="android:layout_height">52dp</item>
+        <item name="android:background">@drawable/bg_service_icon</item><item name="android:padding">14dp</item>
+        <item name="android:contentDescription">@null</item>
+    </style>
+    <style name="CommercialServiceTextContainer">
+        <item name="android:layout_width">0dp</item><item name="android:layout_height">wrap_content</item><item name="android:layout_weight">1</item>
+        <item name="android:layout_marginStart">16dp</item><item name="android:orientation">vertical</item>
+    </style>
+    <style name="CommercialServiceTitle">
+        <item name="android:layout_width">wrap_content</item><item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/sms_text_primary</item><item name="android:textSize">18sp</item><item name="android:textStyle">bold</item>
+    </style>
+    <style name="CommercialServiceSubtitle">
+        <item name="android:layout_width">wrap_content</item><item name="android:layout_height">wrap_content</item><item name="android:layout_marginTop">4dp</item>
+        <item name="android:textColor">@color/sms_text_secondary</item><item name="android:textSize">14sp</item>
+    </style>
 </resources>
