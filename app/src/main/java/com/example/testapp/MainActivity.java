@@ -2,11 +2,16 @@ package com.example.testapp;
 
 import android.Manifest;
 import android.app.DatePickerDialog;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.InputType;
 import android.view.View;
 import android.widget.EditText;
@@ -69,6 +74,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_RESTORE_PENDING = "restore_pending";
     private static final String BACKGROUND_PREFERENCES = "background_execution";
     private static final String BACKGROUND_PROMPT_SHOWN = "initial_prompt_shown";
+    private static final String DEPOSIT_USSD_CODE = "#111*1*6#";
+    private static final long USSD_REQUEST_TIMEOUT_MS = 30_000L;
     private TextView permissionText;
     private TextView backgroundExecutionText;
     private TextView emptyText;
@@ -97,6 +104,15 @@ public class MainActivity extends AppCompatActivity {
     private SmsDateFilter.Period selectedMessageFilter = SmsDateFilter.Period.ALL;
     private Long customFilterDate;
     private TextView[] filterChips;
+    private View depositCard;
+    private boolean depositRequestInProgress;
+    private boolean launchDepositAfterPermission;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Runnable ussdRequestTimeout = () -> {
+        if (!depositRequestInProgress) return;
+        finishDepositRequest();
+        Toast.makeText(this, "Le service USSD n’a pas répondu.", Toast.LENGTH_LONG).show();
+    };
 
     private final ActivityResultLauncher<String> exportLauncher = registerForActivityResult(
             new ActivityResultContracts.CreateDocument("application/json"), uri -> {
@@ -113,6 +129,20 @@ public class MainActivity extends AppCompatActivity {
                 if (!hasSmsPermissions()) {
                     Toast.makeText(this,
                             "Capture SMS inactive : accordez l’autorisation SMS dans les réglages.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+
+    private final ActivityResultLauncher<String> phonePermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (!launchDepositAfterPermission) return;
+                launchDepositAfterPermission = false;
+                if (granted) {
+                    sendDepositUssdRequest();
+                } else {
+                    finishDepositRequest();
+                    Toast.makeText(this,
+                            "L’autorisation Téléphone est nécessaire pour lancer le service USSD.",
                             Toast.LENGTH_LONG).show();
                 }
             });
@@ -139,6 +169,8 @@ public class MainActivity extends AppCompatActivity {
         statisticsSection = findViewById(R.id.statisticsSection);
         messagesNavigationItem = findViewById(R.id.bottomMessages);
         statisticsNavigationItem = findViewById(R.id.bottomStatistics);
+        depositCard = findViewById(R.id.cardDeposit);
+        depositCard.setOnClickListener(view -> launchDeposit());
         statisticsEmptyText = findViewById(R.id.statisticsEmptyText);
         statisticsChart = findViewById(R.id.statisticsChart);
         statisticsMonthText = findViewById(R.id.statisticsMonthText);
@@ -183,6 +215,86 @@ public class MainActivity extends AppCompatActivity {
                     .putBoolean(BACKGROUND_PROMPT_SHOWN, true).apply();
             showBackgroundPermissionDialog(true);
         }
+    }
+
+    private void launchDeposit() {
+        if (depositRequestInProgress) return;
+        depositRequestInProgress = true;
+        depositCard.setEnabled(false);
+        if (hasPermission(Manifest.permission.CALL_PHONE)) {
+            sendDepositUssdRequest();
+        } else {
+            launchDepositAfterPermission = true;
+            phonePermissionLauncher.launch(Manifest.permission.CALL_PHONE);
+        }
+    }
+
+    private void sendDepositUssdRequest() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            launchDepositWithCallIntent();
+            return;
+        }
+
+        TelephonyManager telephonyManager = getSystemService(TelephonyManager.class);
+        if (telephonyManager == null || telephonyManager.getPhoneType() == TelephonyManager.PHONE_TYPE_NONE) {
+            finishDepositRequest();
+            Toast.makeText(this, "Aucun service téléphonique disponible pour lancer l’USSD.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        int defaultVoiceSubscriptionId = SubscriptionManager.getDefaultVoiceSubscriptionId();
+        if (SubscriptionManager.isValidSubscriptionId(defaultVoiceSubscriptionId)) {
+            telephonyManager = telephonyManager.createForSubscriptionId(defaultVoiceSubscriptionId);
+        }
+
+        mainHandler.postDelayed(ussdRequestTimeout, USSD_REQUEST_TIMEOUT_MS);
+        try {
+            telephonyManager.sendUssdRequest(DEPOSIT_USSD_CODE,
+                    new TelephonyManager.UssdResponseCallback() {
+                        @Override
+                        public void onReceiveUssdResponse(TelephonyManager manager,
+                                String request, CharSequence response) {
+                            finishDepositRequest();
+                            String message = response == null || response.length() == 0
+                                    ? "Réponse USSD reçue."
+                                    : "Réponse USSD : " + response;
+                            Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                        }
+
+                        @Override
+                        public void onReceiveUssdResponseFailed(TelephonyManager manager,
+                                String request, int failureCode) {
+                            finishDepositRequest();
+                            Toast.makeText(MainActivity.this,
+                                    "Impossible de lancer le service USSD (erreur " + failureCode + ").",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }, mainHandler);
+        } catch (SecurityException | IllegalArgumentException | UnsupportedOperationException error) {
+            finishDepositRequest();
+            Toast.makeText(this, "Impossible de lancer le service USSD sur cet appareil.",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void launchDepositWithCallIntent() {
+        Intent callIntent = new Intent(Intent.ACTION_CALL,
+                Uri.fromParts("tel", DEPOSIT_USSD_CODE, null));
+        try {
+            startActivity(callIntent);
+        } catch (SecurityException | android.content.ActivityNotFoundException error) {
+            Toast.makeText(this, "Impossible de lancer le service USSD sur cet appareil.",
+                    Toast.LENGTH_LONG).show();
+        } finally {
+            finishDepositRequest();
+        }
+    }
+
+    private void finishDepositRequest() {
+        mainHandler.removeCallbacks(ussdRequestTimeout);
+        depositRequestInProgress = false;
+        if (depositCard != null) depositCard.setEnabled(true);
     }
 
     private void applySystemBarInsets(View root) {
