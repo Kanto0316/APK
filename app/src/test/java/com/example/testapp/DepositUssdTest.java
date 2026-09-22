@@ -42,6 +42,10 @@ public class DepositUssdTest {
     }
 
     @Test public void formatsAmountsWithSpaceThousandsSeparators() {
+        assertEquals("", DepositUssd.formatAmountInput(""));
+        assertEquals("1", DepositUssd.formatAmountInput("1"));
+        assertEquals("10", DepositUssd.formatAmountInput("10"));
+        assertEquals("100", DepositUssd.formatAmountInput("100"));
         assertEquals("999", DepositUssd.formatAmountInput("999"));
         assertEquals("1 000", DepositUssd.formatAmountInput("1000"));
         assertEquals("2 000", DepositUssd.formatAmountInput("2000"));
@@ -49,6 +53,16 @@ public class DepositUssdTest {
         assertEquals("20 000", DepositUssd.formatAmountInput("20 000"));
         assertEquals("100 000", DepositUssd.formatAmountInput("100000"));
         assertEquals("1 000 000", DepositUssd.formatAmountInput("1000000"));
+    }
+
+    @Test public void formatsAmountPasteAndProgressiveDeletionSafely() {
+        assertEquals("20 000", DepositUssd.formatAmountInput("20000"));
+        assertEquals("20 000", DepositUssd.formatAmountInput("20 000"));
+        assertEquals("2 000", DepositUssd.formatAmountInput("2000"));
+        assertEquals("200", DepositUssd.formatAmountInput("200"));
+        assertEquals("20", DepositUssd.formatAmountInput("20"));
+        assertEquals("2", DepositUssd.formatAmountInput("2"));
+        assertEquals("", DepositUssd.formatAmountInput(""));
     }
 
     @Test public void buildsExactDepositUssdCode() {
