@@ -324,15 +324,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (depositCallLaunched) {
-            depositCallLaunched = false;
-            finishDepositRequest();
-        }
-    }
-
     private void clearDepositWorkflow() {
         launchDepositAfterPermission = false;
         pendingRecipientNumber = null;
@@ -605,6 +596,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         refreshPermissionState();
+        if (depositCallLaunched) {
+            depositCallLaunched = false;
+            finishDepositRequest();
+        }
         if (firstResume) {
             firstResume = false;
             return;
