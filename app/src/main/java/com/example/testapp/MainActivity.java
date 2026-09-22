@@ -16,6 +16,7 @@ import android.widget.ProgressBar;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.LinearLayout;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -70,7 +71,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_RESTORE_PENDING = "restore_pending";
     private static final String BACKGROUND_PREFERENCES = "background_execution";
     private static final String BACKGROUND_PROMPT_SHOWN = "initial_prompt_shown";
-    private static final String DEPOSIT_USSD_CODE = "#111*1*6#";
     private TextView permissionText;
     private TextView backgroundExecutionText;
     private TextView emptyText;
@@ -102,6 +102,9 @@ public class MainActivity extends AppCompatActivity {
     private View depositCard;
     private boolean depositRequestInProgress;
     private boolean launchDepositAfterPermission;
+    private boolean depositCallLaunched;
+    private String pendingRecipientNumber;
+    private String pendingAmount;
 
     private final ActivityResultLauncher<String> exportLauncher = registerForActivityResult(
             new ActivityResultContracts.CreateDocument("application/json"), uri -> {
@@ -127,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
                 if (!launchDepositAfterPermission) return;
                 launchDepositAfterPermission = false;
                 if (granted) {
-                    launchDepositWithCallIntent();
+                    launchDepositWithCallIntent(pendingRecipientNumber, pendingAmount);
                 } else {
                     finishDepositRequest();
                     Toast.makeText(this,
@@ -159,7 +162,7 @@ public class MainActivity extends AppCompatActivity {
         messagesNavigationItem = findViewById(R.id.bottomMessages);
         statisticsNavigationItem = findViewById(R.id.bottomStatistics);
         depositCard = findViewById(R.id.cardDeposit);
-        depositCard.setOnClickListener(view -> launchDeposit());
+        depositCard.setOnClickListener(view -> showRecipientDialog("", ""));
         statisticsEmptyText = findViewById(R.id.statisticsEmptyText);
         statisticsChart = findViewById(R.id.statisticsChart);
         statisticsMonthText = findViewById(R.id.statisticsMonthText);
@@ -206,33 +209,141 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void launchDeposit() {
-        if (depositRequestInProgress) return;
-        depositRequestInProgress = true;
-        depositCard.setEnabled(false);
+    private EditText depositInput(int inputType, String hint, String value) {
+        EditText input = new EditText(this);
+        input.setInputType(inputType);
+        input.setHint(hint);
+        input.setText(value);
+        input.setSelection(value.length());
+        int margin = (int) (24 * getResources().getDisplayMetrics().density);
+        input.setPadding(margin, input.getPaddingTop(), margin, input.getPaddingBottom());
+        return input;
+    }
+
+    private void showRecipientDialog(String recipientValue, String amountValue) {
+        EditText input = depositInput(InputType.TYPE_CLASS_PHONE,
+                "Ex. 034 12 345 67", recipientValue);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Numéro destinataire")
+                .setView(input)
+                .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
+                .setPositiveButton("SUIVANT", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    String recipientNumber = DepositUssd.normalizeRecipientNumber(
+                            input.getText().toString());
+                    if (recipientNumber == null) {
+                        input.setError("Numéro malgache invalide");
+                        return;
+                    }
+                    dialog.dismiss();
+                    showAmountDialog(recipientNumber, amountValue);
+                }));
+        dialog.show();
+    }
+
+    private void showAmountDialog(String recipientNumber, String amountValue) {
+        EditText input = depositInput(InputType.TYPE_CLASS_NUMBER, "Montant (Ar)", amountValue);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Entrer le montant")
+                .setView(input)
+                .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
+                .setPositiveButton("SUIVANT", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    String amount = DepositUssd.normalizeAmount(input.getText().toString());
+                    if (amount == null) {
+                        input.setError("Montant invalide");
+                        return;
+                    }
+                    dialog.dismiss();
+                    showDepositConfirmation(recipientNumber, amount);
+                }));
+        dialog.show();
+    }
+
+    private void showDepositConfirmation(String recipientNumber, String amount) {
+        LinearLayout summary = new LinearLayout(this);
+        summary.setOrientation(LinearLayout.VERTICAL);
+        int margin = (int) (24 * getResources().getDisplayMetrics().density);
+        summary.setPadding(margin, margin / 2, margin, 0);
+        TextView number = new TextView(this);
+        number.setText("Numéro destinataire\n" + DepositUssd.formatRecipientNumber(recipientNumber));
+        number.setTextSize(16);
+        TextView amountText = new TextView(this);
+        amountText.setText("\nMontant\n" + DepositUssd.formatAmount(amount));
+        amountText.setTextSize(16);
+        summary.addView(number);
+        summary.addView(amountText);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Vérifier le dépôt")
+                .setView(summary)
+                .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
+                .setNeutralButton("MODIFIER", (ignored, which) ->
+                        showRecipientDialog(recipientNumber, amount))
+                .setPositiveButton("ENVOYER", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    if (depositRequestInProgress) return;
+                    depositRequestInProgress = true;
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                    depositCard.setEnabled(false);
+                    dialog.dismiss();
+                    requestDepositCall(recipientNumber, amount);
+                }));
+        dialog.show();
+    }
+
+    private void requestDepositCall(String recipientNumber, String amount) {
+        pendingRecipientNumber = recipientNumber;
+        pendingAmount = amount;
         if (hasPermission(Manifest.permission.CALL_PHONE)) {
-            launchDepositWithCallIntent();
+            launchDepositWithCallIntent(recipientNumber, amount);
         } else {
             launchDepositAfterPermission = true;
             phonePermissionLauncher.launch(Manifest.permission.CALL_PHONE);
         }
     }
 
-    private void launchDepositWithCallIntent() {
+    private void launchDepositWithCallIntent(String recipientNumber, String amount) {
+        String ussdCode = DepositUssd.buildUssdCode(recipientNumber, amount);
         Intent callIntent = new Intent(Intent.ACTION_CALL,
-                Uri.fromParts("tel", DEPOSIT_USSD_CODE, null));
+                Uri.fromParts("tel", ussdCode, null));
         try {
+            depositCallLaunched = true;
             startActivity(callIntent);
         } catch (SecurityException | android.content.ActivityNotFoundException error) {
+            depositCallLaunched = false;
             Toast.makeText(this, "Impossible de lancer le service USSD sur cet appareil.",
                     Toast.LENGTH_LONG).show();
-        } finally {
             finishDepositRequest();
         }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (depositCallLaunched) {
+            depositCallLaunched = false;
+            finishDepositRequest();
+        }
+    }
+
+    private void clearDepositWorkflow() {
+        launchDepositAfterPermission = false;
+        pendingRecipientNumber = null;
+        pendingAmount = null;
+        finishDepositRequest();
+    }
+
     private void finishDepositRequest() {
         depositRequestInProgress = false;
+        pendingRecipientNumber = null;
+        pendingAmount = null;
         if (depositCard != null) depositCard.setEnabled(true);
     }
 
