@@ -10,11 +10,13 @@ import android.os.Bundle;
 import android.os.Build;
 import android.text.InputType;
 import android.text.Editable;
+import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.text.method.DigitsKeyListener;
 import android.graphics.Typeface;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
@@ -393,14 +395,33 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout choices = new LinearLayout(this);
         choices.setOrientation(LinearLayout.VERTICAL);
         int horizontalPadding = (int) (24 * getResources().getDisplayMetrics().density);
+        TextView yesChoice = addWithdrawalFeeChoice(choices, "1    Oui");
+        TextView noChoice = addWithdrawalFeeChoice(choices, "2    Non");
+
+        TextView choiceLabel = new TextView(this);
+        choiceLabel.setText("Choix");
+        choiceLabel.setTextSize(16);
+        choiceLabel.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+        choiceLabel.setPadding(horizontalPadding, horizontalPadding / 2, horizontalPadding, 0);
+        choices.addView(choiceLabel);
+
+        EditText choiceInput = new EditText(this);
+        choiceInput.setHint("1 ou 2");
+        choiceInput.setSingleLine(true);
+        choiceInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        choiceInput.setKeyListener(DigitsKeyListener.getInstance("12"));
+        choiceInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(1)});
+        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        inputParams.setMargins(horizontalPadding, 0, horizontalPadding, 0);
+        choices.addView(choiceInput, inputParams);
+
         TextView errorText = new TextView(this);
         errorText.setText("Frais de retrait non disponibles pour ce montant.");
         errorText.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
         errorText.setPadding(horizontalPadding, 0, horizontalPadding, horizontalPadding / 2);
         errorText.setVisibility(View.GONE);
         choices.addView(errorText);
-        TextView yesChoice = addWithdrawalFeeChoice(choices, "1    Oui");
-        TextView noChoice = addWithdrawalFeeChoice(choices, "2    Non");
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Avec frais de retrait ?")
@@ -409,25 +430,53 @@ public class MainActivity extends AppCompatActivity {
                 .setNeutralButton("MODIFIER", (ignored, which) ->
                         showAmountDialog(recipientNumber, String.valueOf(originalAmount)))
                 .create();
-        yesChoice.setOnClickListener(view -> {
-            Long withdrawalFee = DepositUssd.calculateWithdrawalFee(originalAmount);
-            if (withdrawalFee == null) {
-                errorText.setVisibility(View.VISIBLE);
-                return;
+        boolean[] transitionStarted = {false};
+        yesChoice.setOnClickListener(view -> handleWithdrawalFeeChoice(recipientNumber,
+                originalAmount, true, dialog, errorText, transitionStarted));
+        noChoice.setOnClickListener(view -> handleWithdrawalFeeChoice(recipientNumber,
+                originalAmount, false, dialog, errorText, transitionStarted));
+        choiceInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence text, int start, int count,
+                                                    int after) {}
+
+            @Override public void onTextChanged(CharSequence text, int start, int before,
+                                                int count) {}
+
+            @Override public void afterTextChanged(Editable text) {
+                if (text.length() != 1) return;
+                char choice = text.charAt(0);
+                if (choice == '1' || choice == '2') {
+                    handleWithdrawalFeeChoice(recipientNumber, originalAmount, choice == '1',
+                            dialog, errorText, transitionStarted);
+                }
             }
-            long finalAmount = DepositUssd.calculateFinalAmount(originalAmount, true);
-            dialog.dismiss();
-            showDepositConfirmation(recipientNumber, originalAmount, true,
-                    withdrawalFee, finalAmount);
         });
-        noChoice.setOnClickListener(view -> {
-            long withdrawalFee = 0L;
-            long finalAmount = DepositUssd.calculateFinalAmount(originalAmount, false);
-            dialog.dismiss();
-            showDepositConfirmation(recipientNumber, originalAmount, false,
-                    withdrawalFee, finalAmount);
+        dialog.setOnShowListener(ignored -> {
+            choiceInput.requestFocus();
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            }
         });
         dialog.show();
+    }
+
+    private void handleWithdrawalFeeChoice(String recipientNumber, long originalAmount,
+                                           boolean includeFee, AlertDialog dialog,
+                                           TextView errorText, boolean[] transitionStarted) {
+        if (transitionStarted[0]) return;
+
+        Long withdrawalFee = includeFee
+                ? DepositUssd.calculateWithdrawalFee(originalAmount) : 0L;
+        if (withdrawalFee == null) {
+            errorText.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        transitionStarted[0] = true;
+        long finalAmount = DepositUssd.calculateFinalAmount(originalAmount, includeFee);
+        dialog.dismiss();
+        showDepositConfirmation(recipientNumber, originalAmount, includeFee,
+                withdrawalFee, finalAmount);
     }
 
     private TextView addWithdrawalFeeChoice(LinearLayout choices, String text) {
