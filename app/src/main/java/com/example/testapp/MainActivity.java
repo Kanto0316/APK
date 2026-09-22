@@ -8,7 +8,14 @@ import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -17,6 +24,7 @@ import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -105,6 +113,16 @@ public class MainActivity extends AppCompatActivity {
     private boolean depositCallLaunched;
     private String pendingRecipientNumber;
     private String pendingAmount;
+    private String pendingRecipientName = "";
+    private DepositRecipientHistory depositHistory;
+    private DepositContactSource depositContactSource;
+    private List<DepositRecipient> cachedDepositContacts = new ArrayList<>();
+    private AlertDialog activeRecipientDialog;
+    private EditText activeRecipientInput;
+    private LinearLayout activeSuggestionList;
+    private String activeRecipientName = "";
+    private final Handler typeaheadHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingTypeahead;
 
     private final ActivityResultLauncher<String> exportLauncher = registerForActivityResult(
             new ActivityResultContracts.CreateDocument("application/json"), uri -> {
@@ -139,6 +157,14 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+    private final ActivityResultLauncher<String> contactsPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), granted -> {
+                if (granted) loadDepositContacts();
+                else Toast.makeText(this,
+                        "Contacts non autorisés : la saisie manuelle et les récents restent disponibles.",
+                        Toast.LENGTH_LONG).show();
+            });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -162,6 +188,8 @@ public class MainActivity extends AppCompatActivity {
         messagesNavigationItem = findViewById(R.id.bottomMessages);
         statisticsNavigationItem = findViewById(R.id.bottomStatistics);
         depositCard = findViewById(R.id.cardDeposit);
+        depositHistory = new DepositRecipientHistory(this);
+        depositContactSource = new DepositContactSource(this);
         depositCard.setOnClickListener(view -> showRecipientDialog("", ""));
         statisticsEmptyText = findViewById(R.id.statisticsEmptyText);
         statisticsChart = findViewById(R.id.statisticsChart);
@@ -221,16 +249,66 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showRecipientDialog(String recipientValue, String amountValue) {
-        EditText input = depositInput(InputType.TYPE_CLASS_PHONE,
-                "Ex. 034 12 345 67", recipientValue);
+        int horizontal = dp(24);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(horizontal, dp(4), horizontal, 0);
+
+        EditText input = depositInput(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_CAP_WORDS, "Nom ou numéro", recipientValue);
+        input.setSingleLine(true);
+        input.setCompoundDrawablesWithIntrinsicBounds(android.R.drawable.ic_menu_search, 0, 0, 0);
+        input.setCompoundDrawablePadding(dp(10));
+        content.addView(input, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        TextView contactsAction = new TextView(this);
+        contactsAction.setText(hasPermission(Manifest.permission.READ_CONTACTS)
+                ? "👥 Contacts activés" : "👥 Contacts");
+        contactsAction.setTextColor(ContextCompat.getColor(this, R.color.sms_accent));
+        contactsAction.setGravity(Gravity.END);
+        contactsAction.setPadding(0, dp(8), 0, dp(8));
+        contactsAction.setOnClickListener(view -> {
+            if (hasPermission(Manifest.permission.READ_CONTACTS)) loadDepositContacts();
+            else contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS);
+        });
+        content.addView(contactsAction);
+
+        LinearLayout suggestions = new LinearLayout(this);
+        suggestions.setOrientation(LinearLayout.VERTICAL);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(suggestions);
+        content.addView(scroll, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(270)));
+
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Numéro destinataire")
-                .setView(input)
+                .setView(content)
                 .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
                 .setPositiveButton("SUIVANT", null)
                 .create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener(view -> {
+        activeRecipientDialog = dialog;
+        activeRecipientInput = input;
+        activeSuggestionList = suggestions;
+        activeRecipientName = findKnownRecipientName(recipientValue);
+        dialog.setOnDismissListener(ignored -> {
+            if (activeRecipientDialog == dialog) {
+                activeRecipientDialog = null;
+                activeRecipientInput = null;
+                activeSuggestionList = null;
+            }
+        });
+        input.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                activeRecipientName = "";
+                scheduleRecipientSuggestions(s.toString());
+            }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+        dialog.setOnShowListener(ignored -> {
+            renderRecipientSuggestions(input.getText().toString());
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
                     String recipientNumber = DepositUssd.normalizeRecipientNumber(
                             input.getText().toString());
                     if (recipientNumber == null) {
@@ -238,16 +316,166 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
                     dialog.dismiss();
-                    showAmountDialog(recipientNumber, amountValue);
-                }));
+                    String name = activeRecipientName.isEmpty()
+                            ? findKnownRecipientName(recipientNumber) : activeRecipientName;
+                    showAmountDialog(recipientNumber, amountValue, name);
+                });
+        });
         dialog.show();
+        if (hasPermission(Manifest.permission.READ_CONTACTS) && cachedDepositContacts.isEmpty()) {
+            loadDepositContacts();
+        }
     }
 
-    private void showAmountDialog(String recipientNumber, String amountValue) {
-        EditText input = depositInput(InputType.TYPE_CLASS_NUMBER, "Montant (Ar)", amountValue);
+    private void loadDepositContacts() {
+        if (!hasPermission(Manifest.permission.READ_CONTACTS)) return;
+        depositContactSource.load(contacts -> runOnUiThread(() -> {
+            cachedDepositContacts = contacts;
+            if (activeRecipientInput != null) {
+                renderRecipientSuggestions(activeRecipientInput.getText().toString());
+            }
+        }));
+    }
+
+    private void scheduleRecipientSuggestions(String query) {
+        if (pendingTypeahead != null) typeaheadHandler.removeCallbacks(pendingTypeahead);
+        pendingTypeahead = () -> renderRecipientSuggestions(query);
+        typeaheadHandler.postDelayed(pendingTypeahead, 200L);
+    }
+
+    private void renderRecipientSuggestions(String query) {
+        if (activeSuggestionList == null || activeRecipientInput == null) return;
+        List<DepositRecipient> suggestions = DepositRecipientSearch.find(cachedDepositContacts,
+                depositHistory.load(), query, query.trim().isEmpty() ? 5 : 8);
+        activeSuggestionList.removeAllViews();
+        if (suggestions.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText(query.trim().isEmpty()
+                    ? "Aucun destinataire récent" : "Aucune suggestion — saisie manuelle disponible");
+            empty.setTextColor(ContextCompat.getColor(this, R.color.sms_text_secondary));
+            empty.setPadding(0, dp(16), 0, dp(12));
+            activeSuggestionList.addView(empty);
+            return;
+        }
+        TextView heading = new TextView(this);
+        heading.setText(query.trim().isEmpty() ? "RÉCENTS" : "SUGGESTIONS");
+        heading.setTextSize(12);
+        heading.setTextColor(ContextCompat.getColor(this, R.color.sms_text_secondary));
+        heading.setTypeface(null, Typeface.BOLD);
+        heading.setPadding(0, dp(8), 0, dp(4));
+        activeSuggestionList.addView(heading);
+        for (DepositRecipient suggestion : suggestions) {
+            activeSuggestionList.addView(createRecipientSuggestionView(suggestion));
+        }
+    }
+
+    private View createRecipientSuggestionView(DepositRecipient recipient) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(9), 0, dp(9));
+        row.setBackgroundResource(android.R.drawable.list_selector_background);
+
+        TextView avatar = new TextView(this);
+        avatar.setText(recipient.hasName() ? initials(recipient.name) : "☎");
+        avatar.setGravity(Gravity.CENTER);
+        avatar.setTextColor(ContextCompat.getColor(this, R.color.sms_accent));
+        avatar.setTypeface(null, Typeface.BOLD);
+        GradientDrawable avatarBackground = new GradientDrawable();
+        avatarBackground.setShape(GradientDrawable.OVAL);
+        avatarBackground.setColor(ContextCompat.getColor(this, R.color.sms_category_background));
+        avatar.setBackground(avatarBackground);
+        row.addView(avatar, new LinearLayout.LayoutParams(dp(40), dp(40)));
+
+        LinearLayout labels = new LinearLayout(this);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        labels.setPadding(dp(12), 0, 0, 0);
+        TextView primary = new TextView(this);
+        primary.setText(recipient.hasName() ? recipient.name
+                : DepositUssd.formatRecipientNumber(recipient.number));
+        primary.setTextColor(ContextCompat.getColor(this, R.color.sms_text_primary));
+        primary.setTextSize(15);
+        TextView secondary = new TextView(this);
+        secondary.setText(recipient.hasName() ? DepositUssd.formatRecipientNumber(recipient.number)
+                : "Utilisé récemment");
+        secondary.setTextColor(ContextCompat.getColor(this, R.color.sms_text_secondary));
+        secondary.setTextSize(13);
+        labels.addView(primary);
+        labels.addView(secondary);
+        row.addView(labels, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        row.setOnClickListener(view -> {
+            activeRecipientInput.setText(DepositUssd.formatRecipientNumber(recipient.number));
+            activeRecipientInput.setSelection(activeRecipientInput.length());
+            activeRecipientName = recipient.name;
+            if (pendingTypeahead != null) typeaheadHandler.removeCallbacks(pendingTypeahead);
+            activeSuggestionList.removeAllViews();
+            activeRecipientInput.clearFocus();
+        });
+        return row;
+    }
+
+    private String findKnownRecipientName(String number) {
+        String normalized = DepositUssd.normalizeRecipientNumber(number);
+        if (normalized == null) return "";
+        for (DepositRecipient contact : cachedDepositContacts) {
+            if (contact.number.equals(normalized) && contact.hasName()) return contact.name;
+        }
+        for (DepositRecipient recent : depositHistory.load()) {
+            if (recent.number.equals(normalized) && recent.hasName()) return recent.name;
+        }
+        return "";
+    }
+
+    private String initials(String name) {
+        StringBuilder result = new StringBuilder();
+        for (String part : name.trim().split("\\s+")) {
+            if (!part.isEmpty() && result.length() < 2) result.append(Character.toUpperCase(part.charAt(0)));
+        }
+        return result.length() == 0 ? "👤" : result.toString();
+    }
+
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private void showAmountDialog(String recipientNumber, String amountValue, String recipientName) {
+        String normalizedInitialAmount = DepositUssd.normalizeAmount(amountValue);
+        String displayedInitialAmount = normalizedInitialAmount == null ? ""
+                : DepositUssd.formatAmount(normalizedInitialAmount).replace(" Ar", "");
+        EditText input = depositInput(InputType.TYPE_CLASS_NUMBER, "Montant", displayedInitialAmount);
+        input.setSingleLine(true);
+        input.setCompoundDrawablesWithIntrinsicBounds(0, 0, android.R.drawable.ic_menu_edit, 0);
+        TextView suffix = new TextView(this);
+        suffix.setText("Ar");
+        suffix.setTextSize(17);
+        suffix.setPadding(dp(8), 0, dp(24), 0);
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.addView(input, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        row.addView(suffix);
+        final boolean[] formatting = {false};
+        input.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(Editable editable) {
+                if (formatting[0]) return;
+                String amount = editable.toString().replaceAll("[\\s\\u00A0\\u202F]", "");
+                if (amount.isEmpty()) return;
+                String normalized = DepositUssd.normalizeAmount(amount);
+                if (normalized == null) return;
+                String display = DepositUssd.formatAmount(normalized).replace(" Ar", "");
+                if (!display.equals(editable.toString())) {
+                    formatting[0] = true;
+                    input.setText(display);
+                    input.setSelection(display.length());
+                    formatting[0] = false;
+                }
+            }
+        });
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Entrer le montant")
-                .setView(input)
+                .setTitle("Montant du dépôt")
+                .setView(row)
                 .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
                 .setPositiveButton("SUIVANT", null)
                 .create();
@@ -259,21 +487,23 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
                     dialog.dismiss();
-                    showDepositConfirmation(recipientNumber, amount);
+                    showDepositConfirmation(recipientNumber, amount, recipientName);
                 }));
         dialog.show();
     }
 
-    private void showDepositConfirmation(String recipientNumber, String amount) {
+    private void showDepositConfirmation(String recipientNumber, String amount, String recipientName) {
         LinearLayout summary = new LinearLayout(this);
         summary.setOrientation(LinearLayout.VERTICAL);
         int margin = (int) (24 * getResources().getDisplayMetrics().density);
         summary.setPadding(margin, margin / 2, margin, 0);
         TextView number = new TextView(this);
-        number.setText("Numéro destinataire\n" + DepositUssd.formatRecipientNumber(recipientNumber));
+        number.setText("DESTINATAIRE\n" + (recipientName.isEmpty() ? "" : recipientName + "\n")
+                + DepositUssd.formatRecipientNumber(recipientNumber));
         number.setTextSize(16);
+        number.setTypeface(null, Typeface.NORMAL);
         TextView amountText = new TextView(this);
-        amountText.setText("\nMontant\n" + DepositUssd.formatAmount(amount));
+        amountText.setText("\nMONTANT\n" + DepositUssd.formatAmount(amount));
         amountText.setTextSize(16);
         summary.addView(number);
         summary.addView(amountText);
@@ -293,14 +523,15 @@ public class MainActivity extends AppCompatActivity {
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
                     depositCard.setEnabled(false);
                     dialog.dismiss();
-                    requestDepositCall(recipientNumber, amount);
+                    requestDepositCall(recipientNumber, amount, recipientName);
                 }));
         dialog.show();
     }
 
-    private void requestDepositCall(String recipientNumber, String amount) {
+    private void requestDepositCall(String recipientNumber, String amount, String recipientName) {
         pendingRecipientNumber = recipientNumber;
         pendingAmount = amount;
+        pendingRecipientName = recipientName;
         if (hasPermission(Manifest.permission.CALL_PHONE)) {
             launchDepositWithCallIntent(recipientNumber, amount);
         } else {
@@ -316,6 +547,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             depositCallLaunched = true;
             startActivity(callIntent);
+            depositHistory.record(recipientNumber, pendingRecipientName);
         } catch (SecurityException | android.content.ActivityNotFoundException error) {
             depositCallLaunched = false;
             Toast.makeText(this, "Impossible de lancer le service USSD sur cet appareil.",
@@ -328,6 +560,7 @@ public class MainActivity extends AppCompatActivity {
         launchDepositAfterPermission = false;
         pendingRecipientNumber = null;
         pendingAmount = null;
+        pendingRecipientName = "";
         finishDepositRequest();
     }
 
