@@ -9,6 +9,8 @@
     <color name="sms_table_header">#263B50</color>
     <color name="sms_table_header_text">#FFFFFF</color>
     <color name="sms_accent">#1565C0</color>
+    <color name="sms_filter_background">#F7F9FB</color>
+    <color name="sms_filter_border">#CCD6DF</color>
     <color name="sms_category_background">#EAF2FC</color>
     <color name="sms_permission_background">#FDECEA</color>
     <color name="sms_permission_text">#9F271F</color>

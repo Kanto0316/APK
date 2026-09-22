@@ -60,6 +60,31 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
+            <HorizontalScrollView
+                android:id="@+id/filterScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@color/sms_surface"
+                android:fillViewport="false"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="4dp">
+
+                    <TextView android:id="@+id/filterAll" style="@style/SmsFilterChip" android:text="Tous" />
+                    <TextView android:id="@+id/filterToday" style="@style/SmsFilterChip" android:text="Aujourd'hui" />
+                    <TextView android:id="@+id/filterYesterday" style="@style/SmsFilterChip" android:text="Hier" />
+                    <TextView android:id="@+id/filterSevenDays" style="@style/SmsFilterChip" android:text="7 jours" />
+                    <TextView android:id="@+id/filterThirtyDays" style="@style/SmsFilterChip" android:text="30 jours" />
+                    <TextView android:id="@+id/filterDate" style="@style/SmsFilterChip" android:text="Date" />
+                </LinearLayout>
+            </HorizontalScrollView>
+
             <TextView
                 android:id="@+id/permissionText"
                 android:layout_width="match_parent"

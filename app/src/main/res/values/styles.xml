@@ -50,6 +50,19 @@
         <item name="android:layout_width">@dimen/sms_column_time_width</item><item name="android:gravity">center</item>
     </style>
 
+    <style name="SmsFilterChip">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">32dp</item>
+        <item name="android:layout_marginEnd">8dp</item>
+        <item name="android:background">@drawable/bg_filter_chip</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">@color/filter_chip_text</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
     <style name="CommercialServiceCard">
         <item name="android:layout_width">match_parent</item><item name="android:layout_height">96dp</item>
         <item name="android:layout_marginBottom">14dp</item><item name="android:background">@drawable/bg_service_card</item>
