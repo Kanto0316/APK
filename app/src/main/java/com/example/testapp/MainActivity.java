@@ -9,6 +9,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Build;
 import android.text.InputType;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.graphics.Typeface;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -220,9 +223,69 @@ public class MainActivity extends AppCompatActivity {
         return input;
     }
 
+    private interface DepositDisplayFormatter {
+        String format(String value);
+    }
+
+    /** Keeps formatting visual only and restores the caret by its digit position. */
+    private void addDepositFormatter(EditText input, DepositDisplayFormatter formatter) {
+        input.addTextChangedListener(new TextWatcher() {
+            private boolean updating;
+            private boolean separatorWasDeleted;
+            private int deletedSeparatorPosition;
+
+            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) {
+                separatorWasDeleted = count == 1 && after == 0 && start < text.length()
+                        && text.charAt(start) == ' ';
+                deletedSeparatorPosition = start;
+            }
+
+            @Override public void onTextChanged(CharSequence text, int start, int before, int count) {}
+
+            @Override public void afterTextChanged(Editable editable) {
+                if (updating) return;
+                int caret = input.getSelectionStart();
+                String edited = editable.toString();
+                if (separatorWasDeleted) {
+                    int precedingDigit = deletedSeparatorPosition - 1;
+                    while (precedingDigit >= 0 && !Character.isDigit(edited.charAt(precedingDigit))) {
+                        precedingDigit--;
+                    }
+                    if (precedingDigit >= 0) {
+                        edited = edited.substring(0, precedingDigit) + edited.substring(precedingDigit + 1);
+                        caret = precedingDigit;
+                    }
+                }
+                int digitsBeforeCaret = countDigits(edited, Math.min(caret, edited.length()));
+                String display = formatter.format(edited);
+                int restoredCaret = positionAfterDigits(display, digitsBeforeCaret);
+                updating = true;
+                editable.replace(0, editable.length(), display);
+                input.setSelection(Math.min(restoredCaret, display.length()));
+                updating = false;
+            }
+        });
+    }
+
+    private static int countDigits(String value, int end) {
+        int count = 0;
+        for (int index = 0; index < end; index++) if (Character.isDigit(value.charAt(index))) count++;
+        return count;
+    }
+
+    private static int positionAfterDigits(String value, int digitCount) {
+        if (digitCount == 0) return value.startsWith("+") ? value.length() : 0;
+        int count = 0;
+        for (int index = 0; index < value.length(); index++) {
+            if (Character.isDigit(value.charAt(index)) && ++count == digitCount) return index + 1;
+        }
+        return value.length();
+    }
+
     private void showRecipientDialog(String recipientValue, String amountValue) {
         EditText input = depositInput(InputType.TYPE_CLASS_PHONE,
-                "Ex. 034 12 345 67", recipientValue);
+                "Ex. 034 14 110 58", DepositUssd.formatRecipientInput(recipientValue));
+        addDepositFormatter(input, DepositUssd::formatRecipientInput);
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Numéro destinataire")
                 .setView(input)
@@ -244,10 +307,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showAmountDialog(String recipientNumber, String amountValue) {
-        EditText input = depositInput(InputType.TYPE_CLASS_NUMBER, "Montant (Ar)", amountValue);
+        EditText input = depositInput(InputType.TYPE_CLASS_NUMBER, "Montant",
+                DepositUssd.formatAmountInput(amountValue));
+        addDepositFormatter(input, DepositUssd::formatAmountInput);
+        LinearLayout amountRow = new LinearLayout(this);
+        amountRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        amountRow.addView(input, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        TextView currency = new TextView(this);
+        currency.setText("Ar");
+        int currencyPadding = (int) (24 * getResources().getDisplayMetrics().density);
+        currency.setPadding(0, 0, currencyPadding, 0);
+        amountRow.addView(currency);
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Entrer le montant")
-                .setView(input)
+                .setView(amountRow)
                 .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
                 .setPositiveButton("SUIVANT", null)
                 .create();
@@ -269,14 +343,9 @@ public class MainActivity extends AppCompatActivity {
         summary.setOrientation(LinearLayout.VERTICAL);
         int margin = (int) (24 * getResources().getDisplayMetrics().density);
         summary.setPadding(margin, margin / 2, margin, 0);
-        TextView number = new TextView(this);
-        number.setText("Numéro destinataire\n" + DepositUssd.formatRecipientNumber(recipientNumber));
-        number.setTextSize(16);
-        TextView amountText = new TextView(this);
-        amountText.setText("\nMontant\n" + DepositUssd.formatAmount(amount));
-        amountText.setTextSize(16);
-        summary.addView(number);
-        summary.addView(amountText);
+        addConfirmationField(summary, "Numéro destinataire",
+                DepositUssd.formatRecipientNumber(recipientNumber), false);
+        addConfirmationField(summary, "Montant", DepositUssd.formatAmount(amount), true);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Vérifier le dépôt")
@@ -296,6 +365,28 @@ public class MainActivity extends AppCompatActivity {
                     requestDepositCall(recipientNumber, amount);
                 }));
         dialog.show();
+    }
+
+    private void addConfirmationField(LinearLayout summary, String labelText, String valueText,
+                                      boolean separateFromPrevious) {
+        TextView label = new TextView(this);
+        label.setText(labelText);
+        label.setTextSize(14);
+        label.setTextColor(ContextCompat.getColor(this, android.R.color.darker_gray));
+        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        if (separateFromPrevious) labelParams.topMargin = (int) (24 * getResources().getDisplayMetrics().density);
+        summary.addView(label, labelParams);
+
+        TextView value = new TextView(this);
+        value.setText(valueText);
+        value.setTextSize(18);
+        value.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+        value.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        LinearLayout.LayoutParams valueParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        valueParams.topMargin = (int) (6 * getResources().getDisplayMetrics().density);
+        summary.addView(value, valueParams);
     }
 
     private void requestDepositCall(String recipientNumber, String amount) {
