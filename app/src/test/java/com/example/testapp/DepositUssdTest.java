@@ -71,4 +71,33 @@ public class DepositUssdTest {
         assertEquals("#111*1*2*0341411058*1*20000#",
                 DepositUssd.buildUssdCode("034 14 110 58", "20 000"));
     }
+
+    @Test public void calculatesWithdrawalFeesAtEveryTariffBoundary() {
+        assertNull(DepositUssd.calculateWithdrawalFee(1000));
+        assertEquals(Long.valueOf(150), DepositUssd.calculateWithdrawalFee(1001));
+        assertEquals(Long.valueOf(150), DepositUssd.calculateWithdrawalFee(5000));
+        assertEquals(Long.valueOf(275), DepositUssd.calculateWithdrawalFee(5001));
+        assertEquals(Long.valueOf(275), DepositUssd.calculateWithdrawalFee(10000));
+        assertEquals(Long.valueOf(550), DepositUssd.calculateWithdrawalFee(10001));
+        assertEquals(Long.valueOf(550), DepositUssd.calculateWithdrawalFee(20000));
+        assertEquals(Long.valueOf(650), DepositUssd.calculateWithdrawalFee(20001));
+        assertEquals(Long.valueOf(650), DepositUssd.calculateWithdrawalFee(25000));
+        assertEquals(Long.valueOf(1300), DepositUssd.calculateWithdrawalFee(25001));
+        assertEquals(Long.valueOf(1300), DepositUssd.calculateWithdrawalFee(50000));
+        assertEquals(Long.valueOf(1900), DepositUssd.calculateWithdrawalFee(50001));
+        assertEquals(Long.valueOf(1900), DepositUssd.calculateWithdrawalFee(100000));
+        assertEquals(Long.valueOf(3400), DepositUssd.calculateWithdrawalFee(100001));
+        assertEquals(Long.valueOf(3400), DepositUssd.calculateWithdrawalFee(200000));
+        assertNull(DepositUssd.calculateWithdrawalFee(200001));
+    }
+
+    @Test public void finalAmountIsDerivedOnceFromOriginalAmount() {
+        long originalAmount = 20000;
+        assertEquals(20550, DepositUssd.calculateFinalAmount(originalAmount, true));
+        assertEquals(20550, DepositUssd.calculateFinalAmount(originalAmount, true));
+        assertEquals(20000, DepositUssd.calculateFinalAmount(originalAmount, false));
+        assertEquals("#111*1*2*0341411058*1*20550#",
+                DepositUssd.buildUssdCode("0341411058", String.valueOf(
+                        DepositUssd.calculateFinalAmount(originalAmount, true))));
+    }
 }
