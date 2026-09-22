@@ -5,27 +5,43 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.OverScroller;
 
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
+import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/** Lightweight horizontal bar chart: X is the SMS count and Y is the local calendar date. */
+/** Vertical daily bar chart: X is the local date and Y is the number of SMS. */
 public final class StatisticsChartView extends View {
-    private static final int TICK_COUNT = 4;
+    private static final int TARGET_TICK_COUNT = 5;
+    private static final int SLOT_WIDTH_DP = 72;
+    private static final int BAR_WIDTH_DP = 30;
+    private static final int CHART_HEIGHT_DP = 300;
+
     private final float density;
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint axisPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yy", Locale.FRENCH);
+    private final SimpleDateFormat shortDateFormat = new SimpleDateFormat("dd/MM", Locale.FRENCH);
+    private final SimpleDateFormat accessibleDateFormat =
+            new SimpleDateFormat("dd/MM/yyyy", Locale.FRENCH);
+    private final NumberFormat numberFormat = NumberFormat.getIntegerInstance(Locale.FRENCH);
+    private final OverScroller scroller;
+    private final GestureDetector gestureDetector;
     private List<SmsStatistics.DailyCount> data = new ArrayList<>();
-    private int scaleMaximum = 1;
+    private long scaleMaximum = 1;
+    private long tickStep = 1;
+    private float horizontalOffset;
 
     public StatisticsChartView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -34,85 +50,160 @@ public final class StatisticsChartView extends View {
         textPaint.setTextSize(12 * getResources().getDisplayMetrics().scaledDensity);
         gridPaint.setColor(ContextCompat.getColor(context, R.color.statistics_grid));
         gridPaint.setStrokeWidth(density);
+        axisPaint.setColor(ContextCompat.getColor(context, R.color.sms_text_secondary));
+        axisPaint.setStrokeWidth(density);
         barPaint.setColor(ContextCompat.getColor(context, R.color.sms_accent));
-        setMinimumHeight(dp(190));
+        scroller = new OverScroller(context);
+        gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
+            @Override public boolean onDown(MotionEvent event) {
+                if (!scroller.isFinished()) scroller.abortAnimation();
+                return true;
+            }
+
+            @Override public boolean onScroll(MotionEvent first, MotionEvent current,
+                    float distanceX, float distanceY) {
+                setHorizontalOffset(horizontalOffset + distanceX);
+                return true;
+            }
+
+            @Override public boolean onFling(MotionEvent first, MotionEvent current,
+                    float velocityX, float velocityY) {
+                scroller.fling(Math.round(horizontalOffset), 0, Math.round(-velocityX), 0,
+                        0, Math.round(maximumOffset()), 0, 0);
+                postInvalidateOnAnimation();
+                return true;
+            }
+        });
+        setMinimumHeight(dp(CHART_HEIGHT_DP));
+        setFocusable(true);
     }
 
     void setData(List<SmsStatistics.DailyCount> dailyCounts) {
         data = dailyCounts == null ? new ArrayList<>() : new ArrayList<>(dailyCounts);
         int maximum = 1;
         for (SmsStatistics.DailyCount item : data) maximum = Math.max(maximum, item.count);
+        tickStep = readableStep(maximum);
         scaleMaximum = readableMaximum(maximum);
-        setMinimumHeight(dp(82 + data.size() * 48));
+        horizontalOffset = Math.min(horizontalOffset, maximumOffset());
         setContentDescription(buildDescription());
-        requestLayout();
         invalidate();
     }
 
-    static int readableMaximum(int maximum) {
-        if (maximum <= 4) return Math.max(4, maximum);
-        int magnitude = 1;
-        while (maximum / magnitude >= 10) magnitude *= 10;
-        int step = Math.max(1, magnitude / 2);
-        return ((maximum + step - 1) / step) * step;
+    /** Selects a 1, 2 or 5 multiplied by a power of ten, aiming for five intervals. */
+    static long readableStep(int maximum) {
+        if (maximum <= TARGET_TICK_COUNT) return 1;
+        double roughStep = maximum / (double) TARGET_TICK_COUNT;
+        double magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+        double normalized = roughStep / magnitude;
+        long multiplier = normalized <= 1 ? 1 : normalized <= 2 ? 2 : 5;
+        return Math.max(1, Math.round(multiplier * magnitude));
+    }
+
+    static long readableMaximum(int maximum) {
+        long step = readableStep(maximum);
+        return ((Math.max(1L, maximum) + step - 1) / step) * step;
     }
 
     @Override protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int desiredHeight = Math.max(getSuggestedMinimumHeight(), dp(82 + data.size() * 48));
         setMeasuredDimension(resolveSize(dp(320), widthMeasureSpec),
-                resolveSize(desiredHeight, heightMeasureSpec));
+                resolveSize(dp(CHART_HEIGHT_DP), heightMeasureSpec));
+    }
+
+    @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
+        horizontalOffset = Math.min(horizontalOffset, maximumOffset());
+    }
+
+    @Override public boolean onTouchEvent(MotionEvent event) {
+        boolean handled = gestureDetector.onTouchEvent(event);
+        if (event.getActionMasked() == MotionEvent.ACTION_UP && !handled) performClick();
+        return handled || super.onTouchEvent(event);
+    }
+
+    @Override public boolean performClick() {
+        super.performClick();
+        return true;
+    }
+
+    @Override public void computeScroll() {
+        if (scroller.computeScrollOffset()) {
+            setHorizontalOffset(scroller.getCurrX());
+            postInvalidateOnAnimation();
+        }
     }
 
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         if (data.isEmpty()) return;
-        float labelWidth = dp(72);
-        float valueWidth = dp(34);
-        float chartLeft = getPaddingLeft() + labelWidth;
-        float chartRight = getWidth() - getPaddingRight() - valueWidth;
-        float chartWidth = Math.max(1, chartRight - chartLeft);
-        float axisTop = getPaddingTop() + dp(30);
-        float rowsTop = axisTop + dp(25);
-        float rowsBottom = rowsTop + data.size() * dp(48);
 
-        textPaint.setTextAlign(Paint.Align.LEFT);
+        float chartLeft = getPaddingLeft() + dp(54);
+        float chartRight = getWidth() - getPaddingRight() - dp(8);
+        float chartTop = getPaddingTop() + dp(50);
+        float chartBottom = getHeight() - getPaddingBottom() - dp(48);
+        float chartHeight = Math.max(1, chartBottom - chartTop);
+
         textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_primary));
         textPaint.setFakeBoldText(true);
-        canvas.drawText("Nombre de SMS", chartLeft, getPaddingTop() + dp(15), textPaint);
+        textPaint.setTextAlign(Paint.Align.LEFT);
+        canvas.drawText("Nombre de SMS", chartLeft, getPaddingTop() + dp(20), textPaint);
         textPaint.setFakeBoldText(false);
-        textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_secondary));
-        for (int tick = 0; tick <= TICK_COUNT; tick++) {
-            float x = chartLeft + chartWidth * tick / TICK_COUNT;
-            int value = Math.round(scaleMaximum * tick / (float) TICK_COUNT);
-            textPaint.setTextAlign(tick == 0 ? Paint.Align.LEFT
-                    : tick == TICK_COUNT ? Paint.Align.RIGHT : Paint.Align.CENTER);
-            canvas.drawText(String.valueOf(value), x, axisTop, textPaint);
-            canvas.drawLine(x, axisTop + dp(7), x, rowsBottom, gridPaint);
-        }
 
+        int intervals = Math.max(1, (int) (scaleMaximum / tickStep));
+        for (int tick = 0; tick <= intervals; tick++) {
+            long value = tick * tickStep;
+            float y = chartBottom - chartHeight * value / scaleMaximum;
+            textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_secondary));
+            textPaint.setTextAlign(Paint.Align.RIGHT);
+            canvas.drawText(numberFormat.format(value), chartLeft - dp(8), y + dp(4), textPaint);
+            canvas.drawLine(chartLeft, y, chartRight, y, gridPaint);
+        }
+        canvas.drawLine(chartLeft, chartTop, chartLeft, chartBottom, axisPaint);
+        canvas.drawLine(chartLeft, chartBottom, chartRight, chartBottom, axisPaint);
+
+        float viewportWidth = Math.max(1, chartRight - chartLeft);
+        float contentWidth = data.size() * dp(SLOT_WIDTH_DP);
+        float leadingSpace = contentWidth < viewportWidth ? (viewportWidth - contentWidth) / 2f : 0;
+        int save = canvas.save();
+        canvas.clipRect(chartLeft, chartTop - dp(24), chartRight, chartBottom + dp(30));
         for (int index = 0; index < data.size(); index++) {
             SmsStatistics.DailyCount item = data.get(index);
-            float centerY = rowsTop + index * dp(48) + dp(17);
-            textPaint.setTextAlign(Paint.Align.RIGHT);
-            canvas.drawText(dateFormat.format(new Date(item.localDayTimestamp)),
-                    chartLeft - dp(8), centerY + dp(4), textPaint);
-            float barRight = chartLeft + chartWidth * item.count / scaleMaximum;
-            canvas.drawRoundRect(new RectF(chartLeft, centerY - dp(10), barRight,
-                    centerY + dp(10)), dp(4), dp(4), barPaint);
-            textPaint.setTextAlign(Paint.Align.LEFT);
+            float centerX = chartLeft + leadingSpace + dp(SLOT_WIDTH_DP) * (index + 0.5f)
+                    - horizontalOffset;
+            float barTop = chartBottom - chartHeight * item.count / scaleMaximum;
+            RectF bar = new RectF(centerX - dp(BAR_WIDTH_DP) / 2f, barTop,
+                    centerX + dp(BAR_WIDTH_DP) / 2f, chartBottom);
+            canvas.drawRoundRect(bar, dp(4), dp(4), barPaint);
+
             textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_primary));
             textPaint.setFakeBoldText(true);
-            canvas.drawText(String.valueOf(item.count), Math.min(barRight + dp(7), chartRight + dp(7)),
-                    centerY + dp(4), textPaint);
+            textPaint.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText(numberFormat.format(item.count), centerX, barTop - dp(7), textPaint);
             textPaint.setFakeBoldText(false);
             textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_secondary));
+            canvas.drawText(shortDateFormat.format(new Date(item.localDayTimestamp)), centerX,
+                    chartBottom + dp(21), textPaint);
         }
+        canvas.restoreToCount(save);
+
+        textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_primary));
+        textPaint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText("Date", (chartLeft + chartRight) / 2f, getHeight() - getPaddingBottom() - dp(8),
+                textPaint);
+    }
+
+    private void setHorizontalOffset(float offset) {
+        horizontalOffset = Math.max(0, Math.min(offset, maximumOffset()));
+        invalidate();
+    }
+
+    private float maximumOffset() {
+        float viewportWidth = getWidth() - getPaddingLeft() - getPaddingRight() - dp(62);
+        return Math.max(0, data.size() * dp(SLOT_WIDTH_DP) - Math.max(0, viewportWidth));
     }
 
     private String buildDescription() {
         StringBuilder result = new StringBuilder("Activité des messages. ");
         for (SmsStatistics.DailyCount item : data) {
-            result.append(dateFormat.format(new Date(item.localDayTimestamp))).append(" : ")
+            result.append(accessibleDateFormat.format(new Date(item.localDayTimestamp))).append(" : ")
                     .append(item.count).append(" SMS. ");
         }
         return result.toString();

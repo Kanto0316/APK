@@ -26,6 +26,12 @@ public class SmsStatisticsTest {
         assertEquals(1, result.get(0).count);
     }
 
+    @Test public void twoSmsOnSameDayHaveCountTwo() {
+        List<SmsStatistics.DailyCount> result = SmsStatistics.groupByDate(
+                Arrays.asList(sms(2026, 9, 21, 8), sms(2026, 9, 21, 18)), UTC);
+        assertEquals(2, result.get(0).count);
+    }
+
     @Test public void fiveSmsOnSameDayAreGrouped() {
         List<SmsMessage> messages = new ArrayList<>();
         for (int hour = 1; hour <= 5; hour++) messages.add(sms(2026, 9, 21, hour));
@@ -36,12 +42,12 @@ public class SmsStatisticsTest {
 
     @Test public void multipleDaysAreChronologicalAndExact() {
         List<SmsMessage> messages = new ArrayList<>();
-        add(messages, 10, 21); add(messages, 7, 22); add(messages, 15, 23);
+        add(messages, 20, 21); add(messages, 60, 22); add(messages, 100, 23);
         List<SmsStatistics.DailyCount> result = SmsStatistics.groupByDate(messages, UTC);
         assertEquals(3, result.size());
-        assertEquals(10, result.get(0).count);
-        assertEquals(7, result.get(1).count);
-        assertEquals(15, result.get(2).count);
+        assertEquals(20, result.get(0).count);
+        assertEquals(60, result.get(1).count);
+        assertEquals(100, result.get(2).count);
     }
 
     @Test public void newlyReceivedSmsUpdatesExistingDay() {
@@ -50,6 +56,24 @@ public class SmsStatisticsTest {
         assertEquals(15, SmsStatistics.groupByDate(messages, UTC).get(0).count);
         messages.add(sms(2026, 9, 23, 23));
         assertEquals(16, SmsStatistics.groupByDate(messages, UTC).get(0).count);
+    }
+
+    @Test public void chartScaleUsesReadableStepsWithoutFixedMaximum() {
+        assertEquals(100, StatisticsChartView.readableMaximum(100));
+        assertEquals(1_000, StatisticsChartView.readableMaximum(920));
+        assertEquals(1_000, StatisticsChartView.readableMaximum(1_000));
+        assertEquals(10_000, StatisticsChartView.readableMaximum(10_000));
+        assertEquals(150, StatisticsChartView.readableMaximum(120));
+        assertEquals(20, StatisticsChartView.readableStep(87));
+        assertEquals(2_000, StatisticsChartView.readableStep(10_000));
+    }
+
+    @Test public void thirtyDatesRemainThirtyChronologicalCategories() {
+        List<SmsMessage> messages = new ArrayList<>();
+        for (int day = 1; day <= 30; day++) messages.add(sms(2026, 9, day, 12));
+        List<SmsStatistics.DailyCount> result = SmsStatistics.groupByDate(messages, UTC);
+        assertEquals(30, result.size());
+        for (SmsStatistics.DailyCount count : result) assertEquals(1, count.count);
     }
 
     private static void add(List<SmsMessage> messages, int count, int day) {
