@@ -20,8 +20,9 @@ final class DepositUssd {
     }
 
     static String normalizeAmount(String input) {
-        if (input == null || !input.matches("\\d+")) return null;
-        String normalized = input.replaceFirst("^0+(?!$)", "");
+        if (input == null || !input.matches("[\\d\\s\\u00A0\\u202F]+")) return null;
+        String normalized = input.replaceAll("[\\s\\u00A0\\u202F]", "")
+                .replaceFirst("^0+(?!$)", "");
         return normalized.matches("[1-9]\\d*") ? normalized : null;
     }
 

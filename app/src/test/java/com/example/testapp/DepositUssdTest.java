@@ -25,7 +25,8 @@ public class DepositUssdTest {
     @Test public void validatesAndNormalizesAmounts() {
         assertNull(DepositUssd.normalizeAmount(""));
         assertNull(DepositUssd.normalizeAmount("0"));
-        assertNull(DepositUssd.normalizeAmount("25 000"));
+        assertEquals("25000", DepositUssd.normalizeAmount("25 000"));
+        assertEquals("25000", DepositUssd.normalizeAmount("25\u202f000"));
         assertNull(DepositUssd.normalizeAmount("25Ar"));
         assertNull(DepositUssd.normalizeAmount("25*000"));
         assertEquals("25000", DepositUssd.normalizeAmount("25000"));
