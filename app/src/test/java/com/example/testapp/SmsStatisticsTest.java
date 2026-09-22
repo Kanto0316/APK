@@ -59,6 +59,7 @@ public class SmsStatisticsTest {
     }
 
     @Test public void chartScaleUsesReadableStepsWithoutFixedMaximum() {
+        assertEquals(2, StatisticsChartView.readableMaximum(2));
         assertEquals(100, StatisticsChartView.readableMaximum(100));
         assertEquals(1_000, StatisticsChartView.readableMaximum(920));
         assertEquals(1_000, StatisticsChartView.readableMaximum(1_000));
@@ -74,6 +75,25 @@ public class SmsStatisticsTest {
         List<SmsStatistics.DailyCount> result = SmsStatistics.groupByDate(messages, UTC);
         assertEquals(30, result.size());
         for (SmsStatistics.DailyCount count : result) assertEquals(1, count.count);
+    }
+
+    @Test public void chartUsesAStableProfessionalBarWidthForEveryDataSetSize() {
+        assertEquals(22, StatisticsChartView.BAR_WIDTH_DP);
+        assertEquals(48, StatisticsChartView.SLOT_WIDTH_DP);
+        assertEquals(48f, StatisticsChartView.contentWidthDp(1), 0f);
+        assertEquals(96f, StatisticsChartView.contentWidthDp(2), 0f);
+        assertEquals(240f, StatisticsChartView.contentWidthDp(5), 0f);
+        assertEquals(336f, StatisticsChartView.contentWidthDp(7), 0f);
+        assertEquals(1_440f, StatisticsChartView.contentWidthDp(30), 0f);
+    }
+
+    @Test public void chartScrollsOnlyWhenDatesExceedItsViewport() {
+        // A 250 dp plotting viewport is representative of a 360 dp Android phone.
+        assertEquals(0f, StatisticsChartView.maximumOffsetDp(1, 250), 0f);
+        assertEquals(0f, StatisticsChartView.maximumOffsetDp(2, 250), 0f);
+        assertEquals(0f, StatisticsChartView.maximumOffsetDp(5, 250), 0f);
+        assertEquals(86f, StatisticsChartView.maximumOffsetDp(7, 250), 0f);
+        assertEquals(1_190f, StatisticsChartView.maximumOffsetDp(30, 250), 0f);
     }
 
     private static void add(List<SmsMessage> messages, int count, int day) {
