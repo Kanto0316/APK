@@ -32,6 +32,27 @@ final class DepositUssd {
         return "#111*1*2*" + normalizedRecipientNumber + "*1*" + normalizedAmount + "#";
     }
 
+    /** Returns the withdrawal fee for the original amount, or {@code null} outside the tariff. */
+    static Long calculateWithdrawalFee(long originalAmount) {
+        if (originalAmount >= 1_001 && originalAmount <= 5_000) return 150L;
+        if (originalAmount <= 10_000 && originalAmount >= 5_001) return 275L;
+        if (originalAmount <= 20_000 && originalAmount >= 10_001) return 550L;
+        if (originalAmount <= 25_000 && originalAmount >= 20_001) return 650L;
+        if (originalAmount <= 50_000 && originalAmount >= 25_001) return 1_300L;
+        if (originalAmount <= 100_000 && originalAmount >= 50_001) return 1_900L;
+        if (originalAmount <= 200_000 && originalAmount >= 100_001) return 3_400L;
+        return null;
+    }
+
+    static long calculateFinalAmount(long originalAmount, boolean includeWithdrawalFee) {
+        if (!includeWithdrawalFee) return originalAmount;
+        Long withdrawalFee = calculateWithdrawalFee(originalAmount);
+        if (withdrawalFee == null) {
+            throw new IllegalArgumentException("Withdrawal fee unavailable for this amount");
+        }
+        return originalAmount + withdrawalFee;
+    }
+
     static String formatRecipientNumber(String recipientNumber) {
         return formatRecipientInput(recipientNumber);
     }

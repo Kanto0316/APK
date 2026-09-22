@@ -13,6 +13,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.method.DigitsKeyListener;
 import android.graphics.Typeface;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -370,32 +371,107 @@ public class MainActivity extends AppCompatActivity {
                 .create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
                 .setOnClickListener(view -> {
-                    String amount = DepositUssd.normalizeAmount(input.getText().toString());
-                    if (amount == null) {
+                    String normalizedAmount = DepositUssd.normalizeAmount(input.getText().toString());
+                    if (normalizedAmount == null) {
                         input.setError("Montant invalide");
                         return;
                     }
+                    long originalAmount;
+                    try {
+                        originalAmount = Long.parseLong(normalizedAmount);
+                    } catch (NumberFormatException error) {
+                        input.setError("Montant trop élevé");
+                        return;
+                    }
                     dialog.dismiss();
-                    showDepositConfirmation(recipientNumber, amount);
+                    showWithdrawalFeeDialog(recipientNumber, originalAmount);
                 }));
         dialog.show();
     }
 
-    private void showDepositConfirmation(String recipientNumber, String amount) {
+    private void showWithdrawalFeeDialog(String recipientNumber, long originalAmount) {
+        LinearLayout choices = new LinearLayout(this);
+        choices.setOrientation(LinearLayout.VERTICAL);
+        int horizontalPadding = (int) (24 * getResources().getDisplayMetrics().density);
+        TextView errorText = new TextView(this);
+        errorText.setText("Frais de retrait non disponibles pour ce montant.");
+        errorText.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
+        errorText.setPadding(horizontalPadding, 0, horizontalPadding, horizontalPadding / 2);
+        errorText.setVisibility(View.GONE);
+        choices.addView(errorText);
+        TextView yesChoice = addWithdrawalFeeChoice(choices, "1    Oui");
+        TextView noChoice = addWithdrawalFeeChoice(choices, "2    Non");
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Avec frais de retrait ?")
+                .setView(choices)
+                .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
+                .setNeutralButton("MODIFIER", (ignored, which) ->
+                        showAmountDialog(recipientNumber, String.valueOf(originalAmount)))
+                .create();
+        yesChoice.setOnClickListener(view -> {
+            Long withdrawalFee = DepositUssd.calculateWithdrawalFee(originalAmount);
+            if (withdrawalFee == null) {
+                errorText.setVisibility(View.VISIBLE);
+                return;
+            }
+            long finalAmount = DepositUssd.calculateFinalAmount(originalAmount, true);
+            dialog.dismiss();
+            showDepositConfirmation(recipientNumber, originalAmount, true,
+                    withdrawalFee, finalAmount);
+        });
+        noChoice.setOnClickListener(view -> {
+            long withdrawalFee = 0L;
+            long finalAmount = DepositUssd.calculateFinalAmount(originalAmount, false);
+            dialog.dismiss();
+            showDepositConfirmation(recipientNumber, originalAmount, false,
+                    withdrawalFee, finalAmount);
+        });
+        dialog.show();
+    }
+
+    private TextView addWithdrawalFeeChoice(LinearLayout choices, String text) {
+        TextView choice = new TextView(this);
+        choice.setText(text);
+        choice.setTextSize(18);
+        choice.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+        choice.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        int horizontalPadding = (int) (24 * getResources().getDisplayMetrics().density);
+        choice.setPadding(horizontalPadding, 0, horizontalPadding, 0);
+        choice.setMinHeight((int) (56 * getResources().getDisplayMetrics().density));
+        TypedValue selectableBackground = new TypedValue();
+        getTheme().resolveAttribute(android.R.attr.selectableItemBackground,
+                selectableBackground, true);
+        choice.setBackgroundResource(selectableBackground.resourceId);
+        choice.setClickable(true);
+        choice.setFocusable(true);
+        choices.addView(choice, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        return choice;
+    }
+
+    private void showDepositConfirmation(String recipientNumber, long originalAmount,
+                                         boolean includeWithdrawalFee, long withdrawalFee,
+                                         long finalAmount) {
         LinearLayout summary = new LinearLayout(this);
         summary.setOrientation(LinearLayout.VERTICAL);
         int margin = (int) (24 * getResources().getDisplayMetrics().density);
         summary.setPadding(margin, margin / 2, margin, 0);
         addConfirmationField(summary, "Numéro destinataire",
-                DepositUssd.formatRecipientNumber(recipientNumber), false);
-        addConfirmationField(summary, "Montant", DepositUssd.formatAmount(amount), true);
+                DepositUssd.formatRecipientNumber(recipientNumber), false, false);
+        addConfirmationField(summary, "Montant",
+                DepositUssd.formatAmount(String.valueOf(originalAmount)), true, false);
+        addConfirmationField(summary, "Frais de retrait", includeWithdrawalFee
+                ? DepositUssd.formatAmount(String.valueOf(withdrawalFee)) : "Non", true, false);
+        addConfirmationField(summary, "TOTAL À ENVOYER",
+                DepositUssd.formatAmount(String.valueOf(finalAmount)), true, true);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Vérifier le dépôt")
                 .setView(summary)
                 .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
                 .setNeutralButton("MODIFIER", (ignored, which) ->
-                        showRecipientDialog(recipientNumber, amount))
+                        showRecipientDialog(recipientNumber, String.valueOf(originalAmount)))
                 .setPositiveButton("ENVOYER", null)
                 .create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
@@ -405,13 +481,13 @@ public class MainActivity extends AppCompatActivity {
                     dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
                     depositCard.setEnabled(false);
                     dialog.dismiss();
-                    requestDepositCall(recipientNumber, amount);
+                    requestDepositCall(recipientNumber, String.valueOf(finalAmount));
                 }));
         dialog.show();
     }
 
     private void addConfirmationField(LinearLayout summary, String labelText, String valueText,
-                                      boolean separateFromPrevious) {
+                                      boolean separateFromPrevious, boolean emphasize) {
         TextView label = new TextView(this);
         label.setText(labelText);
         label.setTextSize(14);
@@ -423,7 +499,7 @@ public class MainActivity extends AppCompatActivity {
 
         TextView value = new TextView(this);
         value.setText(valueText);
-        value.setTextSize(18);
+        value.setTextSize(emphasize ? 22 : 18);
         value.setTextColor(ContextCompat.getColor(this, android.R.color.black));
         value.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         LinearLayout.LayoutParams valueParams = new LinearLayout.LayoutParams(
