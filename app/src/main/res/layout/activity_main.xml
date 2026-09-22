@@ -255,12 +255,62 @@
                     android:textColor="@color/sms_text_secondary"
                     android:textSize="15sp" />
 
-                <FrameLayout
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_statistics_card"
                     android:elevation="1dp"
-                    android:minHeight="220dp">
+                    android:minHeight="280dp"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp">
+
+                        <TextView
+                            android:id="@+id/statisticsPreviousMonth"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:contentDescription="Mois précédent"
+                            android:focusable="true"
+                            android:gravity="center"
+                            android:text="‹"
+                            android:textColor="@color/sms_accent"
+                            android:textSize="32sp" />
+
+                        <TextView
+                            android:id="@+id/statisticsMonthText"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:textColor="@color/sms_text_primary"
+                            android:textSize="17sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/statisticsNextMonth"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:contentDescription="Mois suivant"
+                            android:focusable="true"
+                            android:gravity="center"
+                            android:text="›"
+                            android:textColor="@color/sms_accent"
+                            android:textSize="32sp" />
+                    </LinearLayout>
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="232dp">
 
                     <com.example.testapp.StatisticsChartView
                         android:id="@+id/statisticsChart"
@@ -274,13 +324,14 @@
                     <TextView
                         android:id="@+id/statisticsEmptyText"
                         android:layout_width="match_parent"
-                        android:layout_height="220dp"
+                        android:layout_height="232dp"
                         android:gravity="center"
-                        android:text="Aucune donnée statistique"
+                        android:text="Aucune donnée pour ce mois"
                         android:textColor="@color/sms_text_secondary"
                         android:textSize="15sp"
                         android:visibility="gone" />
-                </FrameLayout>
+                    </FrameLayout>
+                </LinearLayout>
             </LinearLayout>
         </ScrollView>
     </FrameLayout>

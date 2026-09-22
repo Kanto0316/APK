@@ -47,6 +47,7 @@ import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 import java.util.Date;
@@ -54,6 +55,8 @@ import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends AppCompatActivity {
     private static final String STATE_SELECTED_SECTION = "selected_section";
+    private static final String STATE_STATISTICS_YEAR = "statistics_year";
+    private static final String STATE_STATISTICS_MONTH = "statistics_month";
     private static final int SECTION_MESSAGES = 0;
     private static final int SECTION_HOME = 1;
     private static final int SECTION_STATISTICS = 2;
@@ -83,6 +86,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView statisticsNavigationItem;
     private TextView statisticsEmptyText;
     private StatisticsChartView statisticsChart;
+    private TextView statisticsMonthText;
+    private Calendar statisticsMonth;
     private TextView homeLabel;
     private ImageButton homeButton;
     private int selectedSection = SECTION_MESSAGES;
@@ -129,6 +134,17 @@ public class MainActivity extends AppCompatActivity {
         statisticsNavigationItem = findViewById(R.id.bottomStatistics);
         statisticsEmptyText = findViewById(R.id.statisticsEmptyText);
         statisticsChart = findViewById(R.id.statisticsChart);
+        statisticsMonthText = findViewById(R.id.statisticsMonthText);
+        statisticsMonth = Calendar.getInstance();
+        statisticsMonth.set(Calendar.DAY_OF_MONTH, 1);
+        if (savedInstanceState != null) {
+            statisticsMonth.set(Calendar.YEAR, savedInstanceState.getInt(STATE_STATISTICS_YEAR,
+                    statisticsMonth.get(Calendar.YEAR)));
+            statisticsMonth.set(Calendar.MONTH, savedInstanceState.getInt(STATE_STATISTICS_MONTH,
+                    statisticsMonth.get(Calendar.MONTH)));
+        }
+        findViewById(R.id.statisticsPreviousMonth).setOnClickListener(view -> changeMonth(-1));
+        findViewById(R.id.statisticsNextMonth).setOnClickListener(view -> changeMonth(1));
         homeLabel = findViewById(R.id.homeLabel);
         homeButton = findViewById(R.id.homeButton);
         messagesNavigationItem.setOnClickListener(view -> showSection(SECTION_MESSAGES));
@@ -208,15 +224,32 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         outState.putInt(STATE_SELECTED_SECTION, selectedSection);
+        outState.putInt(STATE_STATISTICS_YEAR, statisticsMonth.get(Calendar.YEAR));
+        outState.putInt(STATE_STATISTICS_MONTH, statisticsMonth.get(Calendar.MONTH));
         super.onSaveInstanceState(outState);
     }
 
     private void renderStatistics() {
-        List<SmsStatistics.DailyCount> dailyCounts = SmsStatistics.groupByLocalDate(messages);
-        boolean empty = dailyCounts.isEmpty();
+        String monthLabel = new SimpleDateFormat("MMMM yyyy", Locale.FRENCH)
+                .format(statisticsMonth.getTime());
+        statisticsMonthText.setText(monthLabel.substring(0, 1).toUpperCase(Locale.FRENCH)
+                + monthLabel.substring(1));
+        List<SmsStatistics.DailyCount> dailyCounts = SmsStatistics.forMonth(messages,
+                statisticsMonth.get(Calendar.YEAR), statisticsMonth.get(Calendar.MONTH),
+                statisticsMonth.getTimeZone());
+        boolean empty = !SmsStatistics.hasActivity(dailyCounts);
         statisticsEmptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
         statisticsChart.setVisibility(empty ? View.GONE : View.VISIBLE);
-        statisticsChart.setData(dailyCounts);
+        Calendar today = Calendar.getInstance();
+        boolean currentMonth = today.get(Calendar.YEAR) == statisticsMonth.get(Calendar.YEAR)
+                && today.get(Calendar.MONTH) == statisticsMonth.get(Calendar.MONTH);
+        statisticsChart.setData(dailyCounts,
+                currentMonth ? Math.max(0, today.get(Calendar.DAY_OF_MONTH) - 4) : 0);
+    }
+
+    private void changeMonth(int offset) {
+        statisticsMonth.add(Calendar.MONTH, offset);
+        renderStatistics();
     }
 
     private void showOverflowMenu(View anchor) {

@@ -96,6 +96,48 @@ public class SmsStatisticsTest {
         assertEquals(1_190f, StatisticsChartView.maximumOffsetDp(30, 250), 0f);
     }
 
+    @Test public void selectedMonthFiltersBothMonthAndYearAndFillsMissingDays() {
+        List<SmsMessage> messages = Arrays.asList(
+                sms(2026, 9, 21, 8), sms(2026, 9, 21, 18),
+                sms(2026, 9, 22, 8), sms(2026, 10, 3, 8), sms(2027, 9, 21, 8));
+        List<SmsStatistics.DailyCount> september =
+                SmsStatistics.forMonth(messages, 2026, Calendar.SEPTEMBER, UTC);
+        assertEquals(30, september.size());
+        assertEquals(0, september.get(19).count);
+        assertEquals(2, september.get(20).count);
+        assertEquals(1, september.get(21).count);
+        assertEquals(0, september.get(22).count);
+    }
+
+    @Test public void calendarMonthHasCorrectLengthIncludingLeapYears() {
+        assertEquals(28, SmsStatistics.forMonth(new ArrayList<>(), 2026,
+                Calendar.FEBRUARY, UTC).size());
+        assertEquals(29, SmsStatistics.forMonth(new ArrayList<>(), 2028,
+                Calendar.FEBRUARY, UTC).size());
+        assertEquals(30, SmsStatistics.forMonth(new ArrayList<>(), 2026,
+                Calendar.APRIL, UTC).size());
+        assertEquals(31, SmsStatistics.forMonth(new ArrayList<>(), 2026,
+                Calendar.DECEMBER, UTC).size());
+    }
+
+    @Test public void emptyCalendarMonthIsReportedWithoutLosingItsDays() {
+        List<SmsStatistics.DailyCount> month = SmsStatistics.forMonth(
+                Arrays.asList(sms(2026, 9, 21, 8)), 2026, Calendar.OCTOBER, UTC);
+        assertEquals(31, month.size());
+        assertEquals(false, SmsStatistics.hasActivity(month));
+    }
+
+    @Test public void adjacentMonthsAcrossYearBoundaryRemainIndependent() {
+        List<SmsMessage> messages = Arrays.asList(
+                sms(2026, 12, 31, 23), sms(2027, 1, 1, 1));
+        List<SmsStatistics.DailyCount> december = SmsStatistics.forMonth(
+                messages, 2026, Calendar.DECEMBER, UTC);
+        List<SmsStatistics.DailyCount> january = SmsStatistics.forMonth(
+                messages, 2027, Calendar.JANUARY, UTC);
+        assertEquals(1, december.get(30).count);
+        assertEquals(1, january.get(0).count);
+    }
+
     private static void add(List<SmsMessage> messages, int count, int day) {
         for (int index = 0; index < count; index++) messages.add(sms(2026, 9, day, index));
     }
