@@ -23,9 +23,10 @@ import java.util.Locale;
 /** Vertical daily bar chart: X is the local date and Y is the number of SMS. */
 public final class StatisticsChartView extends View {
     private static final int TARGET_TICK_COUNT = 5;
-    private static final int SLOT_WIDTH_DP = 72;
-    private static final int BAR_WIDTH_DP = 30;
-    private static final int CHART_HEIGHT_DP = 300;
+    // A fixed slot keeps bars visually consistent and shows roughly 5–7 days on a phone.
+    static final int SLOT_WIDTH_DP = 48;
+    static final int BAR_WIDTH_DP = 22;
+    private static final int CHART_HEIGHT_DP = 232;
 
     private final float density;
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -137,15 +138,16 @@ public final class StatisticsChartView extends View {
 
         float chartLeft = getPaddingLeft() + dp(54);
         float chartRight = getWidth() - getPaddingRight() - dp(8);
-        float chartTop = getPaddingTop() + dp(50);
-        float chartBottom = getHeight() - getPaddingBottom() - dp(48);
+        float chartTop = getPaddingTop() + dp(43);
+        float chartBottom = getHeight() - getPaddingBottom() - dp(43);
         float chartHeight = Math.max(1, chartBottom - chartTop);
 
-        textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_primary));
-        textPaint.setFakeBoldText(true);
-        textPaint.setTextAlign(Paint.Align.LEFT);
-        canvas.drawText("Nombre de SMS", chartLeft, getPaddingTop() + dp(20), textPaint);
+        textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_secondary));
+        textPaint.setTextSize(11 * getResources().getDisplayMetrics().scaledDensity);
         textPaint.setFakeBoldText(false);
+        textPaint.setTextAlign(Paint.Align.LEFT);
+        canvas.drawText("Nombre de SMS", chartLeft, getPaddingTop() + dp(17), textPaint);
+        textPaint.setTextSize(12 * getResources().getDisplayMetrics().scaledDensity);
 
         int intervals = Math.max(1, (int) (scaleMaximum / tickStep));
         for (int tick = 0; tick <= intervals; tick++) {
@@ -197,7 +199,15 @@ public final class StatisticsChartView extends View {
 
     private float maximumOffset() {
         float viewportWidth = getWidth() - getPaddingLeft() - getPaddingRight() - dp(62);
-        return Math.max(0, data.size() * dp(SLOT_WIDTH_DP) - Math.max(0, viewportWidth));
+        return maximumOffsetDp(data.size(), viewportWidth / density) * density;
+    }
+
+    static float contentWidthDp(int dateCount) {
+        return Math.max(0, dateCount) * SLOT_WIDTH_DP;
+    }
+
+    static float maximumOffsetDp(int dateCount, float viewportWidthDp) {
+        return Math.max(0, contentWidthDp(dateCount) - Math.max(0, viewportWidthDp));
     }
 
     private String buildDescription() {

@@ -260,12 +260,12 @@
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_statistics_card"
                     android:elevation="1dp"
-                    android:minHeight="240dp">
+                    android:minHeight="220dp">
 
                     <com.example.testapp.StatisticsChartView
                         android:id="@+id/statisticsChart"
                         android:layout_width="match_parent"
-                        android:layout_height="300dp"
+                        android:layout_height="232dp"
                         android:paddingStart="4dp"
                         android:paddingTop="4dp"
                         android:paddingEnd="4dp"
@@ -274,7 +274,7 @@
                     <TextView
                         android:id="@+id/statisticsEmptyText"
                         android:layout_width="match_parent"
-                        android:layout_height="240dp"
+                        android:layout_height="220dp"
                         android:gravity="center"
                         android:text="Aucune donnée statistique"
                         android:textColor="@color/sms_text_secondary"
