@@ -1,6 +1,7 @@
 package com.example.testapp;
 
 import android.Manifest;
+import android.app.DatePickerDialog;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.net.Uri;
@@ -57,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_SELECTED_SECTION = "selected_section";
     private static final String STATE_STATISTICS_YEAR = "statistics_year";
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
+    private static final String STATE_MESSAGE_FILTER = "message_filter";
+    private static final String STATE_CUSTOM_FILTER_DATE = "custom_filter_date";
     private static final int SECTION_MESSAGES = 0;
     private static final int SECTION_HOME = 1;
     private static final int SECTION_STATISTICS = 2;
@@ -91,6 +94,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView homeLabel;
     private ImageButton homeButton;
     private int selectedSection = SECTION_MESSAGES;
+    private SmsDateFilter.Period selectedMessageFilter = SmsDateFilter.Period.ALL;
+    private Long customFilterDate;
+    private TextView[] filterChips;
 
     private final ActivityResultLauncher<String> exportLauncher = registerForActivityResult(
             new ActivityResultContracts.CreateDocument("application/json"), uri -> {
@@ -125,6 +131,7 @@ public class MainActivity extends AppCompatActivity {
         backgroundExecutionText.setOnClickListener(view -> showBackgroundPermissionDialog(false));
         emptyText = findViewById(R.id.emptyText);
         loadingIndicator = findViewById(R.id.loadingIndicator);
+        configureMessageFilters(savedInstanceState);
         backupManager = new SmsBackupManager(this);
         findViewById(R.id.overflowButton).setOnClickListener(this::showOverflowMenu);
         messagesSection = findViewById(R.id.messagesSection);
@@ -226,7 +233,68 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_SELECTED_SECTION, selectedSection);
         outState.putInt(STATE_STATISTICS_YEAR, statisticsMonth.get(Calendar.YEAR));
         outState.putInt(STATE_STATISTICS_MONTH, statisticsMonth.get(Calendar.MONTH));
+        outState.putString(STATE_MESSAGE_FILTER, selectedMessageFilter.name());
+        if (customFilterDate != null) {
+            outState.putLong(STATE_CUSTOM_FILTER_DATE, customFilterDate);
+        }
         super.onSaveInstanceState(outState);
+    }
+
+    private void configureMessageFilters(Bundle savedInstanceState) {
+        filterChips = new TextView[]{findViewById(R.id.filterAll),
+                findViewById(R.id.filterToday), findViewById(R.id.filterYesterday),
+                findViewById(R.id.filterSevenDays), findViewById(R.id.filterThirtyDays),
+                findViewById(R.id.filterDate)};
+        if (savedInstanceState != null) {
+            String savedFilter = savedInstanceState.getString(STATE_MESSAGE_FILTER);
+            try {
+                if (savedFilter != null) selectedMessageFilter = SmsDateFilter.Period.valueOf(savedFilter);
+            } catch (IllegalArgumentException ignored) {
+                selectedMessageFilter = SmsDateFilter.Period.ALL;
+            }
+            if (savedInstanceState.containsKey(STATE_CUSTOM_FILTER_DATE)) {
+                customFilterDate = savedInstanceState.getLong(STATE_CUSTOM_FILTER_DATE);
+            }
+        }
+        filterChips[0].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.ALL));
+        filterChips[1].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.TODAY));
+        filterChips[2].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.YESTERDAY));
+        filterChips[3].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.SEVEN_DAYS));
+        filterChips[4].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.THIRTY_DAYS));
+        filterChips[5].setOnClickListener(view -> showDateFilterPicker());
+        updateFilterChips();
+    }
+
+    private void selectMessageFilter(SmsDateFilter.Period period) {
+        selectedMessageFilter = period;
+        if (period != SmsDateFilter.Period.CUSTOM_DATE) customFilterDate = null;
+        updateFilterChips();
+        renderState();
+    }
+
+    private void showDateFilterPicker() {
+        Calendar initial = Calendar.getInstance();
+        if (customFilterDate != null) initial.setTimeInMillis(customFilterDate);
+        new DatePickerDialog(this, (picker, year, month, day) -> {
+            Calendar selected = Calendar.getInstance();
+            selected.clear();
+            selected.set(year, month, day);
+            customFilterDate = selected.getTimeInMillis();
+            selectedMessageFilter = SmsDateFilter.Period.CUSTOM_DATE;
+            updateFilterChips();
+            renderState();
+        }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH),
+                initial.get(Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private void updateFilterChips() {
+        if (filterChips == null) return;
+        SmsDateFilter.Period[] periods = SmsDateFilter.Period.values();
+        for (int index = 0; index < filterChips.length; index++) {
+            filterChips[index].setSelected(selectedMessageFilter == periods[index]);
+        }
+        filterChips[5].setText(customFilterDate == null ? "Date"
+                : new SimpleDateFormat("dd/MM/yy", Locale.FRENCH).format(customFilterDate));
     }
 
     private void renderStatistics() {
@@ -551,15 +619,21 @@ public class MainActivity extends AppCompatActivity {
                 && backgroundExecutionManager.isBackgroundExecutionAllowed();
         backgroundExecutionText.setVisibility(backgroundAllowed ? View.GONE : View.VISIBLE);
         loadingIndicator.setVisibility(loading ? View.VISIBLE : View.GONE);
-        adapter.submitList(denied ? new ArrayList<>() : messages);
-        emptyText.setVisibility(!denied && !loading && messages.isEmpty()
+        List<SmsDateFilter.DisplayMessage> displayed = denied ? new ArrayList<>()
+                : SmsDateFilter.apply(messages, selectedMessageFilter, customFilterDate,
+                System.currentTimeMillis(), java.util.TimeZone.getDefault());
+        adapter.submitList(displayed);
+        boolean noDisplayedMessages = displayed.isEmpty();
+        emptyText.setText(selectedMessageFilter == SmsDateFilter.Period.ALL
+                ? "Aucun message enregistré" : "Aucun message pour cette période");
+        emptyText.setVisibility(!denied && !loading && noDisplayedMessages
                 ? View.VISIBLE : View.GONE);
     }
 
     private static class SmsAdapter extends RecyclerView.Adapter<SmsViewHolder> {
-        private List<SmsMessage> items = new ArrayList<>();
+        private List<SmsDateFilter.DisplayMessage> items = new ArrayList<>();
 
-        void submitList(List<SmsMessage> messages) {
+        void submitList(List<SmsDateFilter.DisplayMessage> messages) {
             items = new ArrayList<>(messages);
             notifyDataSetChanged();
         }
@@ -573,9 +647,9 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(SmsViewHolder holder, int position) {
-            SmsMessage item = items.get(position);
-            holder.number.setText(String.valueOf(
-                    SmsDisplayFormatter.listNumber(items.size(), position)));
+            SmsDateFilter.DisplayMessage displayed = items.get(position);
+            SmsMessage item = displayed.message;
+            holder.number.setText(String.valueOf(displayed.originalNumber));
             holder.sender.setText(SmsDisplayFormatter.sender(item.sender));
             holder.date.setText(new SimpleDateFormat("dd/MM/yy", Locale.FRENCH)
                     .format(item.receivedDate));
