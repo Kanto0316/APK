@@ -11,6 +11,7 @@ import android.os.Build;
 import android.text.InputType;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.text.method.DigitsKeyListener;
 import android.graphics.Typeface;
 import android.view.View;
 import android.widget.EditText;
@@ -215,9 +216,14 @@ public class MainActivity extends AppCompatActivity {
     private EditText depositInput(int inputType, String hint, String value) {
         EditText input = new EditText(this);
         input.setInputType(inputType);
+        if (inputType == InputType.TYPE_CLASS_NUMBER) {
+            // Keep a numeric keyboard while allowing the formatter (not the user) to display spaces.
+            input.setKeyListener(DigitsKeyListener.getInstance("0123456789 "));
+            input.setRawInputType(InputType.TYPE_CLASS_NUMBER);
+        }
         input.setHint(hint);
         input.setText(value);
-        input.setSelection(value.length());
+        input.setSelection(input.getText().length());
         int margin = (int) (24 * getResources().getDisplayMetrics().density);
         input.setPadding(margin, input.getPaddingTop(), margin, input.getPaddingBottom());
         return input;
@@ -260,11 +266,48 @@ public class MainActivity extends AppCompatActivity {
                 String display = formatter.format(edited);
                 int restoredCaret = positionAfterDigits(display, digitsBeforeCaret);
                 updating = true;
-                editable.replace(0, editable.length(), display);
-                input.setSelection(Math.min(restoredCaret, display.length()));
-                updating = false;
+                try {
+                    editable.replace(0, editable.length(), display);
+                    input.setSelection(clampSelection(restoredCaret, editable.length()));
+                } finally {
+                    updating = false;
+                }
             }
         });
+    }
+
+    /** Formats an amount independently from phone-number deletion rules. */
+    private void addAmountFormatter(EditText input) {
+        input.addTextChangedListener(new TextWatcher() {
+            private boolean formatting;
+
+            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) {}
+
+            @Override public void onTextChanged(CharSequence text, int start, int before, int count) {}
+
+            @Override public void afterTextChanged(Editable editable) {
+                if (formatting) return;
+
+                int selection = clampSelection(input.getSelectionStart(), editable.length());
+                int digitsBeforeSelection = countDigits(editable.toString(), selection);
+                String display = DepositUssd.formatAmountInput(editable.toString());
+                if (display.contentEquals(editable)) return;
+
+                formatting = true;
+                try {
+                    editable.replace(0, editable.length(), display);
+                    int restoredSelection = positionAfterDigits(
+                            editable.toString(), digitsBeforeSelection);
+                    input.setSelection(clampSelection(restoredSelection, editable.length()));
+                } finally {
+                    formatting = false;
+                }
+            }
+        });
+    }
+
+    private static int clampSelection(int selection, int textLength) {
+        return Math.max(0, Math.min(selection, textLength));
     }
 
     private static int countDigits(String value, int end) {
@@ -309,7 +352,7 @@ public class MainActivity extends AppCompatActivity {
     private void showAmountDialog(String recipientNumber, String amountValue) {
         EditText input = depositInput(InputType.TYPE_CLASS_NUMBER, "Montant",
                 DepositUssd.formatAmountInput(amountValue));
-        addDepositFormatter(input, DepositUssd::formatAmountInput);
+        addAmountFormatter(input);
         LinearLayout amountRow = new LinearLayout(this);
         amountRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
         amountRow.addView(input, new LinearLayout.LayoutParams(0,
