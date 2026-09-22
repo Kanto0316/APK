@@ -18,6 +18,40 @@ final class SmsStatistics {
         return groupByDate(messages, TimeZone.getDefault());
     }
 
+    /** Builds a continuous calendar month in one pass over the available messages. */
+    static List<DailyCount> forMonth(List<SmsMessage> messages, int year, int month,
+            TimeZone timeZone) {
+        Calendar day = Calendar.getInstance(timeZone);
+        day.clear();
+        day.set(year, month, 1);
+        int dayCount = day.getActualMaximum(Calendar.DAY_OF_MONTH);
+        int[] counts = new int[dayCount];
+
+        if (messages != null) {
+            Calendar received = Calendar.getInstance(timeZone);
+            for (SmsMessage message : messages) {
+                received.setTimeInMillis(message.receivedDate);
+                if (received.get(Calendar.YEAR) == year && received.get(Calendar.MONTH) == month) {
+                    counts[received.get(Calendar.DAY_OF_MONTH) - 1]++;
+                }
+            }
+        }
+
+        List<DailyCount> result = new ArrayList<>(dayCount);
+        for (int index = 0; index < dayCount; index++) {
+            day.set(Calendar.DAY_OF_MONTH, index + 1);
+            result.add(new DailyCount(day.getTimeInMillis(), counts[index]));
+        }
+        return result;
+    }
+
+    static boolean hasActivity(List<DailyCount> dailyCounts) {
+        for (DailyCount dailyCount : dailyCounts) {
+            if (dailyCount.count > 0) return true;
+        }
+        return false;
+    }
+
     static List<DailyCount> groupByDate(List<SmsMessage> messages, TimeZone timeZone) {
         if (messages == null || messages.isEmpty()) return Collections.emptyList();
 

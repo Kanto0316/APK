@@ -80,12 +80,17 @@ public final class StatisticsChartView extends View {
     }
 
     void setData(List<SmsStatistics.DailyCount> dailyCounts) {
+        setData(dailyCounts, 0);
+    }
+
+    void setData(List<SmsStatistics.DailyCount> dailyCounts, int firstVisibleIndex) {
         data = dailyCounts == null ? new ArrayList<>() : new ArrayList<>(dailyCounts);
         int maximum = 1;
         for (SmsStatistics.DailyCount item : data) maximum = Math.max(maximum, item.count);
         tickStep = readableStep(maximum);
         scaleMaximum = readableMaximum(maximum);
-        horizontalOffset = Math.min(horizontalOffset, maximumOffset());
+        horizontalOffset = Math.max(0, Math.min(dp(SLOT_WIDTH_DP) * firstVisibleIndex,
+                maximumOffset()));
         setContentDescription(buildDescription());
         invalidate();
     }
@@ -170,15 +175,16 @@ public final class StatisticsChartView extends View {
             SmsStatistics.DailyCount item = data.get(index);
             float centerX = chartLeft + leadingSpace + dp(SLOT_WIDTH_DP) * (index + 0.5f)
                     - horizontalOffset;
-            float barTop = chartBottom - chartHeight * item.count / scaleMaximum;
-            RectF bar = new RectF(centerX - dp(BAR_WIDTH_DP) / 2f, barTop,
-                    centerX + dp(BAR_WIDTH_DP) / 2f, chartBottom);
-            canvas.drawRoundRect(bar, dp(4), dp(4), barPaint);
-
-            textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_primary));
-            textPaint.setFakeBoldText(true);
-            textPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText(numberFormat.format(item.count), centerX, barTop - dp(7), textPaint);
+            if (item.count > 0) {
+                float barTop = chartBottom - chartHeight * item.count / scaleMaximum;
+                RectF bar = new RectF(centerX - dp(BAR_WIDTH_DP) / 2f, barTop,
+                        centerX + dp(BAR_WIDTH_DP) / 2f, chartBottom);
+                canvas.drawRoundRect(bar, dp(4), dp(4), barPaint);
+                textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_primary));
+                textPaint.setFakeBoldText(true);
+                textPaint.setTextAlign(Paint.Align.CENTER);
+                canvas.drawText(numberFormat.format(item.count), centerX, barTop - dp(7), textPaint);
+            }
             textPaint.setFakeBoldText(false);
             textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_secondary));
             canvas.drawText(shortDateFormat.format(new Date(item.localDayTimestamp)), centerX,
