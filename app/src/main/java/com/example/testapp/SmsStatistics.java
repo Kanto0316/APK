@@ -102,10 +102,15 @@ final class SmsStatistics {
         for (Map.Entry<Long, Long> entry : selectedMonthBonusByDay.entrySet()) {
             result.monthlyBonus.add(new DailyCount(entry.getKey(), entry.getValue()));
         }
+        result.monthlyTransactions.addAll(groupTransactionsByDay(parsedTransactions,
+                selectedYear, selectedMonth, timeZone));
         result.monthlyUsers.addAll(getDistinctUsersPerDay(parsedTransactions, selectedYear,
                 selectedMonth, timeZone));
         if (sum(result.monthlyBonus) != result.monthBonus) {
             throw new IllegalStateException("Le total bonus mensuel diffère du graphique");
+        }
+        if (sum(result.monthlyTransactions) != result.monthTransactions) {
+            throw new IllegalStateException("Le total mensuel des transactions diffère du graphique");
         }
         return result;
     }
@@ -162,6 +167,26 @@ final class SmsStatistics {
         return result;
     }
 
+    /** Groups every valid parsed transaction in the selected month by its business day. */
+    private static List<DailyCount> groupTransactionsByDay(
+            List<ParsedBusinessTransaction> transactions, int year, int month,
+            TimeZone timeZone) {
+        Calendar date = Calendar.getInstance(timeZone);
+        Map<Long, Long> transactionsByDay = new TreeMap<>();
+        for (ParsedBusinessTransaction parsed : transactions) {
+            date.setTimeInMillis(parsed.timestamp);
+            if (date.get(Calendar.YEAR) != year || date.get(Calendar.MONTH) != month) continue;
+            startOfDay(date);
+            long day = date.getTimeInMillis();
+            transactionsByDay.put(day, transactionsByDay.getOrDefault(day, 0L) + 1);
+        }
+        List<DailyCount> result = new ArrayList<>(transactionsByDay.size());
+        for (Map.Entry<Long, Long> entry : transactionsByDay.entrySet()) {
+            result.add(new DailyCount(entry.getKey(), entry.getValue()));
+        }
+        return result;
+    }
+
     private static final class ParsedBusinessTransaction {
         final MvolaMessageParser.ParsedTransaction transaction;
         final long timestamp;
@@ -186,6 +211,8 @@ final class SmsStatistics {
         final List<DailyCount> monthlyBonus = new ArrayList<>();
         /** Distinct normalized client numbers per business day in the selected month. */
         final List<DailyCount> monthlyUsers = new ArrayList<>();
+        /** All valid parsed transactions per business day in the selected month. */
+        final List<DailyCount> monthlyTransactions = new ArrayList<>();
 
         private void add(MvolaMessageParser.ParsedTransaction transaction, boolean today,
                          boolean yesterday, boolean week, boolean month, boolean year) {
