@@ -532,8 +532,14 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout choices = new LinearLayout(this);
         choices.setOrientation(LinearLayout.VERTICAL);
         int horizontalPadding = (int) (24 * getResources().getDisplayMetrics().density);
-        addWithdrawalFeeChoice(choices, "1    Oui");
-        addWithdrawalFeeChoice(choices, "2    Non");
+        String formattedAmount = DepositUssd.formatAmount(String.valueOf(originalAmount));
+        Long withdrawalFee = DepositUssd.calculateWithdrawalFee(originalAmount);
+        String formattedFee = withdrawalFee == null
+                ? "indisponibles"
+                : DepositUssd.formatAmount(String.valueOf(withdrawalFee));
+        addWithdrawalFeeChoice(choices,
+                "1    Oui, (" + formattedAmount + " + Frais " + formattedFee + ")");
+        addWithdrawalFeeChoice(choices, "2    Non, " + formattedAmount);
 
         EditText choiceInput = new EditText(this);
         choiceInput.setHint("1 ou 2");
