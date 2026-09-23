@@ -4,6 +4,8 @@ import java.math.BigInteger;
 
 /** Pure validation and formatting helpers for the transient deposit workflow. */
 final class DepositUssd {
+    static final long MAX_INPUT_AMOUNT = 2_000_000L;
+
     private DepositUssd() {}
 
     static String normalizeRecipientNumber(String input) {
@@ -40,7 +42,10 @@ final class DepositUssd {
         if (originalAmount <= 25_000 && originalAmount >= 20_001) return 650L;
         if (originalAmount <= 50_000 && originalAmount >= 25_001) return 1_300L;
         if (originalAmount <= 100_000 && originalAmount >= 50_001) return 1_900L;
-        if (originalAmount <= 200_000 && originalAmount >= 100_001) return 3_400L;
+        if (originalAmount <= 250_000 && originalAmount >= 100_001) return 3_400L;
+        if (originalAmount <= 500_000 && originalAmount >= 250_001) return 4_700L;
+        if (originalAmount <= 1_000_000 && originalAmount >= 500_001) return 8_800L;
+        if (originalAmount <= MAX_INPUT_AMOUNT && originalAmount >= 1_000_001) return 14_700L;
         return null;
     }
 
@@ -84,6 +89,22 @@ final class DepositUssd {
             display.insert(index, ' ');
         }
         return display.toString();
+    }
+
+    /**
+     * Cleans, bounds and formats an amount edit in one place. If the edit exceeds the input
+     * ceiling (including an over-sized paste), the last valid display value is returned.
+     */
+    static String formatBoundedAmountInput(String input, String lastValidDisplay) {
+        String display = formatAmountInput(input);
+        if (display.isEmpty()) return display;
+        String normalized = display.replace(" ", "");
+        return new BigInteger(normalized).compareTo(BigInteger.valueOf(MAX_INPUT_AMOUNT)) <= 0
+                ? display : lastValidDisplay;
+    }
+
+    static boolean isAllowedInputAmount(long amount) {
+        return amount <= MAX_INPUT_AMOUNT;
     }
 
     private static String groupDigits(String digits, int[] groups) {

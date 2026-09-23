@@ -53,6 +53,7 @@ public class DepositUssdTest {
         assertEquals("20 000", DepositUssd.formatAmountInput("20 000"));
         assertEquals("100 000", DepositUssd.formatAmountInput("100000"));
         assertEquals("1 000 000", DepositUssd.formatAmountInput("1000000"));
+        assertEquals("2 000 000", DepositUssd.formatAmountInput("2000000"));
     }
 
     @Test public void formatsAmountPasteAndProgressiveDeletionSafely() {
@@ -87,8 +88,36 @@ public class DepositUssdTest {
         assertEquals(Long.valueOf(1900), DepositUssd.calculateWithdrawalFee(50001));
         assertEquals(Long.valueOf(1900), DepositUssd.calculateWithdrawalFee(100000));
         assertEquals(Long.valueOf(3400), DepositUssd.calculateWithdrawalFee(100001));
-        assertEquals(Long.valueOf(3400), DepositUssd.calculateWithdrawalFee(200000));
-        assertNull(DepositUssd.calculateWithdrawalFee(200001));
+        assertEquals(Long.valueOf(3400), DepositUssd.calculateWithdrawalFee(250000));
+        assertEquals(Long.valueOf(4700), DepositUssd.calculateWithdrawalFee(250001));
+        assertEquals(Long.valueOf(4700), DepositUssd.calculateWithdrawalFee(500000));
+        assertEquals(Long.valueOf(8800), DepositUssd.calculateWithdrawalFee(500001));
+        assertEquals(Long.valueOf(8800), DepositUssd.calculateWithdrawalFee(1000000));
+        assertEquals(Long.valueOf(14700), DepositUssd.calculateWithdrawalFee(1000001));
+        assertEquals(Long.valueOf(14700), DepositUssd.calculateWithdrawalFee(1999999));
+        assertEquals(Long.valueOf(14700), DepositUssd.calculateWithdrawalFee(2000000));
+        assertNull(DepositUssd.calculateWithdrawalFee(2000001));
+    }
+
+    @Test public void boundsAmountEditingAndPreservesTheLastValidValue() {
+        assertEquals("1 999 999", DepositUssd.formatBoundedAmountInput("1999999", ""));
+        assertEquals("2 000 000", DepositUssd.formatBoundedAmountInput("2000000", ""));
+        assertEquals("2 000 000",
+                DepositUssd.formatBoundedAmountInput("20000001", "2 000 000"));
+        assertEquals("2 000 000",
+                DepositUssd.formatBoundedAmountInput("2000001", "2 000 000"));
+        assertEquals("250 000",
+                DepositUssd.formatBoundedAmountInput("2500000", "250 000"));
+        assertEquals("250 000",
+                DepositUssd.formatBoundedAmountInput("9999999", "250 000"));
+        assertEquals("", DepositUssd.formatBoundedAmountInput("", "2 000 000"));
+    }
+
+    @Test public void finalAmountMayExceedInputCeilingAfterAddingFees() {
+        assertEquals(2_014_700,
+                DepositUssd.calculateFinalAmount(DepositUssd.MAX_INPUT_AMOUNT, true));
+        assertEquals("#111*1*2*0341411058*1*2014700#",
+                DepositUssd.buildUssdCode("0341411058", "2014700"));
     }
 
     @Test public void finalAmountIsDerivedOnceFromOriginalAmount() {

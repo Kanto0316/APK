@@ -355,6 +355,8 @@ public class MainActivity extends AppCompatActivity {
     private void addAmountFormatter(EditText input) {
         input.addTextChangedListener(new TextWatcher() {
             private boolean formatting;
+            private String lastValidDisplay = DepositUssd.formatBoundedAmountInput(
+                    input.getText().toString(), "");
 
             @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) {}
 
@@ -365,7 +367,13 @@ public class MainActivity extends AppCompatActivity {
 
                 int selection = clampSelection(input.getSelectionStart(), editable.length());
                 int digitsBeforeSelection = countDigits(editable.toString(), selection);
-                String display = DepositUssd.formatAmountInput(editable.toString());
+                String edited = editable.toString();
+                String display = DepositUssd.formatBoundedAmountInput(edited, lastValidDisplay);
+                boolean limitExceeded = !display.equals(DepositUssd.formatAmountInput(edited));
+                if (!limitExceeded) {
+                    lastValidDisplay = display;
+                    input.setError(null);
+                }
                 if (display.contentEquals(editable)) return;
 
                 formatting = true;
@@ -374,6 +382,9 @@ public class MainActivity extends AppCompatActivity {
                     int restoredSelection = positionAfterDigits(
                             editable.toString(), digitsBeforeSelection);
                     input.setSelection(clampSelection(restoredSelection, editable.length()));
+                    if (limitExceeded && input.getError() == null) {
+                        input.setError("Montant maximum : 2 000 000 Ar");
+                    }
                 } finally {
                     formatting = false;
                 }
@@ -492,6 +503,10 @@ public class MainActivity extends AppCompatActivity {
                         originalAmount = Long.parseLong(normalizedAmount);
                     } catch (NumberFormatException error) {
                         input.setError("Montant trop élevé");
+                        return;
+                    }
+                    if (!DepositUssd.isAllowedInputAmount(originalAmount)) {
+                        input.setError("Montant maximum : 2 000 000 Ar");
                         return;
                     }
                     dialog.dismiss();
