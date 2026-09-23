@@ -63,6 +63,10 @@ public class SmsReceiver extends BroadcastReceiver {
             String sender = first.getDisplayOriginatingAddress();
             long receivedAt = first.getTimestampMillis();
             String body = completeBody.toString();
+            // Parse exactly once at the reception boundary. The same immutable result is passed
+            // to the presentation coordinator after Room has accepted the SMS.
+            MvolaMessageParser.ParsedTransaction parsedTransaction =
+                    MvolaMessageParser.parse(body);
             Log.d(TAG, "SMS extrait ; date=" + receivedAt + ", longueur=" + body.length());
 
             com.example.testapp.database.SmsMessage localMessage =
@@ -81,6 +85,10 @@ public class SmsReceiver extends BroadcastReceiver {
                             Log.i(TAG, "SMS enregistré Room");
                             Log.i(TAG, "Insertion Room réussie ; rowId=" + rowId + " ("
                                     + parts.length + " segment(s))");
+                            if (parsedTransaction != null) {
+                                com.example.testapp.overlay.TransactionOverlayCoordinator
+                                        .get(appContext).show(parsedTransaction);
+                            }
                         }
                     } else {
                         Log.e(TAG, "Échec exact de l'insertion Room : " + error, error);

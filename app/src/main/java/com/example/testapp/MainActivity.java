@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.net.Uri;
+import android.provider.Settings;
 import android.os.Bundle;
 import android.os.Build;
 import android.text.InputType;
@@ -43,6 +44,7 @@ import com.example.testapp.database.AppDatabase;
 import com.example.testapp.backup.SmsBackupManager;
 import com.example.testapp.background.BackgroundExecutionManager;
 import com.example.testapp.history.HistoryTransaction;
+import com.example.testapp.overlay.TransactionOverlayCoordinator;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -188,6 +190,18 @@ public class MainActivity extends AppCompatActivity {
     private boolean launchDepositAfterPermission;
     private boolean depositCallLaunched;
     private String pendingUssdCode;
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        TransactionOverlayCoordinator.get(this).attach(this);
+    }
+
+    @Override
+    protected void onStop() {
+        TransactionOverlayCoordinator.get(this).detach(this);
+        super.onStop();
+    }
 
     private final ActivityResultLauncher<String> exportLauncher = registerForActivityResult(
             new ActivityResultContracts.CreateDocument("application/json"), uri -> {
@@ -1339,7 +1353,35 @@ public class MainActivity extends AppCompatActivity {
             launchExport();
             return true;
         });
+        menu.getMenu().add("Affichage au-dessus des applications")
+                .setOnMenuItemClickListener(item -> {
+                    showOverlayPermissionDialog();
+                    return true;
+                });
         menu.show();
+    }
+
+    private void showOverlayPermissionDialog() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "L’affichage au-dessus des applications est autorisé.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Afficher les transactions")
+                .setMessage("Autoriser l’affichage des transactions au-dessus des autres "
+                        + "applications.")
+                .setNegativeButton("Annuler", null)
+                .setPositiveButton("Ouvrir les réglages", (dialog, which) -> {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:" + getPackageName()));
+                    try {
+                        startActivity(intent);
+                    } catch (android.content.ActivityNotFoundException exception) {
+                        startActivity(new Intent(Settings.ACTION_SETTINGS));
+                    }
+                })
+                .show();
     }
 
     private void launchImport() {
@@ -1490,6 +1532,10 @@ public class MainActivity extends AppCompatActivity {
     private void requestRequiredPermissions() {
         List<String> missing = new ArrayList<>();
         if (!hasPermission(Manifest.permission.RECEIVE_SMS)) missing.add(Manifest.permission.RECEIVE_SMS);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && !hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
+            missing.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
                 && !hasPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             missing.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
