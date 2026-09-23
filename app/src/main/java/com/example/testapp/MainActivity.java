@@ -113,6 +113,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView statisticsBonusTab;
     private TextView statisticsTransactionTab;
     private TextView bonusMonthText;
+    private TextView transactionMonthText;
+    private TextView transactionMonthLabel;
+    private TextView transactionYearLabel;
     private int selectedStatisticsTab = STATISTICS_TAB_BONUS;
     // Static placeholders only; user counting criteria will be defined in a future version.
     private long todayUsers = 0;
@@ -126,11 +129,15 @@ public class MainActivity extends AppCompatActivity {
     private long weekBonus = 0;
     private long monthBonus = 0;
     private long yearBonus = 0;
-    // UI-only placeholders: a successful transaction definition will be added later.
-    private long totalTransactions = 0;
-    private long depositTransactions = 0;
-    private long creditTransactions = 0;
-    private long offerTransactions = 0;
+    // UI-only placeholders ready for the future transaction statistics layer.
+    private long todayTransactions = 0;
+    private long yesterdayTransactions = 0;
+    private long weekTransactions = 0;
+    private long monthlyTransactions = 0;
+    private long yearlyTransactions = 0;
+    private long todayDepositTransactions = 0;
+    private long todayCreditTransactions = 0;
+    private long todayOfferTransactions = 0;
     private TextView homeLabel;
     private ImageButton homeButton;
     private int selectedSection = SECTION_MESSAGES;
@@ -204,6 +211,9 @@ public class MainActivity extends AppCompatActivity {
         statisticsSubtitle = findViewById(R.id.statisticsSubtitle);
         statisticsMonthText = findViewById(R.id.statisticsMonthText);
         bonusMonthText = findViewById(R.id.bonusMonthText);
+        transactionMonthText = findViewById(R.id.transactionMonthText);
+        transactionMonthLabel = findViewById(R.id.transactionMonthLabel);
+        transactionYearLabel = findViewById(R.id.transactionYearLabel);
         userStatisticsContent = findViewById(R.id.userStatisticsContent);
         bonusStatisticsContent = findViewById(R.id.bonusStatisticsContent);
         transactionStatisticsContent = findViewById(R.id.transactionStatisticsContent);
@@ -224,6 +234,8 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.statisticsNextMonth).setOnClickListener(view -> changeMonth(1));
         findViewById(R.id.bonusPreviousMonth).setOnClickListener(view -> changeMonth(-1));
         findViewById(R.id.bonusNextMonth).setOnClickListener(view -> changeMonth(1));
+        findViewById(R.id.transactionPreviousMonth).setOnClickListener(view -> changeMonth(-1));
+        findViewById(R.id.transactionNextMonth).setOnClickListener(view -> changeMonth(1));
         statisticsBonusTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_BONUS));
         statisticsUserTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_USER));
         statisticsTransactionTab.setOnClickListener(
@@ -795,6 +807,7 @@ public class MainActivity extends AppCompatActivity {
         statisticsMonthText.setText(monthLabel.substring(0, 1).toUpperCase(Locale.FRENCH)
                 + monthLabel.substring(1));
         bonusMonthText.setText(statisticsMonthText.getText());
+        transactionMonthText.setText(statisticsMonthText.getText());
         if (selectedStatisticsTab == STATISTICS_TAB_BONUS) renderBonusValues();
         else if (selectedStatisticsTab == STATISTICS_TAB_USER) renderUserValues();
         else renderTransactionValues();
@@ -841,13 +854,36 @@ public class MainActivity extends AppCompatActivity {
 
     private void renderTransactionValues() {
         ((TextView) findViewById(R.id.totalTransactionsValue))
-                .setText(String.valueOf(totalTransactions));
+                .setText(String.valueOf(todayTransactions));
         ((TextView) findViewById(R.id.depositTransactionsValue))
-                .setText(String.valueOf(depositTransactions));
+                .setText(String.valueOf(todayDepositTransactions));
         ((TextView) findViewById(R.id.creditTransactionsValue))
-                .setText(String.valueOf(creditTransactions));
+                .setText(String.valueOf(todayCreditTransactions));
         ((TextView) findViewById(R.id.offerTransactionsValue))
-                .setText(String.valueOf(offerTransactions));
+                .setText(String.valueOf(todayOfferTransactions));
+        ((TextView) findViewById(R.id.yesterdayTransactionsValue))
+                .setText(String.valueOf(yesterdayTransactions));
+        ((TextView) findViewById(R.id.weekTransactionsValue))
+                .setText(String.valueOf(weekTransactions));
+        ((TextView) findViewById(R.id.monthlyTransactionsValue))
+                .setText(String.valueOf(monthlyTransactions));
+        ((TextView) findViewById(R.id.yearlyTransactionsValue))
+                .setText(String.valueOf(yearlyTransactions));
+
+        Calendar currentMonth = Calendar.getInstance();
+        boolean showingCurrentMonth = statisticsMonth.get(Calendar.YEAR)
+                == currentMonth.get(Calendar.YEAR)
+                && statisticsMonth.get(Calendar.MONTH) == currentMonth.get(Calendar.MONTH);
+        if (showingCurrentMonth) {
+            transactionMonthLabel.setText("CE MOIS");
+            transactionYearLabel.setText("CETTE ANNÉE");
+        } else {
+            String selectedMonth = new SimpleDateFormat("MMMM yyyy", Locale.FRENCH)
+                    .format(statisticsMonth.getTime()).toUpperCase(Locale.FRENCH);
+            transactionMonthLabel.setText(selectedMonth);
+            transactionYearLabel.setText(String.format(Locale.FRENCH, "ANNÉE %d",
+                    statisticsMonth.get(Calendar.YEAR)));
+        }
     }
 
     private String formatAriary(long value) {

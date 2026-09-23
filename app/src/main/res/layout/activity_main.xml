@@ -463,6 +463,71 @@
                             <TextView android:id="@+id/offerTransactionsValue" style="@style/UserSecondaryValue" />
                         </LinearLayout>
                     </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+                        <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginEnd="6dp">
+                            <TextView style="@style/BonusPeriodLabel" android:text="HIER" />
+                            <TextView android:id="@+id/yesterdayTransactionsValue" style="@style/UserSecondaryValue" />
+                        </LinearLayout>
+                        <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginStart="6dp">
+                            <TextView style="@style/BonusPeriodLabel" android:text="CETTE SEMAINE" />
+                            <TextView android:id="@+id/weekTransactionsValue" style="@style/UserSecondaryValue" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+                        <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginEnd="6dp">
+                            <TextView android:id="@+id/transactionMonthLabel" style="@style/BonusPeriodLabel" android:text="CE MOIS" />
+                            <TextView android:id="@+id/monthlyTransactionsValue" style="@style/UserSecondaryValue" />
+                        </LinearLayout>
+                        <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginStart="6dp">
+                            <TextView android:id="@+id/transactionYearLabel" style="@style/BonusPeriodLabel" android:text="CETTE ANNÉE" />
+                            <TextView android:id="@+id/yearlyTransactionsValue" style="@style/UserSecondaryValue" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/bg_statistics_card"
+                        android:elevation="1dp"
+                        android:orientation="vertical">
+                        <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="12dp" android:paddingEnd="12dp">
+                            <TextView android:id="@+id/transactionPreviousMonth" style="@style/StatisticsMonthButton" android:contentDescription="Mois transaction précédent" android:text="‹" />
+                            <TextView android:id="@+id/transactionMonthText" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textColor="@color/sms_text_primary" android:textSize="17sp" android:textStyle="bold" />
+                            <TextView android:id="@+id/transactionNextMonth" style="@style/StatisticsMonthButton" android:contentDescription="Mois transaction suivant" android:text="›" />
+                        </LinearLayout>
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="232dp">
+                            <com.example.testapp.StatisticsChartView
+                                android:id="@+id/transactionChart"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:visibility="gone" />
+                            <TextView
+                                android:id="@+id/emptyTransactionChartText"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:gravity="center"
+                                android:padding="20dp"
+                                android:text="Aucune donnée de transaction pour ce mois"
+                                android:textAlignment="center"
+                                android:textColor="@color/sms_text_secondary"
+                                android:textSize="15sp" />
+                        </FrameLayout>
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
         </ScrollView>
