@@ -9,4 +9,6 @@
     <dimen name="sms_column_name_width">140dp</dimen>
     <dimen name="sms_column_money_width">110dp</dimen>
     <dimen name="sms_column_reference_width">110dp</dimen>
+    <!-- Client detail uses only the five requested columns. -->
+    <dimen name="client_table_width">512dp</dimen>
 </resources>
