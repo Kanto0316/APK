@@ -247,6 +247,55 @@
             </LinearLayout>
         </ScrollView>
 
+        <!--
+            History is intentionally UI-only for now. The hidden list is ready to receive
+            dated transaction rows once a data source is defined; no existing SMS or
+            transaction source is connected to it.
+        -->
+        <FrameLayout
+            android:id="@+id/historySection"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/historyList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingStart="20dp"
+                android:paddingTop="20dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="20dp"
+                android:scrollbars="vertical"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/historyEmptyState"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="24dp">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_history_24"
+                    android:tint="@color/sms_text_secondary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center"
+                    android:text="Aucun historique de transaction"
+                    android:textColor="@color/sms_text_secondary"
+                    android:textSize="15sp" />
+            </LinearLayout>
+        </FrameLayout>
+
         <ScrollView
             android:id="@+id/statisticsSection"
             android:layout_width="match_parent"
@@ -556,7 +605,7 @@
             <TextView android:id="@+id/bottomMessages" style="@style/SmsBottomNavigationItem.Active" android:drawableTop="@drawable/ic_sms_24" android:text="Messages" />
             <TextView android:id="@+id/bottomImport" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_file_download_24" android:text="Importer" />
             <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1.2" />
-            <TextView android:id="@+id/bottomExport" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_file_upload_24" android:text="Exporter" />
+            <TextView android:id="@+id/bottomHistory" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_history_24" android:text="Historique" />
             <TextView android:id="@+id/bottomStatistics" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_bar_chart_24" android:text="Statistiques" />
         </LinearLayout>
 

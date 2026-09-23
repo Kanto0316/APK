@@ -74,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int SECTION_MESSAGES = 0;
     private static final int SECTION_HOME = 1;
     private static final int SECTION_STATISTICS = 2;
+    private static final int SECTION_HISTORY = 3;
     private static final int STATISTICS_TAB_BONUS = 0;
     private static final int STATISTICS_TAB_USER = 1;
     private static final int STATISTICS_TAB_TRANSACTION = 2;
@@ -100,8 +101,10 @@ public class MainActivity extends AppCompatActivity {
     private boolean firstResume = true;
     private View messagesSection;
     private View homeSection;
+    private View historySection;
     private View statisticsSection;
     private TextView messagesNavigationItem;
+    private TextView historyNavigationItem;
     private TextView statisticsNavigationItem;
     private TextView statisticsSubtitle;
     private TextView statisticsMonthText;
@@ -207,8 +210,10 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.overflowButton).setOnClickListener(this::showOverflowMenu);
         messagesSection = findViewById(R.id.messagesSection);
         homeSection = findViewById(R.id.homeSection);
+        historySection = findViewById(R.id.historySection);
         statisticsSection = findViewById(R.id.statisticsSection);
         messagesNavigationItem = findViewById(R.id.bottomMessages);
+        historyNavigationItem = findViewById(R.id.bottomHistory);
         statisticsNavigationItem = findViewById(R.id.bottomStatistics);
         depositCard = findViewById(R.id.cardDeposit);
         depositCard.setOnClickListener(view -> showRecipientDialog("", ""));
@@ -259,7 +264,7 @@ public class MainActivity extends AppCompatActivity {
         messagesNavigationItem.setOnClickListener(view -> showSection(SECTION_MESSAGES));
         findViewById(R.id.bottomImport).setOnClickListener(view -> launchImport());
         homeButton.setOnClickListener(view -> showSection(SECTION_HOME));
-        findViewById(R.id.bottomExport).setOnClickListener(view -> launchExport());
+        historyNavigationItem.setOnClickListener(view -> showSection(SECTION_HISTORY));
         statisticsNavigationItem.setOnClickListener(view -> {
             selectStatisticsTab(STATISTICS_TAB_BONUS);
             showSection(SECTION_STATISTICS);
@@ -865,9 +870,11 @@ public class MainActivity extends AppCompatActivity {
         selectedSection = section;
         boolean messagesSelected = section == SECTION_MESSAGES;
         boolean homeSelected = section == SECTION_HOME;
+        boolean historySelected = section == SECTION_HISTORY;
         boolean statisticsSelected = section == SECTION_STATISTICS;
         messagesSection.setVisibility(messagesSelected ? View.VISIBLE : View.GONE);
         homeSection.setVisibility(homeSelected ? View.VISIBLE : View.GONE);
+        historySection.setVisibility(historySelected ? View.VISIBLE : View.GONE);
         statisticsSection.setVisibility(statisticsSelected ? View.VISIBLE : View.GONE);
 
         int active = ContextCompat.getColor(this, R.color.sms_bottom_item_active);
@@ -875,6 +882,9 @@ public class MainActivity extends AppCompatActivity {
         messagesNavigationItem.setTextColor(messagesSelected ? active : inactive);
         messagesNavigationItem.setCompoundDrawableTintList(
                 ColorStateList.valueOf(messagesSelected ? active : inactive));
+        historyNavigationItem.setTextColor(historySelected ? active : inactive);
+        historyNavigationItem.setCompoundDrawableTintList(
+                ColorStateList.valueOf(historySelected ? active : inactive));
         statisticsNavigationItem.setTextColor(statisticsSelected ? active : inactive);
         statisticsNavigationItem.setCompoundDrawableTintList(
                 ColorStateList.valueOf(statisticsSelected ? active : inactive));
@@ -885,6 +895,7 @@ public class MainActivity extends AppCompatActivity {
                 ? R.drawable.bg_refresh_button : R.drawable.bg_home_button_inactive);
         homeButton.setSelected(homeSelected);
         messagesNavigationItem.setSelected(messagesSelected);
+        historyNavigationItem.setSelected(historySelected);
         statisticsNavigationItem.setSelected(statisticsSelected);
         if (statisticsSelected) renderStatistics();
     }
