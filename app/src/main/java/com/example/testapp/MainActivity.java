@@ -70,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
     private static final String STATE_STATISTICS_TAB = "statistics_tab";
     private static final String STATE_MESSAGE_FILTER = "message_filter";
+    private static final String STATE_MESSAGE_QUERY = "message_query";
     private static final String STATE_CUSTOM_FILTER_DATE = "custom_filter_date";
     private static final String STATE_CLIENT_SENDER = "client_sender";
     private static final String STATE_CLIENT_QUERY = "client_query";
@@ -166,6 +167,7 @@ public class MainActivity extends AppCompatActivity {
     private int selectedSection = SECTION_MESSAGES;
     private SmsDateFilter.Period selectedMessageFilter = SmsDateFilter.Period.ALL;
     private Long customFilterDate;
+    private EditText messageSearchInput;
     private TextView[] filterChips;
     private View depositCard;
     private View creditCard;
@@ -1075,6 +1077,9 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_STATISTICS_MONTH, statisticsMonth.get(Calendar.MONTH));
         outState.putInt(STATE_STATISTICS_TAB, selectedStatisticsTab);
         outState.putString(STATE_MESSAGE_FILTER, selectedMessageFilter.name());
+        if (messageSearchInput != null) {
+            outState.putString(STATE_MESSAGE_QUERY, messageSearchInput.getText().toString());
+        }
         if (selectedClientSender != null) outState.putString(STATE_CLIENT_SENDER, selectedClientSender);
         if (clientSearchInput != null) {
             outState.putString(STATE_CLIENT_QUERY, clientSearchInput.getText().toString());
@@ -1087,6 +1092,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void configureMessageFilters(Bundle savedInstanceState) {
+        messageSearchInput = findViewById(R.id.messageSearchInput);
         filterChips = new TextView[]{findViewById(R.id.filterAll),
                 findViewById(R.id.filterToday), findViewById(R.id.filterYesterday),
                 findViewById(R.id.filterSevenDays), findViewById(R.id.filterThirtyDays),
@@ -1101,6 +1107,7 @@ public class MainActivity extends AppCompatActivity {
             if (savedInstanceState.containsKey(STATE_CUSTOM_FILTER_DATE)) {
                 customFilterDate = savedInstanceState.getLong(STATE_CUSTOM_FILTER_DATE);
             }
+            messageSearchInput.setText(savedInstanceState.getString(STATE_MESSAGE_QUERY, ""));
         }
         filterChips[0].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.ALL));
         filterChips[1].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.TODAY));
@@ -1108,6 +1115,17 @@ public class MainActivity extends AppCompatActivity {
         filterChips[3].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.SEVEN_DAYS));
         filterChips[4].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.THIRTY_DAYS));
         filterChips[5].setOnClickListener(view -> showDateFilterPicker());
+        messageSearchInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence value, int start, int count,
+                    int after) {}
+
+            @Override public void onTextChanged(CharSequence value, int start, int before,
+                    int count) {
+                renderState();
+            }
+
+            @Override public void afterTextChanged(Editable value) {}
+        });
         updateFilterChips();
     }
 
@@ -1540,10 +1558,14 @@ public class MainActivity extends AppCompatActivity {
         loadingIndicator.setVisibility(loading ? View.VISIBLE : View.GONE);
         List<SmsDateFilter.DisplayMessage> displayed = denied ? new ArrayList<>()
                 : SmsDateFilter.apply(messages, selectedMessageFilter, customFilterDate,
-                System.currentTimeMillis(), java.util.TimeZone.getDefault());
+                System.currentTimeMillis(), java.util.TimeZone.getDefault(),
+                messageSearchInput == null ? "" : messageSearchInput.getText().toString());
         adapter.submitList(displayed);
         boolean noDisplayedMessages = displayed.isEmpty();
-        emptyText.setText(selectedMessageFilter == SmsDateFilter.Period.ALL
+        boolean searching = messageSearchInput != null
+                && !messageSearchInput.getText().toString().trim().isEmpty();
+        emptyText.setText(searching ? "Aucun message trouvé"
+                : selectedMessageFilter == SmsDateFilter.Period.ALL
                 ? "Aucun message enregistré" : "Aucun message pour cette période");
         emptyText.setVisibility(!denied && !loading && noDisplayedMessages
                 ? View.VISIBLE : View.GONE);

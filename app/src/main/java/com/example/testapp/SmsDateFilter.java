@@ -26,6 +26,12 @@ final class SmsDateFilter {
 
     static List<DisplayMessage> apply(List<SmsMessage> source, Period period,
                                       Long customDateMillis, long nowMillis, TimeZone timeZone) {
+        return apply(source, period, customDateMillis, nowMillis, timeZone, "");
+    }
+
+    static List<DisplayMessage> apply(List<SmsMessage> source, Period period,
+                                      Long customDateMillis, long nowMillis, TimeZone timeZone,
+                                      String numberQuery) {
         if (source == null || source.isEmpty()) return Collections.emptyList();
 
         long start = Long.MIN_VALUE;
@@ -54,13 +60,28 @@ final class SmsDateFilter {
 
         List<DisplayMessage> result = new ArrayList<>();
         int total = source.size();
+        String normalizedQuery = normalizeNumber(numberQuery);
         for (int index = 0; index < total; index++) {
             SmsMessage message = source.get(index);
-            if (message.receivedDate >= start && message.receivedDate < end) {
+            boolean numberMatches = normalizedQuery.isEmpty()
+                    || normalizeNumber(SmsDisplayFormatter.sender(message.sender))
+                    .contains(normalizedQuery);
+            if (message.receivedDate >= start && message.receivedDate < end && numberMatches) {
                 result.add(new DisplayMessage(message, total - index));
             }
         }
         return result;
+    }
+
+    /** Removes visual spacing only; phone numbers remain strings so leading zeroes are retained. */
+    static String normalizeNumber(String value) {
+        if (value == null || value.isEmpty()) return "";
+        StringBuilder normalized = new StringBuilder(value.length());
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (!Character.isWhitespace(character)) normalized.append(character);
+        }
+        return normalized.toString();
     }
 
     private static void startOfDay(Calendar calendar) {

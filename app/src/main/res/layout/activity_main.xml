@@ -60,6 +60,26 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
+            <EditText
+                android:id="@+id/messageSearchInput"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginEnd="20dp"
+                android:background="@drawable/bg_client_search"
+                android:drawableStart="@drawable/ic_search_24"
+                android:drawablePadding="10dp"
+                android:hint="Rechercher un numéro"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:maxLines="1"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:textColor="@color/sms_text_primary"
+                android:textColorHint="@color/sms_text_secondary"
+                android:textSize="14sp" />
+
             <HorizontalScrollView
                 android:id="@+id/filterScrollView"
                 android:layout_width="match_parent"
