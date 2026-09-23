@@ -149,6 +149,7 @@ public class MainActivity extends AppCompatActivity {
     private Long customFilterDate;
     private TextView[] filterChips;
     private View depositCard;
+    private View creditCard;
     private boolean depositRequestInProgress;
     private boolean launchDepositAfterPermission;
     private boolean depositCallLaunched;
@@ -212,6 +213,8 @@ public class MainActivity extends AppCompatActivity {
         statisticsNavigationItem = findViewById(R.id.bottomStatistics);
         depositCard = findViewById(R.id.cardDeposit);
         depositCard.setOnClickListener(view -> showRecipientDialog("", ""));
+        creditCard = findViewById(R.id.cardCredit);
+        creditCard.setOnClickListener(view -> showCreditRecipientDialog("", ""));
         statisticsSubtitle = findViewById(R.id.statisticsSubtitle);
         statisticsMonthText = findViewById(R.id.statisticsMonthText);
         bonusMonthText = findViewById(R.id.bonusMonthText);
@@ -351,45 +354,55 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /** Formats an amount independently from phone-number deletion rules. */
-    private void addAmountFormatter(EditText input) {
+    private interface BoundedAmountFormatter {
+        String format(String input, String lastValidDisplay);
+    }
+
+    /** Formats an amount safely while preserving the caret and last value within its ceiling. */
+    private void addBoundedAmountFormatter(EditText input, BoundedAmountFormatter formatter,
+                                           String maximumError) {
         input.addTextChangedListener(new TextWatcher() {
             private boolean formatting;
-            private String lastValidDisplay = DepositUssd.formatBoundedAmountInput(
-                    input.getText().toString(), "");
+            private String lastValidDisplay = formatter.format(input.getText().toString(), "");
 
-            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) {}
-
-            @Override public void onTextChanged(CharSequence text, int start, int before, int count) {}
+            @Override public void beforeTextChanged(CharSequence text, int start, int count,
+                                                    int after) {}
+            @Override public void onTextChanged(CharSequence text, int start, int before,
+                                                int count) {}
 
             @Override public void afterTextChanged(Editable editable) {
                 if (formatting) return;
-
                 int selection = clampSelection(input.getSelectionStart(), editable.length());
                 int digitsBeforeSelection = countDigits(editable.toString(), selection);
                 String edited = editable.toString();
-                String display = DepositUssd.formatBoundedAmountInput(edited, lastValidDisplay);
+                String display = formatter.format(edited, lastValidDisplay);
                 boolean limitExceeded = !display.equals(DepositUssd.formatAmountInput(edited));
                 if (!limitExceeded) {
                     lastValidDisplay = display;
                     input.setError(null);
                 }
                 if (display.contentEquals(editable)) return;
-
                 formatting = true;
                 try {
                     editable.replace(0, editable.length(), display);
-                    int restoredSelection = positionAfterDigits(
-                            editable.toString(), digitsBeforeSelection);
-                    input.setSelection(clampSelection(restoredSelection, editable.length()));
-                    if (limitExceeded && input.getError() == null) {
-                        input.setError("Montant maximum : 2 000 000 Ar");
-                    }
+                    input.setSelection(clampSelection(positionAfterDigits(
+                            editable.toString(), digitsBeforeSelection), editable.length()));
+                    if (limitExceeded && input.getError() == null) input.setError(maximumError);
                 } finally {
                     formatting = false;
                 }
             }
         });
+    }
+
+    private void addAmountFormatter(EditText input) {
+        addBoundedAmountFormatter(input, DepositUssd::formatBoundedAmountInput,
+                "Montant maximum : 2 000 000 Ar");
+    }
+
+    private void addCreditAmountFormatter(EditText input) {
+        addBoundedAmountFormatter(input, CreditUssd::formatBoundedAmountInput,
+                "Montant maximum : 500 000 Ar");
     }
 
     private static int clampSelection(int selection, int textLength) {
@@ -514,6 +527,140 @@ public class MainActivity extends AppCompatActivity {
                 }));
         dialog.show();
         focusAndShowNumericKeyboard(dialog, input);
+    }
+
+    private void showCreditRecipientDialog(String recipientValue, String amountValue) {
+        EditText input = depositInput(InputType.TYPE_CLASS_PHONE,
+                "Ex. 034 14 110 58", DepositUssd.formatRecipientInput(recipientValue));
+        addDepositFormatter(input, DepositUssd::formatRecipientInput);
+        SharedPreferences preferences = getSharedPreferences(DEPOSIT_PREFERENCES, MODE_PRIVATE);
+        String lastRecipient = DepositUssd.normalizeRecipientNumber(
+                preferences.getString(LAST_DEPOSIT_RECIPIENT, null));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.addView(input, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        ImageButton history = new ImageButton(this);
+        history.setImageResource(R.drawable.ic_history_24);
+        history.setContentDescription("Utiliser le dernier numéro");
+        TypedValue background = new TypedValue();
+        getTheme().resolveAttribute(androidx.appcompat.R.attr.selectableItemBackgroundBorderless,
+                background, true);
+        history.setBackgroundResource(background.resourceId);
+        history.setFocusable(false);
+        history.setEnabled(lastRecipient != null);
+        history.setAlpha(lastRecipient == null ? 0.38f : 1f);
+        int touchTarget = (int) (48 * getResources().getDisplayMetrics().density);
+        int iconPadding = (int) (12 * getResources().getDisplayMetrics().density);
+        history.setPadding(iconPadding, iconPadding, iconPadding, iconPadding);
+        row.addView(history, new LinearLayout.LayoutParams(touchTarget, touchTarget));
+        history.setOnClickListener(view -> {
+            input.setText(lastRecipient);
+            input.setSelection(input.getText().length());
+            input.requestFocus();
+        });
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Numéro destinataire")
+                .setView(row)
+                .setNegativeButton("ANNULER", null)
+                .setPositiveButton("SUIVANT", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    String recipient = DepositUssd.normalizeRecipientNumber(
+                            input.getText().toString());
+                    if (recipient == null) {
+                        input.setError("Numéro malgache invalide");
+                        return;
+                    }
+                    preferences.edit().putString(LAST_DEPOSIT_RECIPIENT, recipient).apply();
+                    dialog.dismiss();
+                    showCreditAmountDialog(recipient, amountValue);
+                }));
+        dialog.show();
+        focusAndShowNumericKeyboard(dialog, input);
+    }
+
+    private void showCreditAmountDialog(String recipientNumber, String amountValue) {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        int padding = (int) (24 * getResources().getDisplayMetrics().density);
+        content.setPadding(padding, 0, 0, 0);
+        addWithdrawalFeeChoice(content, "1   500 Ar");
+        addWithdrawalFeeChoice(content, "2   1 000 Ar");
+
+        EditText input = depositInput(InputType.TYPE_CLASS_NUMBER, "Montant",
+                DepositUssd.formatAmountInput(amountValue));
+        addCreditAmountFormatter(input);
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.addView(input, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        TextView currency = new TextView(this);
+        currency.setText("Ar");
+        currency.setPadding(0, 0, padding, 0);
+        row.addView(currency);
+        content.addView(row);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Entrer montant du crédit")
+                .setView(content)
+                .setNegativeButton("ANNULER", null)
+                .setPositiveButton("SUIVANT", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    long amount = CreditUssd.resolveAmount(input.getText().toString());
+                    if (amount < 0) {
+                        input.setError("Montant compris entre 100 et 500 000 Ar");
+                        return;
+                    }
+                    dialog.dismiss();
+                    showCreditConfirmation(recipientNumber, amount);
+                }));
+        dialog.show();
+        focusAndShowNumericKeyboard(dialog, input);
+    }
+
+    private void showCreditConfirmation(String recipientNumber, long amount) {
+        LinearLayout summary = new LinearLayout(this);
+        summary.setOrientation(LinearLayout.VERTICAL);
+        int margin = (int) (24 * getResources().getDisplayMetrics().density);
+        summary.setPadding(margin, margin / 2, margin, 0);
+        addConfirmationField(summary, "Numéro destinataire",
+                DepositUssd.formatRecipientNumber(recipientNumber), false, false);
+        addConfirmationField(summary, "Montant du crédit",
+                DepositUssd.formatAmount(String.valueOf(amount)), true, false);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Vérifier le crédit")
+                .setView(summary)
+                .setNeutralButton("MODIFIER", (ignored, which) ->
+                        showCreditRecipientDialog(recipientNumber, String.valueOf(amount)))
+                .setNegativeButton("ANNULER", null)
+                .setPositiveButton("ENVOYER", (ignored, which) ->
+                        launchCreditDialer(recipientNumber, amount))
+                .create();
+        dialog.show();
+    }
+
+    private void launchCreditDialer(String recipientNumber, long amount) {
+        String ussdCode = CreditUssd.buildUssdCode(recipientNumber, amount);
+        Intent dialIntent = new Intent(Intent.ACTION_DIAL,
+                Uri.parse("tel:" + Uri.encode(ussdCode)));
+        try {
+            if (dialIntent.resolveActivity(getPackageManager()) == null) {
+                Toast.makeText(this, "Aucun composeur téléphonique compatible.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            startActivity(dialIntent);
+        } catch (android.content.ActivityNotFoundException | SecurityException error) {
+            Toast.makeText(this, "Impossible d’ouvrir le composeur téléphonique.",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     /** Focuses a dialog input only after its window is attached and visible. */
