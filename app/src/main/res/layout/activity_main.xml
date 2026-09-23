@@ -179,6 +179,62 @@
             </HorizontalScrollView>
         </LinearLayout>
 
+        <FrameLayout
+            android:id="@+id/clientSection"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/clientListContent"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:paddingStart="20dp"
+                android:paddingTop="24dp"
+                android:paddingEnd="20dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_marginBottom="18dp" android:text="Client"
+                    android:textColor="@color/sms_text_primary" android:textSize="24sp"
+                    android:textStyle="bold" />
+                <TextView android:id="@+id/clientEmptyText" android:layout_width="match_parent"
+                    android:layout_height="wrap_content" android:gravity="center"
+                    android:padding="24dp" android:text="Aucun client"
+                    android:textColor="@color/sms_text_secondary" android:textSize="15sp"
+                    android:visibility="gone" />
+                <androidx.recyclerview.widget.RecyclerView android:id="@+id/clientList"
+                    android:layout_width="match_parent" android:layout_height="0dp"
+                    android:layout_weight="1" android:clipToPadding="false"
+                    android:paddingBottom="8dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/clientDetailContent"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="64dp"
+                    android:background="@color/sms_surface" android:gravity="center_vertical"
+                    android:orientation="horizontal" android:paddingEnd="16dp">
+                    <TextView android:id="@+id/clientBackButton" android:layout_width="56dp"
+                        android:layout_height="match_parent" android:background="?attr/selectableItemBackgroundBorderless"
+                        android:clickable="true" android:focusable="true" android:gravity="center"
+                        android:text="‹" android:textColor="@color/sms_text_primary" android:textSize="36sp"
+                        android:contentDescription="Retour à la liste des clients" />
+                    <TextView android:id="@+id/clientDetailTitle" android:layout_width="0dp"
+                        android:layout_height="wrap_content" android:layout_weight="1"
+                        android:ellipsize="end" android:maxLines="1"
+                        android:textColor="@color/sms_text_primary" android:textSize="22sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+                <androidx.recyclerview.widget.RecyclerView android:id="@+id/clientMessageList"
+                    android:layout_width="match_parent" android:layout_height="0dp"
+                    android:layout_weight="1" android:clipToPadding="false"
+                    android:paddingTop="8dp" android:paddingBottom="8dp" />
+            </LinearLayout>
+        </FrameLayout>
+
         <ScrollView
             android:id="@+id/homeSection"
             android:layout_width="match_parent"
@@ -603,7 +659,7 @@
             android:paddingStart="4dp"
             android:paddingEnd="4dp">
             <TextView android:id="@+id/bottomMessages" style="@style/SmsBottomNavigationItem.Active" android:drawableTop="@drawable/ic_sms_24" android:text="Messages" />
-            <TextView android:id="@+id/bottomImport" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_file_download_24" android:text="Importer" />
+            <TextView android:id="@+id/bottomClient" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_person_24" android:text="Client" />
             <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1.2" />
             <TextView android:id="@+id/bottomHistory" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_history_24" android:text="Historique" />
             <TextView android:id="@+id/bottomStatistics" style="@style/SmsBottomNavigationItem" android:drawableTop="@drawable/ic_bar_chart_24" android:text="Statistiques" />

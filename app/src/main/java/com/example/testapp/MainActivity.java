@@ -71,10 +71,12 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_STATISTICS_TAB = "statistics_tab";
     private static final String STATE_MESSAGE_FILTER = "message_filter";
     private static final String STATE_CUSTOM_FILTER_DATE = "custom_filter_date";
+    private static final String STATE_CLIENT_SENDER = "client_sender";
     private static final int SECTION_MESSAGES = 0;
     private static final int SECTION_HOME = 1;
     private static final int SECTION_STATISTICS = 2;
     private static final int SECTION_HISTORY = 3;
+    private static final int SECTION_CLIENT = 4;
     private static final int STATISTICS_TAB_BONUS = 0;
     private static final int STATISTICS_TAB_USER = 1;
     private static final int STATISTICS_TAB_TRANSACTION = 2;
@@ -103,7 +105,11 @@ public class MainActivity extends AppCompatActivity {
     private View homeSection;
     private View historySection;
     private View statisticsSection;
+    private View clientSection;
+    private View clientListContent;
+    private View clientDetailContent;
     private TextView messagesNavigationItem;
+    private TextView clientNavigationItem;
     private TextView historyNavigationItem;
     private TextView statisticsNavigationItem;
     private TextView statisticsSubtitle;
@@ -147,6 +153,11 @@ public class MainActivity extends AppCompatActivity {
     private long todayOfferTransactions = 0;
     private TextView homeLabel;
     private ImageButton homeButton;
+    private TextView clientEmptyText;
+    private TextView clientDetailTitle;
+    private ClientAdapter clientAdapter;
+    private ClientMessageAdapter clientMessageAdapter;
+    private String selectedClientSender;
     private int selectedSection = SECTION_MESSAGES;
     private SmsDateFilter.Period selectedMessageFilter = SmsDateFilter.Period.ALL;
     private Long customFilterDate;
@@ -212,7 +223,11 @@ public class MainActivity extends AppCompatActivity {
         homeSection = findViewById(R.id.homeSection);
         historySection = findViewById(R.id.historySection);
         statisticsSection = findViewById(R.id.statisticsSection);
+        clientSection = findViewById(R.id.clientSection);
+        clientListContent = findViewById(R.id.clientListContent);
+        clientDetailContent = findViewById(R.id.clientDetailContent);
         messagesNavigationItem = findViewById(R.id.bottomMessages);
+        clientNavigationItem = findViewById(R.id.bottomClient);
         historyNavigationItem = findViewById(R.id.bottomHistory);
         statisticsNavigationItem = findViewById(R.id.bottomStatistics);
         depositCard = findViewById(R.id.cardDeposit);
@@ -261,8 +276,16 @@ public class MainActivity extends AppCompatActivity {
         renderTransactionValues();
         homeLabel = findViewById(R.id.homeLabel);
         homeButton = findViewById(R.id.homeButton);
+        clientEmptyText = findViewById(R.id.clientEmptyText);
+        clientDetailTitle = findViewById(R.id.clientDetailTitle);
+        selectedClientSender = savedInstanceState == null ? null
+                : savedInstanceState.getString(STATE_CLIENT_SENDER);
         messagesNavigationItem.setOnClickListener(view -> showSection(SECTION_MESSAGES));
-        findViewById(R.id.bottomImport).setOnClickListener(view -> launchImport());
+        clientNavigationItem.setOnClickListener(view -> {
+            selectedClientSender = null;
+            showSection(SECTION_CLIENT);
+        });
+        findViewById(R.id.clientBackButton).setOnClickListener(view -> showClientList());
         homeButton.setOnClickListener(view -> showSection(SECTION_HOME));
         historyNavigationItem.setOnClickListener(view -> showSection(SECTION_HISTORY));
         statisticsNavigationItem.setOnClickListener(view -> {
@@ -275,12 +298,21 @@ public class MainActivity extends AppCompatActivity {
         adapter = new SmsAdapter();
         list.setLayoutManager(new LinearLayoutManager(this));
         list.setAdapter(adapter);
+        RecyclerView clientList = findViewById(R.id.clientList);
+        clientAdapter = new ClientAdapter(this::showClientDetail);
+        clientList.setLayoutManager(new LinearLayoutManager(this));
+        clientList.setAdapter(clientAdapter);
+        RecyclerView clientMessages = findViewById(R.id.clientMessageList);
+        clientMessageAdapter = new ClientMessageAdapter();
+        clientMessages.setLayoutManager(new LinearLayoutManager(this));
+        clientMessages.setAdapter(clientMessageAdapter);
 
         viewModel = new ViewModelProvider(this).get(SmsViewModel.class);
         viewModel.getMessages().observe(this, storedMessages -> {
             messages = storedMessages == null ? new ArrayList<>() : storedMessages;
             roomLoaded = true;
             renderState();
+            renderClients();
             if (selectedSection == SECTION_STATISTICS) renderStatistics();
         });
         requestRequiredPermissions();
@@ -869,6 +901,7 @@ public class MainActivity extends AppCompatActivity {
     private void showSection(int section) {
         selectedSection = section;
         boolean messagesSelected = section == SECTION_MESSAGES;
+        boolean clientSelected = section == SECTION_CLIENT;
         boolean homeSelected = section == SECTION_HOME;
         boolean historySelected = section == SECTION_HISTORY;
         boolean statisticsSelected = section == SECTION_STATISTICS;
@@ -876,12 +909,16 @@ public class MainActivity extends AppCompatActivity {
         homeSection.setVisibility(homeSelected ? View.VISIBLE : View.GONE);
         historySection.setVisibility(historySelected ? View.VISIBLE : View.GONE);
         statisticsSection.setVisibility(statisticsSelected ? View.VISIBLE : View.GONE);
+        clientSection.setVisibility(clientSelected ? View.VISIBLE : View.GONE);
 
         int active = ContextCompat.getColor(this, R.color.sms_bottom_item_active);
         int inactive = ContextCompat.getColor(this, R.color.sms_bottom_item);
         messagesNavigationItem.setTextColor(messagesSelected ? active : inactive);
         messagesNavigationItem.setCompoundDrawableTintList(
                 ColorStateList.valueOf(messagesSelected ? active : inactive));
+        clientNavigationItem.setTextColor(clientSelected ? active : inactive);
+        clientNavigationItem.setCompoundDrawableTintList(
+                ColorStateList.valueOf(clientSelected ? active : inactive));
         historyNavigationItem.setTextColor(historySelected ? active : inactive);
         historyNavigationItem.setCompoundDrawableTintList(
                 ColorStateList.valueOf(historySelected ? active : inactive));
@@ -895,9 +932,56 @@ public class MainActivity extends AppCompatActivity {
                 ? R.drawable.bg_refresh_button : R.drawable.bg_home_button_inactive);
         homeButton.setSelected(homeSelected);
         messagesNavigationItem.setSelected(messagesSelected);
+        clientNavigationItem.setSelected(clientSelected);
         historyNavigationItem.setSelected(historySelected);
         statisticsNavigationItem.setSelected(statisticsSelected);
         if (statisticsSelected) renderStatistics();
+        if (clientSelected) renderClients();
+    }
+
+    private void renderClients() {
+        if (clientAdapter == null || clientMessageAdapter == null) return;
+        List<ClientMessageGrouper.ClientGroup> clients = ClientMessageGrouper.group(messages);
+        clientAdapter.submitList(clients);
+        clientEmptyText.setVisibility(clients.isEmpty() ? View.VISIBLE : View.GONE);
+
+        if (selectedClientSender == null) {
+            clientListContent.setVisibility(View.VISIBLE);
+            clientDetailContent.setVisibility(View.GONE);
+            return;
+        }
+        for (ClientMessageGrouper.ClientGroup client : clients) {
+            if (selectedClientSender.equals(client.sender)) {
+                clientDetailTitle.setText(SmsDisplayFormatter.sender(client.sender));
+                clientMessageAdapter.submitList(client.messages);
+                clientListContent.setVisibility(View.GONE);
+                clientDetailContent.setVisibility(View.VISIBLE);
+                return;
+            }
+        }
+        // A deleted sender naturally returns the user to the derived client list.
+        selectedClientSender = null;
+        clientListContent.setVisibility(View.VISIBLE);
+        clientDetailContent.setVisibility(View.GONE);
+    }
+
+    private void showClientDetail(ClientMessageGrouper.ClientGroup client) {
+        selectedClientSender = client.sender;
+        renderClients();
+    }
+
+    private void showClientList() {
+        selectedClientSender = null;
+        renderClients();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (selectedSection == SECTION_CLIENT && selectedClientSender != null) {
+            showClientList();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override
@@ -907,6 +991,7 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_STATISTICS_MONTH, statisticsMonth.get(Calendar.MONTH));
         outState.putInt(STATE_STATISTICS_TAB, selectedStatisticsTab);
         outState.putString(STATE_MESSAGE_FILTER, selectedMessageFilter.name());
+        if (selectedClientSender != null) outState.putString(STATE_CLIENT_SENDER, selectedClientSender);
         if (customFilterDate != null) {
             outState.putLong(STATE_CUSTOM_FILTER_DATE, customFilterDate);
         }
@@ -1374,6 +1459,94 @@ public class MainActivity extends AppCompatActivity {
                 ? "Aucun message enregistré" : "Aucun message pour cette période");
         emptyText.setVisibility(!denied && !loading && noDisplayedMessages
                 ? View.VISIBLE : View.GONE);
+    }
+
+    private interface ClientClickListener {
+        void onClientClick(ClientMessageGrouper.ClientGroup client);
+    }
+
+    private static class ClientAdapter extends RecyclerView.Adapter<ClientViewHolder> {
+        private final ClientClickListener listener;
+        private List<ClientMessageGrouper.ClientGroup> items = new ArrayList<>();
+
+        ClientAdapter(ClientClickListener listener) { this.listener = listener; }
+
+        void submitList(List<ClientMessageGrouper.ClientGroup> clients) {
+            items = new ArrayList<>(clients);
+            notifyDataSetChanged();
+        }
+
+        @Override public ClientViewHolder onCreateViewHolder(android.view.ViewGroup parent,
+                                                              int viewType) {
+            View view = android.view.LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_client, parent, false);
+            return new ClientViewHolder(view);
+        }
+
+        @Override public void onBindViewHolder(ClientViewHolder holder, int position) {
+            ClientMessageGrouper.ClientGroup client = items.get(position);
+            holder.name.setText(SmsDisplayFormatter.sender(client.sender));
+            int count = client.messages.size();
+            holder.count.setText(count + (count == 1 ? " message" : " messages"));
+            holder.itemView.setContentDescription(SmsDisplayFormatter.sender(client.sender)
+                    + ", " + holder.count.getText());
+            holder.itemView.setOnClickListener(view -> listener.onClientClick(client));
+        }
+
+        @Override public int getItemCount() { return items.size(); }
+    }
+
+    private static class ClientViewHolder extends RecyclerView.ViewHolder {
+        final TextView name;
+        final TextView count;
+        ClientViewHolder(View itemView) {
+            super(itemView);
+            name = itemView.findViewById(R.id.clientName);
+            count = itemView.findViewById(R.id.clientMessageCount);
+        }
+    }
+
+    private static class ClientMessageAdapter extends RecyclerView.Adapter<ClientMessageViewHolder> {
+        private List<SmsMessage> items = new ArrayList<>();
+        private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.FRENCH);
+        private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.FRENCH);
+
+        void submitList(List<SmsMessage> messages) {
+            items = new ArrayList<>(messages);
+            notifyDataSetChanged();
+        }
+
+        @Override public ClientMessageViewHolder onCreateViewHolder(android.view.ViewGroup parent,
+                                                                     int viewType) {
+            View view = android.view.LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_client_message, parent, false);
+            return new ClientMessageViewHolder(view);
+        }
+
+        @Override public void onBindViewHolder(ClientMessageViewHolder holder, int position) {
+            SmsMessage message = items.get(position);
+            String date = dateFormat.format(message.receivedDate);
+            boolean startsDate = position == 0
+                    || !date.equals(dateFormat.format(items.get(position - 1).receivedDate));
+            holder.date.setText(date);
+            holder.date.setVisibility(startsDate ? View.VISIBLE : View.GONE);
+            holder.time.setText(timeFormat.format(message.receivedDate));
+            holder.body.setText(message.messageBody);
+        }
+
+        @Override public int getItemCount() { return items.size(); }
+    }
+
+    private static class ClientMessageViewHolder extends RecyclerView.ViewHolder {
+        final TextView date;
+        final TextView time;
+        final TextView body;
+        ClientMessageViewHolder(View itemView) {
+            super(itemView);
+            date = itemView.findViewById(R.id.clientMessageDate);
+            time = itemView.findViewById(R.id.clientMessageTime);
+            body = itemView.findViewById(R.id.clientMessageBody);
+        }
     }
 
     private static class SmsAdapter extends RecyclerView.Adapter<SmsViewHolder> {

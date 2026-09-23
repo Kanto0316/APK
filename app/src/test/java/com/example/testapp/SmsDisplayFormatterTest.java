@@ -31,6 +31,7 @@ public class SmsDisplayFormatterTest {
     public void sender_formatsCompatibleMalagasyNumbers() {
         assertEquals("034 14 110 58", SmsDisplayFormatter.sender("+261341411058"));
         assertEquals("038 19 808 00", SmsDisplayFormatter.sender("+261381980800"));
+        assertEquals("034 14 110 58", SmsDisplayFormatter.sender("0341411058"));
     }
 
     @Test
