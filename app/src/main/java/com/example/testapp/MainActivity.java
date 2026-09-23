@@ -388,6 +388,19 @@ public class MainActivity extends AppCompatActivity {
                     showWithdrawalFeeDialog(recipientNumber, originalAmount);
                 }));
         dialog.show();
+        focusAndShowNumericKeyboard(dialog, input);
+    }
+
+    /** Focuses a dialog input only after its window is attached and visible. */
+    private void focusAndShowNumericKeyboard(AlertDialog dialog, EditText input) {
+        input.post(() -> {
+            input.requestFocus();
+            input.setSelection(input.getText().length());
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setSoftInputMode(
+                        WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            }
+        });
     }
 
     private void showWithdrawalFeeDialog(String recipientNumber, long originalAmount) {
@@ -439,13 +452,8 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-        dialog.setOnShowListener(ignored -> {
-            choiceInput.requestFocus();
-            if (dialog.getWindow() != null) {
-                dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-            }
-        });
         dialog.show();
+        focusAndShowNumericKeyboard(dialog, choiceInput);
     }
 
     private void handleWithdrawalFeeChoice(String recipientNumber, long originalAmount,
