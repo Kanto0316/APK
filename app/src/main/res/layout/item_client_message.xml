@@ -1,20 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:background="@color/sms_surface" android:orientation="vertical"
-    android:paddingStart="18dp" android:paddingTop="14dp" android:paddingEnd="18dp"
-    android:paddingBottom="14dp">
-    <TextView android:id="@+id/clientMessageDate" android:layout_width="wrap_content"
-        android:layout_height="wrap_content" android:layout_marginBottom="12dp"
-        android:textColor="@color/sms_text_primary" android:textSize="16sp"
-        android:textStyle="bold" />
-    <TextView android:id="@+id/clientMessageTime" android:layout_width="wrap_content"
-        android:layout_height="wrap_content" android:textColor="@color/sms_text_secondary"
-        android:textSize="13sp" android:textStyle="bold" />
-    <TextView android:id="@+id/clientMessageBody" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:layout_marginTop="5dp"
-        android:textColor="@color/sms_text_body" android:textIsSelectable="true"
-        android:textSize="15sp" />
+    android:background="@color/sms_surface" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:minHeight="48dp" android:gravity="center_vertical" android:orientation="horizontal"
+        android:paddingStart="4dp" android:paddingTop="7dp" android:paddingEnd="4dp"
+        android:paddingBottom="7dp">
+        <TextView android:id="@+id/clientMessageNumber"
+            android:layout_width="@dimen/sms_column_number_width" android:layout_height="wrap_content"
+            android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_secondary"
+            android:textSize="12sp" />
+        <TextView android:id="@+id/clientMessageDateTime"
+            android:layout_width="@dimen/sms_column_datetime_width" android:layout_height="wrap_content"
+            android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_secondary"
+            android:textSize="12sp" />
+        <TextView android:id="@+id/clientMessageType"
+            android:layout_width="@dimen/sms_column_type_width" android:layout_height="wrap_content"
+            android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_primary"
+            android:textSize="13sp" />
+        <TextView android:id="@+id/clientMessageAmount"
+            android:layout_width="@dimen/sms_column_money_width" android:layout_height="wrap_content"
+            android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_primary"
+            android:textSize="13sp" />
+        <TextView android:id="@+id/clientMessageReference"
+            android:layout_width="@dimen/sms_column_reference_width" android:layout_height="wrap_content"
+            android:ellipsize="end" android:gravity="center" android:maxLines="1"
+            android:textColor="@color/sms_text_primary" android:textSize="13sp" />
+    </LinearLayout>
     <View android:layout_width="match_parent" android:layout_height="1dp"
-        android:layout_marginTop="14dp" android:background="@color/sms_divider" />
+        android:background="@color/sms_divider" />
 </LinearLayout>

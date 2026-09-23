@@ -991,7 +991,7 @@ public class MainActivity extends AppCompatActivity {
         for (ClientMessageGrouper.ClientGroup client : allClients) {
             if (selectedClientSender.equals(client.sender)) {
                 clientDetailTitle.setText(SmsDisplayFormatter.sender(client.sender));
-                clientMessageAdapter.submitList(client.messages);
+                clientMessageAdapter.submitList(clientMessagesWithOriginalNumbers(client.sender));
                 clientListContent.setVisibility(View.GONE);
                 clientDetailContent.setVisibility(View.VISIBLE);
                 return;
@@ -1006,6 +1006,18 @@ public class MainActivity extends AppCompatActivity {
     private void showClientDetail(ClientMessageGrouper.ClientGroup client) {
         selectedClientSender = client.sender;
         renderClients();
+    }
+
+    /** Keeps the number assigned in the unfiltered Messages table when viewing one client. */
+    private List<SmsDateFilter.DisplayMessage> clientMessagesWithOriginalNumbers(String sender) {
+        List<SmsDateFilter.DisplayMessage> result = new ArrayList<>();
+        List<SmsDateFilter.DisplayMessage> all = SmsDateFilter.apply(messages,
+                SmsDateFilter.Period.ALL, null, System.currentTimeMillis(),
+                java.util.TimeZone.getDefault());
+        for (SmsDateFilter.DisplayMessage displayed : all) {
+            if (sender.equals(displayed.message.sender)) result.add(displayed);
+        }
+        return result;
     }
 
     private void showClientList() {
@@ -1583,11 +1595,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static class ClientMessageAdapter extends RecyclerView.Adapter<ClientMessageViewHolder> {
-        private List<SmsMessage> items = new ArrayList<>();
-        private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.FRENCH);
-        private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm", Locale.FRENCH);
+        private List<SmsDateFilter.DisplayMessage> items = new ArrayList<>();
 
-        void submitList(List<SmsMessage> messages) {
+        void submitList(List<SmsDateFilter.DisplayMessage> messages) {
             items = new ArrayList<>(messages);
             notifyDataSetChanged();
         }
@@ -1600,28 +1610,30 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override public void onBindViewHolder(ClientMessageViewHolder holder, int position) {
-            SmsMessage message = items.get(position);
-            String date = dateFormat.format(message.receivedDate);
-            boolean startsDate = position == 0
-                    || !date.equals(dateFormat.format(items.get(position - 1).receivedDate));
-            holder.date.setText(date);
-            holder.date.setVisibility(startsDate ? View.VISIBLE : View.GONE);
-            holder.time.setText(timeFormat.format(message.receivedDate));
-            holder.body.setText(message.messageBody);
+            SmsTableRow row = SmsTableRow.from(items.get(position));
+            holder.number.setText(String.valueOf(row.number));
+            holder.dateTime.setText(row.dateTime);
+            holder.type.setText(SmsTableRow.display(row.type));
+            holder.amount.setText(SmsTableRow.display(row.montant));
+            holder.reference.setText(SmsTableRow.display(row.reference));
         }
 
         @Override public int getItemCount() { return items.size(); }
     }
 
     private static class ClientMessageViewHolder extends RecyclerView.ViewHolder {
-        final TextView date;
-        final TextView time;
-        final TextView body;
+        final TextView number;
+        final TextView dateTime;
+        final TextView type;
+        final TextView amount;
+        final TextView reference;
         ClientMessageViewHolder(View itemView) {
             super(itemView);
-            date = itemView.findViewById(R.id.clientMessageDate);
-            time = itemView.findViewById(R.id.clientMessageTime);
-            body = itemView.findViewById(R.id.clientMessageBody);
+            number = itemView.findViewById(R.id.clientMessageNumber);
+            dateTime = itemView.findViewById(R.id.clientMessageDateTime);
+            type = itemView.findViewById(R.id.clientMessageType);
+            amount = itemView.findViewById(R.id.clientMessageAmount);
+            reference = itemView.findViewById(R.id.clientMessageReference);
         }
     }
 
