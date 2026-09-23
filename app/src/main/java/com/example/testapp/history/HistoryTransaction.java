@@ -1,32 +1,49 @@
 package com.example.testapp.history;
 
-/**
- * UI-facing shape reserved for a future history row.
- *
- * <p>This model deliberately has no persistence or SMS dependency. It documents the data the
- * history screen will eventually render without connecting that screen to existing transactions.</p>
- */
-public final class HistoryTransaction {
-    public final String date;
-    public final String time;
-    public final String type;
-    public final String recipientNumber;
-    public final long amount;
-    public final Long fees;
-    public final long totalAmount;
-    public final String reference;
-    public final String status;
+import com.example.testapp.database.SmsMessage;
+import com.example.testapp.sms.MvolaMessageParser;
 
-    public HistoryTransaction(String date, String time, String type, String recipientNumber,
-            long amount, Long fees, long totalAmount, String reference, String status) {
-        this.date = date;
-        this.time = time;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+/** Display projection of a transaction parsed from the application's persisted SMS source. */
+public final class HistoryTransaction {
+    public final String type;
+    public final String clientNumber;
+    public final long amount;
+    public final Long bonus;
+    public final String reference;
+    public final long timestamp;
+
+    private HistoryTransaction(String type, String clientNumber, long amount, Long bonus,
+                               String reference, long timestamp) {
         this.type = type;
-        this.recipientNumber = recipientNumber;
+        this.clientNumber = clientNumber;
         this.amount = amount;
-        this.fees = fees;
-        this.totalAmount = totalAmount;
+        this.bonus = bonus;
         this.reference = reference;
-        this.status = status;
+        this.timestamp = timestamp;
+    }
+
+    /**
+     * Uses the same stored SMS and central parser as Messages and Statistics. No history data is
+     * persisted separately. The business timestamp wins, with SMS reception time as fallback.
+     */
+    public static List<HistoryTransaction> fromMessages(List<SmsMessage> messages) {
+        List<HistoryTransaction> result = new ArrayList<>();
+        if (messages == null) return result;
+        for (SmsMessage message : messages) {
+            MvolaMessageParser.ParsedTransaction parsed =
+                    MvolaMessageParser.parse(message.messageBody);
+            if (parsed == null || parsed.clientNumber == null) continue;
+            long timestamp = parsed.transactionAt > 0
+                    ? parsed.transactionAt : message.receivedDate;
+            result.add(new HistoryTransaction(parsed.type, parsed.clientNumber, parsed.amount,
+                    parsed.bonus, parsed.reference, timestamp));
+        }
+        result.sort(Comparator.comparingLong((HistoryTransaction item) -> item.timestamp)
+                .reversed());
+        return result;
     }
 }

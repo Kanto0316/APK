@@ -42,6 +42,7 @@ import com.example.testapp.database.SmsMessage;
 import com.example.testapp.database.AppDatabase;
 import com.example.testapp.backup.SmsBackupManager;
 import com.example.testapp.background.BackgroundExecutionManager;
+import com.example.testapp.history.HistoryTransaction;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -108,6 +109,9 @@ public class MainActivity extends AppCompatActivity {
     private View messagesSection;
     private View homeSection;
     private View historySection;
+    private RecyclerView historyList;
+    private View historyEmptyState;
+    private HistoryAdapter historyAdapter;
     private View statisticsSection;
     private View clientSection;
     private View clientListContent;
@@ -343,6 +347,11 @@ public class MainActivity extends AppCompatActivity {
         clientMessageAdapter = new ClientMessageAdapter();
         clientMessages.setLayoutManager(new LinearLayoutManager(this));
         clientMessages.setAdapter(clientMessageAdapter);
+        historyList = findViewById(R.id.historyList);
+        historyEmptyState = findViewById(R.id.historyEmptyState);
+        historyAdapter = new HistoryAdapter();
+        historyList.setLayoutManager(new LinearLayoutManager(this));
+        historyList.setAdapter(historyAdapter);
 
         viewModel = new ViewModelProvider(this).get(SmsViewModel.class);
         viewModel.getMessages().observe(this, storedMessages -> {
@@ -351,6 +360,7 @@ public class MainActivity extends AppCompatActivity {
             roomLoaded = true;
             renderState();
             renderClients();
+            renderHistory();
             if (selectedSection == SECTION_STATISTICS) renderStatistics();
         });
         requestRequiredPermissions();
@@ -977,6 +987,16 @@ public class MainActivity extends AppCompatActivity {
         statisticsNavigationItem.setSelected(statisticsSelected);
         if (statisticsSelected) renderStatistics();
         if (clientSelected) renderClients();
+        if (historySelected) renderHistory();
+    }
+
+    private void renderHistory() {
+        if (historyAdapter == null) return;
+        List<HistoryTransaction> transactions = HistoryTransaction.fromMessages(messages);
+        historyAdapter.submitList(transactions);
+        boolean empty = transactions.isEmpty();
+        historyList.setVisibility(empty ? View.GONE : View.VISIBLE);
+        historyEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
     }
 
     private void renderClients() {
@@ -1629,6 +1649,59 @@ public class MainActivity extends AppCompatActivity {
 
     private interface ClientClickListener {
         void onClientClick(ClientMessageGrouper.ClientGroup client);
+    }
+
+    private static class HistoryAdapter extends RecyclerView.Adapter<HistoryViewHolder> {
+        private final SimpleDateFormat dateFormat =
+                new SimpleDateFormat("dd/MM/yyyy", Locale.FRENCH);
+        private List<HistoryTransaction> items = new ArrayList<>();
+
+        void submitList(List<HistoryTransaction> transactions) {
+            items = new ArrayList<>(transactions);
+            notifyDataSetChanged();
+        }
+
+        @Override public HistoryViewHolder onCreateViewHolder(android.view.ViewGroup parent,
+                                                               int viewType) {
+            View view = android.view.LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_history_transaction, parent, false);
+            return new HistoryViewHolder(view);
+        }
+
+        @Override public void onBindViewHolder(HistoryViewHolder holder, int position) {
+            HistoryTransaction item = items.get(position);
+            String date = dateFormat.format(new Date(item.timestamp));
+            String previousDate = position == 0 ? null
+                    : dateFormat.format(new Date(items.get(position - 1).timestamp));
+            holder.date.setText(date);
+            holder.date.setVisibility(date.equals(previousDate) ? View.GONE : View.VISIBLE);
+            holder.number.setText(HistoryDisplayFormatter.number(item.clientNumber));
+            holder.reference.setText(HistoryDisplayFormatter.reference(item.reference));
+            holder.amount.setText(HistoryDisplayFormatter.amount(item));
+            holder.bonus.setText(HistoryDisplayFormatter.bonus(item.bonus));
+            holder.itemView.setContentDescription(item.type + ", " + holder.number.getText()
+                    + ", " + holder.amount.getText() + ", " + holder.reference.getText()
+                    + ", bonus " + holder.bonus.getText());
+        }
+
+        @Override public int getItemCount() { return items.size(); }
+    }
+
+    private static class HistoryViewHolder extends RecyclerView.ViewHolder {
+        final TextView date;
+        final TextView number;
+        final TextView reference;
+        final TextView amount;
+        final TextView bonus;
+
+        HistoryViewHolder(View itemView) {
+            super(itemView);
+            date = itemView.findViewById(R.id.historyDateHeader);
+            number = itemView.findViewById(R.id.historyTransactionNumber);
+            reference = itemView.findViewById(R.id.historyTransactionReference);
+            amount = itemView.findViewById(R.id.historyTransactionAmount);
+            bonus = itemView.findViewById(R.id.historyTransactionBonus);
+        }
     }
 
     private static class ClientAdapter extends RecyclerView.Adapter<ClientViewHolder> {
