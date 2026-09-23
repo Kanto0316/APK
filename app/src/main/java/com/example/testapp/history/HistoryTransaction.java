@@ -35,7 +35,7 @@ public final class HistoryTransaction {
         if (messages == null) return result;
         for (SmsMessage message : messages) {
             MvolaMessageParser.ParsedTransaction parsed =
-                    MvolaMessageParser.parse(message.messageBody);
+                    MvolaMessageParser.parse(message.messageBody, message.receivedDate);
             if (parsed == null || parsed.clientNumber == null) continue;
             long timestamp = parsed.transactionAt > 0
                     ? parsed.transactionAt : message.receivedDate;

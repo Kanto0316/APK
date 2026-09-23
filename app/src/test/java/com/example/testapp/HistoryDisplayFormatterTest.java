@@ -27,4 +27,14 @@ public class HistoryDisplayFormatterTest {
         assertEquals("-", HistoryDisplayFormatter.bonus(null));
         assertEquals("0 Ar", HistoryDisplayFormatter.bonus(0L));
     }
+
+    @Test public void formatsCreditWithoutCashDirectionSign() {
+        SmsMessage sms = SmsMessage.create("MVola",
+                "Achat de credit YAS reussi: 500 Ar pour 0341444033. Bonus:24 Ar. Ref:1",
+                1L, true);
+        HistoryTransaction item = HistoryTransaction.fromMessages(Arrays.asList(sms)).get(0);
+
+        assertEquals("500 Ar", HistoryDisplayFormatter.amount(item));
+        assertEquals("24 Ar", HistoryDisplayFormatter.bonus(item.bonus));
+    }
 }

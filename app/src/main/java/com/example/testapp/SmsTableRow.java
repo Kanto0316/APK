@@ -39,7 +39,7 @@ final class SmsTableRow {
     static SmsTableRow from(SmsDateFilter.DisplayMessage displayed) {
         SmsMessage message = displayed.message;
         MvolaMessageParser.ParsedTransaction transaction =
-                MvolaMessageParser.parse(message.messageBody);
+                MvolaMessageParser.parse(message.messageBody, message.receivedDate);
         if (transaction == null) {
             throw new IllegalArgumentException("A parsed transaction is required for display");
         }

@@ -1244,6 +1244,7 @@ public class MainActivity extends AppCompatActivity {
         yearBonus = summary.yearBonus;
         monthlyBonusBars = summary.monthlyBonus;
         todayTransactions = summary.todayTransactions;
+        todayCreditTransactions = summary.todayCreditTransactions;
         yesterdayTransactions = summary.yesterdayTransactions;
         weekTransactions = summary.weekTransactions;
         monthlyTransactions = summary.monthTransactions;

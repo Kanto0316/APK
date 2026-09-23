@@ -288,6 +288,22 @@ public class SmsStatisticsTest {
         assertEquals(2, summary.monthlyUsers.get(1).count);
     }
 
+    @Test public void creditIncrementsCreditCounterAndContributesItsParsedBonus() {
+        long receivedAt = utcDate(2026, Calendar.SEPTEMBER, 23, 10);
+        SmsMessage credit = SmsMessage.create("MVola",
+                "Achat de crédit YAS réussi : 500 Ar pour 0386825677. Frais: 0 Ar. "
+                        + "Bonus:24 Ar. Solde MVola : 80 869 Ar. Ref: 7581687806",
+                receivedAt, true);
+
+        SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(
+                Arrays.asList(credit), receivedAt, 2026, Calendar.SEPTEMBER, UTC);
+
+        assertEquals(1L, summary.todayTransactions);
+        assertEquals(1L, summary.todayCreditTransactions);
+        assertEquals(24L, summary.todayBonus);
+        assertEquals(24L, summary.monthBonus);
+    }
+
     private static long utcDate(int year, int month, int day, int hour) {
         Calendar calendar = Calendar.getInstance(UTC);
         calendar.clear();

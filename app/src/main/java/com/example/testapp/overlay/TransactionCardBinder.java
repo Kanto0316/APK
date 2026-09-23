@@ -17,7 +17,7 @@ final class TransactionCardBinder {
         text(view, R.id.transactionName,
                 TransactionDisplayFormatter.text(transaction.clientName));
         text(view, R.id.transactionAmount,
-                TransactionDisplayFormatter.amount(transaction.amount));
+                TransactionDisplayFormatter.amount(transaction.type, transaction.amount));
         text(view, R.id.transactionBalance,
                 TransactionDisplayFormatter.balance(transaction.balance));
         view.findViewById(R.id.transactionOk).setOnClickListener(closeListener);

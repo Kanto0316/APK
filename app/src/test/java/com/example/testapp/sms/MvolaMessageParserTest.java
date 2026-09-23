@@ -14,6 +14,10 @@ public class MvolaMessageParserTest {
             + "le 21/09/26 a 08:31. Bonus:250 Ar. Solde: 34 800 Ar. Ref: 7586649044.";
     private static final String EXAMPLE_B = "3 000 Ar recu de LOVASOA 0343242318 "
             + "le 21/09/26 a 08:19. Bonus:58 Ar. Solde: 82 023 Ar. Ref: 7582999265.";
+    private static final String CREDIT_A = "Achat de credit YAS reussi: 500 Ar pour 0341444033. "
+            + "Frais: 0 Ar. Bonus:24 Ar. Solde MVola : 88 965 Ar. Ref: 7586367275";
+    private static final String CREDIT_B = "Achat de credit YAS reussi: 500 Ar pour 0386825677. "
+            + "Frais: 0 Ar. Bonus:24 Ar. Solde MVola : 80 869 Ar. Ref: 7581687806";
 
     @Test public void parsesProvidedExampleA() { assertTransaction(EXAMPLE_A, "0381453472",
             "Mirado Rodhino", 11000, 250, 34800, "7586649044", "21/09/2026 08:31"); }
@@ -37,6 +41,38 @@ public class MvolaMessageParserTest {
         assertEquals("0381453472", ClientNumberNormalizer.normalize("038 14 534 72"));
         assertEquals("0381453472", ClientNumberNormalizer.normalize("+261381453472"));
         assertEquals("038 14 534 72", ClientNumberNormalizer.format("0381453472"));
+    }
+
+    @Test public void parsesProvidedCreditExampleAUsingReceptionTime() {
+        assertCredit(CREDIT_A, "0341444033", 88965, "7586367275");
+    }
+
+    @Test public void parsesProvidedCreditExampleBUsingReceptionTime() {
+        assertCredit(CREDIT_B, "0386825677", 80869, "7581687806");
+    }
+
+    @Test public void creditRecognitionToleratesAccentsCaseAndSpacing() {
+        MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
+                "  ACHAT   DE CRÉDIT YAS RÉUSSI : 500 Ar pour 034 14 440 33. "
+                        + "FRAIS : 0 Ar. BONUS : 24 Ar. Solde MVola: 88 965 Ar. Réf : 42", 9L);
+        assertEquals("Crédit", parsed.type);
+        assertEquals("0341444033", parsed.clientNumber);
+        assertEquals(9L, parsed.transactionAt);
+    }
+
+    private static void assertCredit(String message, String number, long balance,
+                                     String reference) {
+        MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(message, 123456L);
+        assertEquals("Crédit", parsed.type);
+        assertEquals(number, parsed.clientNumber);
+        assertEquals("-", parsed.clientName);
+        assertEquals(500L, parsed.amount);
+        assertEquals(Long.valueOf(0L), parsed.fee);
+        assertEquals(Long.valueOf(24L), parsed.bonus);
+        assertEquals(Long.valueOf(balance), parsed.balance);
+        assertEquals(reference, parsed.reference);
+        assertEquals(123456L, parsed.transactionAt);
+        assertEquals(message, parsed.rawMessage);
     }
 
     private static void assertTransaction(String message, String number, String name, long amount,

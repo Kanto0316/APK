@@ -42,4 +42,21 @@ public class HistoryTransactionTest {
         assertEquals("1", result.get(1).reference);
         assertNull(result.get(0).bonus);
     }
+
+    @Test public void mapsCreditUsingRecipientAndReceptionTime() {
+        SmsMessage sms = SmsMessage.create("MVola",
+                "Achat de credit YAS reussi: 500 Ar pour 0341444033. Frais: 0 Ar. "
+                        + "Bonus:24 Ar. Solde MVola : 88 965 Ar. Ref: 7586367275",
+                987654L, true);
+
+        HistoryTransaction transaction = HistoryTransaction.fromMessages(
+                Arrays.asList(sms)).get(0);
+
+        assertEquals("Crédit", transaction.type);
+        assertEquals("0341444033", transaction.clientNumber);
+        assertEquals(500L, transaction.amount);
+        assertEquals(Long.valueOf(24L), transaction.bonus);
+        assertEquals("7586367275", transaction.reference);
+        assertEquals(987654L, transaction.timestamp);
+    }
 }

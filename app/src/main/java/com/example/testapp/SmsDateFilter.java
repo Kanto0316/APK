@@ -65,7 +65,7 @@ final class SmsDateFilter {
         for (int index = 0; index < total; index++) {
             SmsMessage message = source.get(index);
             MvolaMessageParser.ParsedTransaction parsed =
-                    MvolaMessageParser.parse(message.messageBody);
+                    MvolaMessageParser.parse(message.messageBody, message.receivedDate);
             // A persisted SMS is not necessarily a business transaction. Keep unrecognised
             // messages in Room for future reprocessing, but never expose them in this view.
             if (parsed == null) continue;
