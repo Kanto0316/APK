@@ -73,6 +73,41 @@
         <item name="android:clickable">true</item><item name="android:focusable">true</item><item name="android:gravity">center</item><item name="android:textColor">@color/sms_accent</item><item name="android:textSize">32sp</item>
     </style>
 
+    <style name="BonusSecondaryCard">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">104dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:background">@drawable/bg_statistics_card</item>
+        <item name="android:elevation">1dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">12dp</item>
+    </style>
+    <style name="BonusPeriodLabel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:maxLines">1</item>
+        <item name="autoSizeMaxTextSize">12sp</item>
+        <item name="autoSizeMinTextSize">10sp</item>
+        <item name="autoSizeStepGranularity">1sp</item>
+        <item name="autoSizeTextType">uniform</item>
+        <item name="android:textColor">@color/sms_text_secondary</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="BonusSecondaryValue">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">8dp</item>
+        <item name="android:text">0 Ar</item>
+        <item name="android:textColor">@color/sms_text_primary</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="BonusPrimaryValue" parent="BonusSecondaryValue">
+        <item name="android:textSize">28sp</item>
+    </style>
+
     <style name="CommercialServiceCard">
         <item name="android:layout_width">match_parent</item><item name="android:layout_height">96dp</item>
         <item name="android:layout_marginBottom">14dp</item><item name="android:background">@drawable/bg_service_card</item>

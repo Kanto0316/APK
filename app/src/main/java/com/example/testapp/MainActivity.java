@@ -111,9 +111,11 @@ public class MainActivity extends AppCompatActivity {
     private TextView bonusMonthText;
     private boolean bonusTabSelected;
     // Static placeholders ready to be supplied by the future bonus calculation layer.
-    private long totalBonus = 0;
-    private long monthlyBonus = 0;
     private long todayBonus = 0;
+    private long yesterdayBonus = 0;
+    private long weekBonus = 0;
+    private long monthBonus = 0;
+    private long yearBonus = 0;
     private TextView homeLabel;
     private ImageButton homeButton;
     private int selectedSection = SECTION_MESSAGES;
@@ -792,9 +794,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void renderBonusValues() {
-        ((TextView) findViewById(R.id.totalBonusValue)).setText(formatAriary(totalBonus));
-        ((TextView) findViewById(R.id.monthlyBonusValue)).setText(formatAriary(monthlyBonus));
         ((TextView) findViewById(R.id.todayBonusValue)).setText(formatAriary(todayBonus));
+        ((TextView) findViewById(R.id.yesterdayBonusValue)).setText(formatAriary(yesterdayBonus));
+        ((TextView) findViewById(R.id.weekBonusValue)).setText(formatAriary(weekBonus));
+        ((TextView) findViewById(R.id.monthBonusValue)).setText(formatAriary(monthBonus));
+        ((TextView) findViewById(R.id.yearBonusValue)).setText(formatAriary(yearBonus));
     }
 
     private String formatAriary(long value) {
