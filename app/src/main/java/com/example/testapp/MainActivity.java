@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_SELECTED_SECTION = "selected_section";
     private static final String STATE_STATISTICS_YEAR = "statistics_year";
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
+    private static final String STATE_STATISTICS_BONUS_TAB = "statistics_bonus_tab";
     private static final String STATE_MESSAGE_FILTER = "message_filter";
     private static final String STATE_CUSTOM_FILTER_DATE = "custom_filter_date";
     private static final int SECTION_MESSAGES = 0;
@@ -103,6 +104,16 @@ public class MainActivity extends AppCompatActivity {
     private StatisticsChartView statisticsChart;
     private TextView statisticsMonthText;
     private Calendar statisticsMonth;
+    private View smsStatisticsContent;
+    private View bonusStatisticsContent;
+    private TextView statisticsSmsTab;
+    private TextView statisticsBonusTab;
+    private TextView bonusMonthText;
+    private boolean bonusTabSelected;
+    // Static placeholders ready to be supplied by the future bonus calculation layer.
+    private long totalBonus = 0;
+    private long monthlyBonus = 0;
+    private long todayBonus = 0;
     private TextView homeLabel;
     private ImageButton homeButton;
     private int selectedSection = SECTION_MESSAGES;
@@ -176,6 +187,11 @@ public class MainActivity extends AppCompatActivity {
         statisticsEmptyText = findViewById(R.id.statisticsEmptyText);
         statisticsChart = findViewById(R.id.statisticsChart);
         statisticsMonthText = findViewById(R.id.statisticsMonthText);
+        bonusMonthText = findViewById(R.id.bonusMonthText);
+        smsStatisticsContent = findViewById(R.id.smsStatisticsContent);
+        bonusStatisticsContent = findViewById(R.id.bonusStatisticsContent);
+        statisticsSmsTab = findViewById(R.id.statisticsSmsTab);
+        statisticsBonusTab = findViewById(R.id.statisticsBonusTab);
         statisticsMonth = Calendar.getInstance();
         statisticsMonth.set(Calendar.DAY_OF_MONTH, 1);
         if (savedInstanceState != null) {
@@ -183,9 +199,16 @@ public class MainActivity extends AppCompatActivity {
                     statisticsMonth.get(Calendar.YEAR)));
             statisticsMonth.set(Calendar.MONTH, savedInstanceState.getInt(STATE_STATISTICS_MONTH,
                     statisticsMonth.get(Calendar.MONTH)));
+            bonusTabSelected = savedInstanceState.getBoolean(STATE_STATISTICS_BONUS_TAB, false);
         }
         findViewById(R.id.statisticsPreviousMonth).setOnClickListener(view -> changeMonth(-1));
         findViewById(R.id.statisticsNextMonth).setOnClickListener(view -> changeMonth(1));
+        findViewById(R.id.bonusPreviousMonth).setOnClickListener(view -> changeMonth(-1));
+        findViewById(R.id.bonusNextMonth).setOnClickListener(view -> changeMonth(1));
+        statisticsSmsTab.setOnClickListener(view -> selectStatisticsTab(false));
+        statisticsBonusTab.setOnClickListener(view -> selectStatisticsTab(true));
+        selectStatisticsTab(bonusTabSelected);
+        renderBonusValues();
         homeLabel = findViewById(R.id.homeLabel);
         homeButton = findViewById(R.id.homeButton);
         messagesNavigationItem.setOnClickListener(view -> showSection(SECTION_MESSAGES));
@@ -675,6 +698,7 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_SELECTED_SECTION, selectedSection);
         outState.putInt(STATE_STATISTICS_YEAR, statisticsMonth.get(Calendar.YEAR));
         outState.putInt(STATE_STATISTICS_MONTH, statisticsMonth.get(Calendar.MONTH));
+        outState.putBoolean(STATE_STATISTICS_BONUS_TAB, bonusTabSelected);
         outState.putString(STATE_MESSAGE_FILTER, selectedMessageFilter.name());
         if (customFilterDate != null) {
             outState.putLong(STATE_CUSTOM_FILTER_DATE, customFilterDate);
@@ -744,6 +768,7 @@ public class MainActivity extends AppCompatActivity {
                 .format(statisticsMonth.getTime());
         statisticsMonthText.setText(monthLabel.substring(0, 1).toUpperCase(Locale.FRENCH)
                 + monthLabel.substring(1));
+        bonusMonthText.setText(statisticsMonthText.getText());
         List<SmsStatistics.DailyCount> dailyCounts = SmsStatistics.forMonth(messages,
                 statisticsMonth.get(Calendar.YEAR), statisticsMonth.get(Calendar.MONTH),
                 statisticsMonth.getTimeZone());
@@ -755,6 +780,25 @@ public class MainActivity extends AppCompatActivity {
                 && today.get(Calendar.MONTH) == statisticsMonth.get(Calendar.MONTH);
         statisticsChart.setData(dailyCounts,
                 currentMonth ? Math.max(0, today.get(Calendar.DAY_OF_MONTH) - 4) : 0);
+    }
+
+    private void selectStatisticsTab(boolean showBonus) {
+        bonusTabSelected = showBonus;
+        statisticsSmsTab.setSelected(!showBonus);
+        statisticsBonusTab.setSelected(showBonus);
+        smsStatisticsContent.setVisibility(showBonus ? View.GONE : View.VISIBLE);
+        bonusStatisticsContent.setVisibility(showBonus ? View.VISIBLE : View.GONE);
+        if (showBonus) renderBonusValues();
+    }
+
+    private void renderBonusValues() {
+        ((TextView) findViewById(R.id.totalBonusValue)).setText(formatAriary(totalBonus));
+        ((TextView) findViewById(R.id.monthlyBonusValue)).setText(formatAriary(monthlyBonus));
+        ((TextView) findViewById(R.id.todayBonusValue)).setText(formatAriary(todayBonus));
+    }
+
+    private String formatAriary(long value) {
+        return String.format(Locale.FRENCH, "%,d Ar", value).replace('\u00a0', ' ');
     }
 
     private void changeMonth(int offset) {
