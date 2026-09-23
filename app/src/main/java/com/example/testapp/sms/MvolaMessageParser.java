@@ -15,20 +15,41 @@ public final class MvolaMessageParser {
                     + "((?:\\+261|0)[0-9 \\u00a0]{9,14}?)\\s+le\\s+"
                     + "(\\d{1,2})/(\\d{1,2})/(\\d{2}|\\d{4})\\s+[aà]\\s+"
                     + "(\\d{1,2}):(\\d{2})(?=\\s*\\.|\\s|$)");
+    private static final Pattern CREDIT_PURCHASE = Pattern.compile(
+            "(?iu)^\\s*achat\\s+de\\s+cr[eé]dit\\s+YAS\\s+r[eé]ussi\\s*:\\s*"
+                    + AMOUNT + "\\s*Ar\\s+pour\\s+"
+                    + "((?:\\+261|0)[0-9 \\u00a0]{9,14}?)(?=\\s*\\.|\\s+(?:frais|bonus|solde|ref|réf)\\b|\\s*$)");
     private static final Pattern BONUS = field("bonus");
     private static final Pattern FEE = field("frais");
-    private static final Pattern BALANCE = field("solde");
+    private static final Pattern BALANCE = Pattern.compile(
+            "(?iu)\\bsolde(?:\\s+MVola)?\\s*:\\s*" + AMOUNT + "\\s*Ar\\b");
     private static final Pattern REFERENCE = Pattern.compile(
             "(?iu)\\b(?:ref|réf)\\s*:\\s*([0-9]+)");
 
     private MvolaMessageParser() {}
 
     public static ParsedTransaction parse(String rawMessage) {
+        return parse(rawMessage, 0L);
+    }
+
+    /**
+     * Parses a transaction and uses {@code receivedAt} only for formats that do not carry their
+     * own business date. The Android sender is deliberately not an input: transaction fields
+     * always come from the SMS body.
+     */
+    public static ParsedTransaction parse(String rawMessage, long receivedAt) {
         if (rawMessage == null) return null;
         String message = Normalizer.normalize(rawMessage, Normalizer.Form.NFKC);
         Matcher match = RECEIVED.matcher(message);
-        if (!match.find()) return null;
+        if (match.find()) return parseReceived(match, message, rawMessage);
 
+        match = CREDIT_PURCHASE.matcher(message);
+        if (match.find()) return parseCredit(match, message, rawMessage, receivedAt);
+        return null;
+    }
+
+    private static ParsedTransaction parseReceived(Matcher match, String message,
+                                                    String rawMessage) {
         Long amount = number(match.group(1));
         String clientNumber = ClientNumberNormalizer.normalize(match.group(3));
         Long transactionAt = date(match.group(4), match.group(5), match.group(6),
@@ -38,6 +59,17 @@ public final class MvolaMessageParser {
         return new ParsedTransaction("Retrait", clientNumber, match.group(2).trim(), amount,
                 text(REFERENCE, message), number(BONUS, message), number(FEE, message),
                 number(BALANCE, message), transactionAt, rawMessage);
+    }
+
+    private static ParsedTransaction parseCredit(Matcher match, String message,
+                                                  String rawMessage, long receivedAt) {
+        Long amount = number(match.group(1));
+        String clientNumber = ClientNumberNormalizer.normalize(match.group(2));
+        if (amount == null || clientNumber == null) return null;
+
+        return new ParsedTransaction("Crédit", clientNumber, "-", amount,
+                text(REFERENCE, message), number(BONUS, message), number(FEE, message),
+                number(BALANCE, message), receivedAt, rawMessage);
     }
 
     private static Pattern field(String name) {

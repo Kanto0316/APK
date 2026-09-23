@@ -40,7 +40,8 @@ final class ClientMessageGrouper {
     }
 
     static String clientKey(SmsMessage message) {
-        MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(message.messageBody);
+        MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
+                message.messageBody, message.receivedDate);
         return parsed == null ? null : parsed.clientNumber;
     }
 

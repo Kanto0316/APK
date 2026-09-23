@@ -34,7 +34,7 @@ final class SmsStatistics {
             Calendar received = Calendar.getInstance(timeZone);
             for (SmsMessage message : messages) {
                 MvolaMessageParser.ParsedTransaction parsed =
-                        MvolaMessageParser.parse(message.messageBody);
+                        MvolaMessageParser.parse(message.messageBody, message.receivedDate);
                 if (parsed == null) continue;
                 received.setTimeInMillis(parsed.transactionAt);
                 if (received.get(Calendar.YEAR) == year && received.get(Calendar.MONTH) == month) {
@@ -139,7 +139,7 @@ final class SmsStatistics {
         List<ParsedBusinessTransaction> result = new ArrayList<>();
         for (SmsMessage message : messages) {
             MvolaMessageParser.ParsedTransaction transaction =
-                    MvolaMessageParser.parse(message.messageBody);
+                    MvolaMessageParser.parse(message.messageBody, message.receivedDate);
             if (transaction == null || transaction.clientNumber == null) continue;
             result.add(new ParsedBusinessTransaction(transaction,
                     businessTimestamp(transaction, message)));
@@ -202,6 +202,7 @@ final class SmsStatistics {
         long todayBonus, yesterdayBonus, weekBonus, monthBonus, yearBonus;
         long todayTransactions, yesterdayTransactions, weekTransactions, monthTransactions,
                 yearTransactions;
+        long todayCreditTransactions;
         final Set<String> todayClients = new HashSet<>();
         final Set<String> yesterdayClients = new HashSet<>();
         final Set<String> weekClients = new HashSet<>();
@@ -219,6 +220,7 @@ final class SmsStatistics {
             long bonus = transaction.bonus == null ? 0 : transaction.bonus;
             if (today) {
                 todayTransactions++;
+                if ("Crédit".equalsIgnoreCase(transaction.type)) todayCreditTransactions++;
                 todayBonus += bonus;
                 todayClients.add(transaction.clientNumber);
             }
@@ -252,7 +254,7 @@ final class SmsStatistics {
         Map<Long, Integer> counts = new TreeMap<>();
         for (SmsMessage message : messages) {
             MvolaMessageParser.ParsedTransaction parsed =
-                    MvolaMessageParser.parse(message.messageBody);
+                    MvolaMessageParser.parse(message.messageBody, message.receivedDate);
             if (parsed == null) continue;
             calendar.setTimeInMillis(parsed.transactionAt);
             calendar.set(Calendar.HOUR_OF_DAY, 0);

@@ -26,6 +26,11 @@ public final class TransactionDisplayFormatter {
         return "+ " + number(value) + " Ar";
     }
 
+    /** Credit purchases are displayed as a value, not as an incoming cash movement. */
+    public static String amount(String type, long value) {
+        return "Crédit".equalsIgnoreCase(text(type)) ? number(value) + " Ar" : amount(value);
+    }
+
     public static String balance(Long value) {
         return value == null ? "-" : number(value) + " Ar";
     }

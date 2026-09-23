@@ -66,7 +66,7 @@ public class SmsReceiver extends BroadcastReceiver {
             // Parse exactly once at the reception boundary. The same immutable result is passed
             // to the presentation coordinator after Room has accepted the SMS.
             MvolaMessageParser.ParsedTransaction parsedTransaction =
-                    MvolaMessageParser.parse(body);
+                    MvolaMessageParser.parse(body, receivedAt);
             Log.d(TAG, "SMS extrait ; date=" + receivedAt + ", longueur=" + body.length());
 
             com.example.testapp.database.SmsMessage localMessage =

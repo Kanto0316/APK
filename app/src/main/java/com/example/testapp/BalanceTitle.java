@@ -18,7 +18,7 @@ final class BalanceTitle {
         if (messages != null) {
             for (SmsMessage message : messages) {
                 MvolaMessageParser.ParsedTransaction transaction =
-                        MvolaMessageParser.parse(message.messageBody);
+                        MvolaMessageParser.parse(message.messageBody, message.receivedDate);
                 if (transaction == null || transaction.balance == null) continue;
 
                 // A parsed transaction date is calendar-validated by the shared parser. The SMS

@@ -72,7 +72,7 @@ public class NotificationHelper {
         PendingIntent pendingIntent = PendingIntent.getActivity(context, 1, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         String number = TransactionDisplayFormatter.phone(transaction.clientNumber);
-        String amount = TransactionDisplayFormatter.amount(transaction.amount)
+        String amount = TransactionDisplayFormatter.amount(transaction.type, transaction.amount)
                 .replace("+ ", "+");
         String balance = TransactionDisplayFormatter.balance(transaction.balance);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)

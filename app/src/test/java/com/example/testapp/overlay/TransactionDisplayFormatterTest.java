@@ -22,4 +22,9 @@ public class TransactionDisplayFormatterTest {
         assertEquals("+ 3 000 Ar", TransactionDisplayFormatter.amount(3000));
         assertEquals("+ 150 000 Ar", TransactionDisplayFormatter.amount(150000));
     }
+
+    @Test public void creditAmountDoesNotLookLikeAnIncomingCashMovement() {
+        assertEquals("500 Ar", TransactionDisplayFormatter.amount("Crédit", 500));
+        assertEquals("+ 500 Ar", TransactionDisplayFormatter.amount("Retrait", 500));
+    }
 }

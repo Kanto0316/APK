@@ -47,4 +47,23 @@ public class SmsTableRowTest {
         assertEquals("-", SmsTableRow.display("   "));
         assertEquals("25 000 Ar", SmsTableRow.display("25 000 Ar"));
     }
+
+    @Test
+    public void from_displaysCreditFieldsAndUsesSmsReceptionTimestamp() {
+        SmsMessage message = SmsMessage.create("MVola",
+                "Achat de credit YAS reussi: 500 Ar pour 0386825677. Frais: 0 Ar. "
+                        + "Bonus:24 Ar. Solde MVola : 80 869 Ar. Ref: 7581687806",
+                1_797_897_600_000L, true);
+        SmsTableRow row = SmsTableRow.from(new SmsDateFilter.DisplayMessage(message, 2));
+
+        assertEquals("Crédit", row.type);
+        assertEquals("038 68 256 77", row.numero);
+        assertEquals("-", row.nom);
+        assertEquals("500 Ar", row.montant);
+        assertEquals("7581687806", row.reference);
+        assertEquals("24 Ar", row.bonus);
+        assertEquals("0 Ar", row.frais);
+        assertEquals("80 869 Ar", row.solde);
+        assertEquals("22/12/2026 00:00", row.dateTime);
+    }
 }

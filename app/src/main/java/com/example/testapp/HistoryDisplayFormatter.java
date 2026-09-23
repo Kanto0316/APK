@@ -24,6 +24,7 @@ final class HistoryDisplayFormatter {
     static String amount(HistoryTransaction item) {
         // Direction comes only from the parser's explicit type; Retrait is an incoming agent
         // transaction in the existing MVola parser.
+        if ("Crédit".equalsIgnoreCase(item.type)) return ariary(Math.abs(item.amount));
         boolean outgoing = "Envoi".equalsIgnoreCase(item.type)
                 || "Paiement".equalsIgnoreCase(item.type)
                 || "Transfert".equalsIgnoreCase(item.type);
