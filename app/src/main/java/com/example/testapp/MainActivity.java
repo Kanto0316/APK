@@ -132,6 +132,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView bonusYearLabel;
     private TextView transactionMonthLabel;
     private TextView transactionYearLabel;
+    private StatisticsChartView bonusChart;
+    private TextView emptyBonusChartText;
     private int selectedStatisticsTab = STATISTICS_TAB_BONUS;
     // Static placeholders only; user counting criteria will be defined in a future version.
     private long todayUsers = 0;
@@ -139,12 +141,13 @@ public class MainActivity extends AppCompatActivity {
     private long weekUsers = 0;
     private long monthUsers = 0;
     private long yearUsers = 0;
-    // Static placeholders ready to be supplied by the future bonus calculation layer.
+    // Bonus totals and bars are refreshed together from parsed MVola transactions.
     private long todayBonus = 0;
     private long yesterdayBonus = 0;
     private long weekBonus = 0;
     private long monthBonus = 0;
     private long yearBonus = 0;
+    private List<SmsStatistics.DailyCount> monthlyBonusBars = new ArrayList<>();
     // UI-only placeholders ready for the future transaction statistics layer.
     private long todayTransactions = 0;
     private long yesterdayTransactions = 0;
@@ -251,6 +254,8 @@ public class MainActivity extends AppCompatActivity {
         bonusYearLabel = findViewById(R.id.bonusYearLabel);
         transactionMonthLabel = findViewById(R.id.transactionMonthLabel);
         transactionYearLabel = findViewById(R.id.transactionYearLabel);
+        bonusChart = findViewById(R.id.bonusChart);
+        emptyBonusChartText = findViewById(R.id.emptyBonusChartText);
         userStatisticsContent = findViewById(R.id.userStatisticsContent);
         bonusStatisticsContent = findViewById(R.id.bonusStatisticsContent);
         transactionStatisticsContent = findViewById(R.id.transactionStatisticsContent);
@@ -1190,6 +1195,7 @@ public class MainActivity extends AppCompatActivity {
         weekBonus = summary.weekBonus;
         monthBonus = summary.monthBonus;
         yearBonus = summary.yearBonus;
+        monthlyBonusBars = summary.monthlyBonus;
         todayTransactions = summary.todayTransactions;
         yesterdayTransactions = summary.yesterdayTransactions;
         weekTransactions = summary.weekTransactions;
@@ -1236,6 +1242,10 @@ public class MainActivity extends AppCompatActivity {
         ((TextView) findViewById(R.id.monthBonusValue)).setText(formatAriary(monthBonus));
         ((TextView) findViewById(R.id.yearBonusValue)).setText(formatAriary(yearBonus));
         renderPeriodLabels(bonusMonthLabel, bonusYearLabel);
+        bonusChart.setBonusData(monthlyBonusBars);
+        boolean hasBonus = !monthlyBonusBars.isEmpty();
+        bonusChart.setVisibility(hasBonus ? View.VISIBLE : View.GONE);
+        emptyBonusChartText.setVisibility(hasBonus ? View.GONE : View.VISIBLE);
     }
 
     private void renderTransactionValues() {

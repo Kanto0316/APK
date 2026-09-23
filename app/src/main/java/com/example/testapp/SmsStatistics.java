@@ -79,11 +79,12 @@ final class SmsStatistics {
 
         if (messages == null) return result;
         Calendar transactionDate = Calendar.getInstance(timeZone);
+        Map<Long, Long> selectedMonthBonusByDay = new TreeMap<>();
         for (SmsMessage message : messages) {
             MvolaMessageParser.ParsedTransaction transaction =
                     MvolaMessageParser.parse(message.messageBody);
             if (transaction == null) continue;
-            long at = transaction.transactionAt;
+            long at = businessTimestamp(transaction, message);
             transactionDate.setTimeInMillis(at);
             boolean isToday = at >= todayStart && at < tomorrowStart;
             boolean isYesterday = at >= yesterdayStart && at < todayStart;
@@ -92,8 +93,26 @@ final class SmsStatistics {
                     && transactionDate.get(Calendar.MONTH) == selectedMonth;
             boolean isYear = transactionDate.get(Calendar.YEAR) == selectedYear;
             result.add(transaction, isToday, isYesterday, isWeek, isMonth, isYear);
+            if (isMonth && transaction.bonus != null) {
+                startOfDay(transactionDate);
+                long day = transactionDate.getTimeInMillis();
+                selectedMonthBonusByDay.put(day, selectedMonthBonusByDay.getOrDefault(day, 0L)
+                        + transaction.bonus);
+            }
+        }
+        for (Map.Entry<Long, Long> entry : selectedMonthBonusByDay.entrySet()) {
+            result.monthlyBonus.add(new DailyCount(entry.getKey(), entry.getValue()));
+        }
+        if (sum(result.monthlyBonus) != result.monthBonus) {
+            throw new IllegalStateException("Le total bonus mensuel diffère du graphique");
         }
         return result;
+    }
+
+    static long sum(List<DailyCount> dailyValues) {
+        long total = 0;
+        for (DailyCount value : dailyValues) total += value.count;
+        return total;
     }
 
     private static void startOfDay(Calendar calendar) {
@@ -101,6 +120,12 @@ final class SmsStatistics {
         calendar.set(Calendar.MINUTE, 0);
         calendar.set(Calendar.SECOND, 0);
         calendar.set(Calendar.MILLISECOND, 0);
+    }
+
+    /** Prefers the date parsed from the SMS body and only falls back to reception time. */
+    private static long businessTimestamp(MvolaMessageParser.ParsedTransaction transaction,
+                                          SmsMessage message) {
+        return transaction.transactionAt > 0 ? transaction.transactionAt : message.receivedDate;
     }
 
     static final class TransactionSummary {
@@ -112,6 +137,8 @@ final class SmsStatistics {
         final Set<String> weekClients = new HashSet<>();
         final Set<String> monthClients = new HashSet<>();
         final Set<String> yearClients = new HashSet<>();
+        /** Daily bonus bars for the selected month, derived in the same pass as monthBonus. */
+        final List<DailyCount> monthlyBonus = new ArrayList<>();
 
         private void add(MvolaMessageParser.ParsedTransaction transaction, boolean today,
                          boolean yesterday, boolean week, boolean month, boolean year) {
@@ -171,9 +198,9 @@ final class SmsStatistics {
 
     static final class DailyCount {
         final long localDayTimestamp;
-        final int count;
+        final long count;
 
-        DailyCount(long localDayTimestamp, int count) {
+        DailyCount(long localDayTimestamp, long count) {
             this.localDayTimestamp = localDayTimestamp;
             this.count = count;
         }

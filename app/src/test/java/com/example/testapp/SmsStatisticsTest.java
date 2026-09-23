@@ -165,6 +165,59 @@ public class SmsStatisticsTest {
         assertEquals(2, summary.monthClients.size());
     }
 
+    @Test public void bonusChartUsesParsedTransactionDateAndMatchesSelectedMonthTotal() {
+        Calendar now = Calendar.getInstance(UTC);
+        now.clear();
+        now.set(2026, Calendar.SEPTEMBER, 23, 12, 0);
+        SmsMessage septemberBonus = SmsMessage.create("Autre expéditeur",
+                "3 000 Ar recu de LOVASOA 0343242318 le 21/09/26 a 08:19. "
+                        + "Bonus:58 Ar. Solde: 82 023 Ar. Ref: 7582999265.",
+                // Deliberately received in October: transactionAt must win.
+                utcDate(2026, Calendar.OCTOBER, 1, 9), true);
+
+        SmsStatistics.TransactionSummary september = SmsStatistics.summarize(
+                Arrays.asList(septemberBonus), now.getTimeInMillis(),
+                2026, Calendar.SEPTEMBER, UTC);
+        SmsStatistics.TransactionSummary september2025 = SmsStatistics.summarize(
+                Arrays.asList(septemberBonus), now.getTimeInMillis(),
+                2025, Calendar.SEPTEMBER, UTC);
+
+        assertEquals(58, september.monthBonus);
+        assertEquals(1, september.monthlyBonus.size());
+        assertEquals(58, september.monthlyBonus.get(0).count);
+        Calendar barDate = Calendar.getInstance(UTC);
+        barDate.setTimeInMillis(september.monthlyBonus.get(0).localDayTimestamp);
+        assertEquals(2026, barDate.get(Calendar.YEAR));
+        assertEquals(Calendar.SEPTEMBER, barDate.get(Calendar.MONTH));
+        assertEquals(21, barDate.get(Calendar.DAY_OF_MONTH));
+        assertEquals(september.monthBonus, SmsStatistics.sum(september.monthlyBonus));
+        assertEquals(0, september2025.monthBonus);
+        assertEquals(0, september2025.monthlyBonus.size());
+    }
+
+    @Test public void bonusChartSumsBonusesOnTheSameBusinessDay() {
+        Calendar now = Calendar.getInstance(UTC);
+        now.clear();
+        now.set(2026, Calendar.SEPTEMBER, 23, 12, 0);
+        List<SmsMessage> messages = Arrays.asList(
+                mvola("0343242318", "08:19", 58, 1L),
+                mvola("0381453472", "09:31", 250, 2L));
+
+        SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(messages,
+                now.getTimeInMillis(), 2026, Calendar.SEPTEMBER, UTC);
+
+        assertEquals(1, summary.monthlyBonus.size());
+        assertEquals(308, summary.monthlyBonus.get(0).count);
+        assertEquals(summary.monthBonus, SmsStatistics.sum(summary.monthlyBonus));
+    }
+
+    private static long utcDate(int year, int month, int day, int hour) {
+        Calendar calendar = Calendar.getInstance(UTC);
+        calendar.clear();
+        calendar.set(year, month, day, hour, 0);
+        return calendar.getTimeInMillis();
+    }
+
     private static void add(List<SmsMessage> messages, int count, int day) {
         for (int index = 0; index < count; index++) messages.add(sms(2026, 9, day, index));
     }

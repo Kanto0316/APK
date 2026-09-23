@@ -20,7 +20,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/** Vertical daily bar chart: X is the local date and Y is the number of SMS. */
+/** Horizontally scrollable vertical daily bar chart. */
 public final class StatisticsChartView extends View {
     private static final int TARGET_TICK_COUNT = 5;
     // A fixed slot keeps bars visually consistent and shows roughly 5–7 days on a phone.
@@ -43,6 +43,7 @@ public final class StatisticsChartView extends View {
     private long scaleMaximum = 1;
     private long tickStep = 1;
     private float horizontalOffset;
+    private boolean ariaryValues;
 
     public StatisticsChartView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -84,8 +85,18 @@ public final class StatisticsChartView extends View {
     }
 
     void setData(List<SmsStatistics.DailyCount> dailyCounts, int firstVisibleIndex) {
+        ariaryValues = false;
+        updateData(dailyCounts, firstVisibleIndex);
+    }
+
+    void setBonusData(List<SmsStatistics.DailyCount> dailyBonuses) {
+        ariaryValues = true;
+        updateData(dailyBonuses, 0);
+    }
+
+    private void updateData(List<SmsStatistics.DailyCount> dailyCounts, int firstVisibleIndex) {
         data = dailyCounts == null ? new ArrayList<>() : new ArrayList<>(dailyCounts);
-        int maximum = 1;
+        long maximum = 1;
         for (SmsStatistics.DailyCount item : data) maximum = Math.max(maximum, item.count);
         tickStep = readableStep(maximum);
         scaleMaximum = readableMaximum(maximum);
@@ -96,7 +107,7 @@ public final class StatisticsChartView extends View {
     }
 
     /** Selects a 1, 2 or 5 multiplied by a power of ten, aiming for five intervals. */
-    static long readableStep(int maximum) {
+    static long readableStep(long maximum) {
         if (maximum <= TARGET_TICK_COUNT) return 1;
         double roughStep = maximum / (double) TARGET_TICK_COUNT;
         double magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
@@ -105,7 +116,7 @@ public final class StatisticsChartView extends View {
         return Math.max(1, Math.round(multiplier * magnitude));
     }
 
-    static long readableMaximum(int maximum) {
+    static long readableMaximum(long maximum) {
         long step = readableStep(maximum);
         return ((Math.max(1L, maximum) + step - 1) / step) * step;
     }
@@ -151,7 +162,8 @@ public final class StatisticsChartView extends View {
         textPaint.setTextSize(11 * getResources().getDisplayMetrics().scaledDensity);
         textPaint.setFakeBoldText(false);
         textPaint.setTextAlign(Paint.Align.LEFT);
-        canvas.drawText("Nombre de SMS", chartLeft, getPaddingTop() + dp(17), textPaint);
+        canvas.drawText(ariaryValues ? "Bonus (Ar)" : "Nombre de SMS", chartLeft,
+                getPaddingTop() + dp(17), textPaint);
         textPaint.setTextSize(12 * getResources().getDisplayMetrics().scaledDensity);
 
         int intervals = Math.max(1, (int) (scaleMaximum / tickStep));
@@ -183,7 +195,7 @@ public final class StatisticsChartView extends View {
                 textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_primary));
                 textPaint.setFakeBoldText(true);
                 textPaint.setTextAlign(Paint.Align.CENTER);
-                canvas.drawText(numberFormat.format(item.count), centerX, barTop - dp(7), textPaint);
+                canvas.drawText(formatValue(item.count), centerX, barTop - dp(7), textPaint);
             }
             textPaint.setFakeBoldText(false);
             textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_secondary));
@@ -217,12 +229,17 @@ public final class StatisticsChartView extends View {
     }
 
     private String buildDescription() {
-        StringBuilder result = new StringBuilder("Activité des messages. ");
+        StringBuilder result = new StringBuilder(ariaryValues
+                ? "Bonus quotidiens. " : "Activité des messages. ");
         for (SmsStatistics.DailyCount item : data) {
             result.append(accessibleDateFormat.format(new Date(item.localDayTimestamp))).append(" : ")
-                    .append(item.count).append(" SMS. ");
+                    .append(formatValue(item.count)).append(ariaryValues ? ". " : " SMS. ");
         }
         return result.toString();
+    }
+
+    private String formatValue(long value) {
+        return numberFormat.format(value) + (ariaryValues ? " Ar" : "");
     }
 
     private int dp(int value) { return Math.round(value * density); }
