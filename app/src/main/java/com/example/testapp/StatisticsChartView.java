@@ -94,6 +94,11 @@ public final class StatisticsChartView extends View {
         updateData(dailyBonuses, 0);
     }
 
+    void setUserData(List<SmsStatistics.DailyCount> dailyUsers) {
+        ariaryValues = false;
+        updateData(dailyUsers, 0);
+    }
+
     private void updateData(List<SmsStatistics.DailyCount> dailyCounts, int firstVisibleIndex) {
         data = dailyCounts == null ? new ArrayList<>() : new ArrayList<>(dailyCounts);
         long maximum = 1;
@@ -162,7 +167,7 @@ public final class StatisticsChartView extends View {
         textPaint.setTextSize(11 * getResources().getDisplayMetrics().scaledDensity);
         textPaint.setFakeBoldText(false);
         textPaint.setTextAlign(Paint.Align.LEFT);
-        canvas.drawText(ariaryValues ? "Bonus (Ar)" : "Nombre de SMS", chartLeft,
+        canvas.drawText(ariaryValues ? "Bonus (Ar)" : "Nombre d’utilisateurs", chartLeft,
                 getPaddingTop() + dp(17), textPaint);
         textPaint.setTextSize(12 * getResources().getDisplayMetrics().scaledDensity);
 
@@ -230,10 +235,10 @@ public final class StatisticsChartView extends View {
 
     private String buildDescription() {
         StringBuilder result = new StringBuilder(ariaryValues
-                ? "Bonus quotidiens. " : "Activité des messages. ");
+                ? "Bonus quotidiens. " : "Utilisateurs distincts par jour. ");
         for (SmsStatistics.DailyCount item : data) {
             result.append(accessibleDateFormat.format(new Date(item.localDayTimestamp))).append(" : ")
-                    .append(formatValue(item.count)).append(ariaryValues ? ". " : " SMS. ");
+                    .append(formatValue(item.count)).append(ariaryValues ? ". " : " utilisateurs. ");
         }
         return result.toString();
     }

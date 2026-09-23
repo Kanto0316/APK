@@ -211,6 +211,46 @@ public class SmsStatisticsTest {
         assertEquals(summary.monthBonus, SmsStatistics.sum(summary.monthlyBonus));
     }
 
+    @Test public void userChartCountsDistinctNormalizedClientsPerBusinessDay() {
+        Calendar now = Calendar.getInstance(UTC);
+        now.clear();
+        now.set(2026, Calendar.SEPTEMBER, 23, 12, 0);
+        List<SmsMessage> messages = Arrays.asList(
+                mvola("0343242318", "08:19", 1, utcDate(2026, Calendar.OCTOBER, 1, 9)),
+                mvola("034 32 423 18", "09:19", 1, 2L),
+                mvola("+261343242318", "10:19", 1, 3L),
+                mvola("0381453472", "11:19", 1, 4L),
+                SmsMessage.create("MVola", "message non reconnu", 5L, true));
+
+        SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(messages,
+                now.getTimeInMillis(), 2026, Calendar.SEPTEMBER, UTC);
+
+        assertEquals(2, summary.monthClients.size());
+        assertEquals(1, summary.monthlyUsers.size());
+        assertEquals(2, summary.monthlyUsers.get(0).count);
+        Calendar barDate = Calendar.getInstance(UTC);
+        barDate.setTimeInMillis(summary.monthlyUsers.get(0).localDayTimestamp);
+        assertEquals(21, barDate.get(Calendar.DAY_OF_MONTH));
+    }
+
+    @Test public void monthlyUserTotalAndDailyBarsUseTheirRequiredDistinctScopes() {
+        Calendar now = Calendar.getInstance(UTC);
+        now.clear();
+        now.set(2026, Calendar.SEPTEMBER, 23, 12, 0);
+        List<SmsMessage> messages = Arrays.asList(
+                mvolaOnDay("0343242318", 20, "08:19"),
+                mvolaOnDay("0343242318", 21, "08:19"),
+                mvolaOnDay("0381453472", 21, "09:19"));
+
+        SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(messages,
+                now.getTimeInMillis(), 2026, Calendar.SEPTEMBER, UTC);
+
+        assertEquals(2, summary.monthClients.size());
+        assertEquals(2, summary.monthlyUsers.size());
+        assertEquals(1, summary.monthlyUsers.get(0).count);
+        assertEquals(2, summary.monthlyUsers.get(1).count);
+    }
+
     private static long utcDate(int year, int month, int day, int hour) {
         Calendar calendar = Calendar.getInstance(UTC);
         calendar.clear();
@@ -237,5 +277,11 @@ public class SmsStatisticsTest {
         return SmsMessage.create("MVola", "1 000 Ar recu de Client Test " + number
                 + " le 21/09/26 a " + time + ". Bonus:" + bonus
                 + " Ar. Solde: 10 000 Ar. Ref: 123456.", receivedAt, true);
+    }
+
+    private static SmsMessage mvolaOnDay(String number, int day, String time) {
+        return SmsMessage.create("MVola", "1 000 Ar recu de Client Test " + number
+                + " le " + day + "/09/26 a " + time
+                + ". Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.", 1L, true);
     }
 }

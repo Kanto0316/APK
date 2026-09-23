@@ -134,13 +134,15 @@ public class MainActivity extends AppCompatActivity {
     private TextView transactionYearLabel;
     private StatisticsChartView bonusChart;
     private TextView emptyBonusChartText;
+    private StatisticsChartView userChart;
+    private TextView emptyUserChartText;
     private int selectedStatisticsTab = STATISTICS_TAB_BONUS;
-    // Static placeholders only; user counting criteria will be defined in a future version.
     private long todayUsers = 0;
     private long yesterdayUsers = 0;
     private long weekUsers = 0;
     private long monthUsers = 0;
     private long yearUsers = 0;
+    private List<SmsStatistics.DailyCount> monthlyUserBars = new ArrayList<>();
     // Bonus totals and bars are refreshed together from parsed MVola transactions.
     private long todayBonus = 0;
     private long yesterdayBonus = 0;
@@ -256,6 +258,8 @@ public class MainActivity extends AppCompatActivity {
         transactionYearLabel = findViewById(R.id.transactionYearLabel);
         bonusChart = findViewById(R.id.bonusChart);
         emptyBonusChartText = findViewById(R.id.emptyBonusChartText);
+        userChart = findViewById(R.id.userChart);
+        emptyUserChartText = findViewById(R.id.emptyUserChartText);
         userStatisticsContent = findViewById(R.id.userStatisticsContent);
         bonusStatisticsContent = findViewById(R.id.bonusStatisticsContent);
         transactionStatisticsContent = findViewById(R.id.transactionStatisticsContent);
@@ -1190,6 +1194,7 @@ public class MainActivity extends AppCompatActivity {
         weekUsers = summary.weekClients.size();
         monthUsers = summary.monthClients.size();
         yearUsers = summary.yearClients.size();
+        monthlyUserBars = summary.monthlyUsers;
         todayBonus = summary.todayBonus;
         yesterdayBonus = summary.yesterdayBonus;
         weekBonus = summary.weekBonus;
@@ -1233,6 +1238,10 @@ public class MainActivity extends AppCompatActivity {
         ((TextView) findViewById(R.id.monthUsersValue)).setText(String.valueOf(monthUsers));
         ((TextView) findViewById(R.id.yearUsersValue)).setText(String.valueOf(yearUsers));
         renderPeriodLabels(userMonthLabel, userYearLabel);
+        userChart.setUserData(monthlyUserBars);
+        boolean hasUsers = !monthlyUserBars.isEmpty();
+        userChart.setVisibility(hasUsers ? View.VISIBLE : View.GONE);
+        emptyUserChartText.setVisibility(hasUsers ? View.GONE : View.VISIBLE);
     }
 
     private void renderBonusValues() {
