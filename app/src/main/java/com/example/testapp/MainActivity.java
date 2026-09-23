@@ -68,12 +68,15 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_SELECTED_SECTION = "selected_section";
     private static final String STATE_STATISTICS_YEAR = "statistics_year";
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
-    private static final String STATE_STATISTICS_BONUS_TAB = "statistics_bonus_tab";
+    private static final String STATE_STATISTICS_TAB = "statistics_tab";
     private static final String STATE_MESSAGE_FILTER = "message_filter";
     private static final String STATE_CUSTOM_FILTER_DATE = "custom_filter_date";
     private static final int SECTION_MESSAGES = 0;
     private static final int SECTION_HOME = 1;
     private static final int SECTION_STATISTICS = 2;
+    private static final int STATISTICS_TAB_BONUS = 0;
+    private static final int STATISTICS_TAB_USER = 1;
+    private static final int STATISTICS_TAB_TRANSACTION = 2;
     private static final String INSTALLATION_PREFERENCES = "installation_restore";
     private static final String INSTALLATION_STATE = "state";
     private static final String STATE_CONFIGURED = "configured";
@@ -105,10 +108,12 @@ public class MainActivity extends AppCompatActivity {
     private Calendar statisticsMonth;
     private View userStatisticsContent;
     private View bonusStatisticsContent;
+    private View transactionStatisticsContent;
     private TextView statisticsUserTab;
     private TextView statisticsBonusTab;
+    private TextView statisticsTransactionTab;
     private TextView bonusMonthText;
-    private boolean bonusTabSelected;
+    private int selectedStatisticsTab = STATISTICS_TAB_BONUS;
     // Static placeholders only; user counting criteria will be defined in a future version.
     private long todayUsers = 0;
     private long yesterdayUsers = 0;
@@ -121,6 +126,11 @@ public class MainActivity extends AppCompatActivity {
     private long weekBonus = 0;
     private long monthBonus = 0;
     private long yearBonus = 0;
+    // UI-only placeholders: a successful transaction definition will be added later.
+    private long totalTransactions = 0;
+    private long depositTransactions = 0;
+    private long creditTransactions = 0;
+    private long offerTransactions = 0;
     private TextView homeLabel;
     private ImageButton homeButton;
     private int selectedSection = SECTION_MESSAGES;
@@ -196,8 +206,10 @@ public class MainActivity extends AppCompatActivity {
         bonusMonthText = findViewById(R.id.bonusMonthText);
         userStatisticsContent = findViewById(R.id.userStatisticsContent);
         bonusStatisticsContent = findViewById(R.id.bonusStatisticsContent);
+        transactionStatisticsContent = findViewById(R.id.transactionStatisticsContent);
         statisticsUserTab = findViewById(R.id.statisticsUserTab);
         statisticsBonusTab = findViewById(R.id.statisticsBonusTab);
+        statisticsTransactionTab = findViewById(R.id.statisticsTransactionTab);
         statisticsMonth = Calendar.getInstance();
         statisticsMonth.set(Calendar.DAY_OF_MONTH, 1);
         if (savedInstanceState != null) {
@@ -205,24 +217,31 @@ public class MainActivity extends AppCompatActivity {
                     statisticsMonth.get(Calendar.YEAR)));
             statisticsMonth.set(Calendar.MONTH, savedInstanceState.getInt(STATE_STATISTICS_MONTH,
                     statisticsMonth.get(Calendar.MONTH)));
-            bonusTabSelected = savedInstanceState.getBoolean(STATE_STATISTICS_BONUS_TAB, false);
+            selectedStatisticsTab = savedInstanceState.getInt(
+                    STATE_STATISTICS_TAB, STATISTICS_TAB_BONUS);
         }
         findViewById(R.id.statisticsPreviousMonth).setOnClickListener(view -> changeMonth(-1));
         findViewById(R.id.statisticsNextMonth).setOnClickListener(view -> changeMonth(1));
         findViewById(R.id.bonusPreviousMonth).setOnClickListener(view -> changeMonth(-1));
         findViewById(R.id.bonusNextMonth).setOnClickListener(view -> changeMonth(1));
-        statisticsUserTab.setOnClickListener(view -> selectStatisticsTab(false));
-        statisticsBonusTab.setOnClickListener(view -> selectStatisticsTab(true));
-        selectStatisticsTab(bonusTabSelected);
+        statisticsBonusTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_BONUS));
+        statisticsUserTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_USER));
+        statisticsTransactionTab.setOnClickListener(
+                view -> selectStatisticsTab(STATISTICS_TAB_TRANSACTION));
+        selectStatisticsTab(selectedStatisticsTab);
         renderUserValues();
         renderBonusValues();
+        renderTransactionValues();
         homeLabel = findViewById(R.id.homeLabel);
         homeButton = findViewById(R.id.homeButton);
         messagesNavigationItem.setOnClickListener(view -> showSection(SECTION_MESSAGES));
         findViewById(R.id.bottomImport).setOnClickListener(view -> launchImport());
         homeButton.setOnClickListener(view -> showSection(SECTION_HOME));
         findViewById(R.id.bottomExport).setOnClickListener(view -> launchExport());
-        statisticsNavigationItem.setOnClickListener(view -> showSection(SECTION_STATISTICS));
+        statisticsNavigationItem.setOnClickListener(view -> {
+            selectStatisticsTab(STATISTICS_TAB_BONUS);
+            showSection(SECTION_STATISTICS);
+        });
         showSection(savedInstanceState == null ? SECTION_MESSAGES
                 : savedInstanceState.getInt(STATE_SELECTED_SECTION, SECTION_MESSAGES));
         RecyclerView list = findViewById(R.id.transactionsList);
@@ -705,7 +724,7 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_SELECTED_SECTION, selectedSection);
         outState.putInt(STATE_STATISTICS_YEAR, statisticsMonth.get(Calendar.YEAR));
         outState.putInt(STATE_STATISTICS_MONTH, statisticsMonth.get(Calendar.MONTH));
-        outState.putBoolean(STATE_STATISTICS_BONUS_TAB, bonusTabSelected);
+        outState.putInt(STATE_STATISTICS_TAB, selectedStatisticsTab);
         outState.putString(STATE_MESSAGE_FILTER, selectedMessageFilter.name());
         if (customFilterDate != null) {
             outState.putLong(STATE_CUSTOM_FILTER_DATE, customFilterDate);
@@ -776,18 +795,32 @@ public class MainActivity extends AppCompatActivity {
         statisticsMonthText.setText(monthLabel.substring(0, 1).toUpperCase(Locale.FRENCH)
                 + monthLabel.substring(1));
         bonusMonthText.setText(statisticsMonthText.getText());
-        renderUserValues();
+        if (selectedStatisticsTab == STATISTICS_TAB_BONUS) renderBonusValues();
+        else if (selectedStatisticsTab == STATISTICS_TAB_USER) renderUserValues();
+        else renderTransactionValues();
     }
 
-    private void selectStatisticsTab(boolean showBonus) {
-        bonusTabSelected = showBonus;
-        statisticsUserTab.setSelected(!showBonus);
+    private void selectStatisticsTab(int tab) {
+        selectedStatisticsTab = tab;
+        boolean showBonus = tab == STATISTICS_TAB_BONUS;
+        boolean showUser = tab == STATISTICS_TAB_USER;
+        boolean showTransaction = tab == STATISTICS_TAB_TRANSACTION;
         statisticsBonusTab.setSelected(showBonus);
-        userStatisticsContent.setVisibility(showBonus ? View.GONE : View.VISIBLE);
+        statisticsUserTab.setSelected(showUser);
+        statisticsTransactionTab.setSelected(showTransaction);
         bonusStatisticsContent.setVisibility(showBonus ? View.VISIBLE : View.GONE);
-        statisticsSubtitle.setText(showBonus ? "Suivi des bonus" : "Nombre d’utilisateurs");
-        if (showBonus) renderBonusValues();
-        else renderUserValues();
+        userStatisticsContent.setVisibility(showUser ? View.VISIBLE : View.GONE);
+        transactionStatisticsContent.setVisibility(showTransaction ? View.VISIBLE : View.GONE);
+        if (showBonus) {
+            statisticsSubtitle.setText("Suivi des bonus");
+            renderBonusValues();
+        } else if (showUser) {
+            statisticsSubtitle.setText("Nombre d’utilisateurs");
+            renderUserValues();
+        } else {
+            statisticsSubtitle.setText("Nombre de transactions");
+            renderTransactionValues();
+        }
     }
 
     private void renderUserValues() {
@@ -804,6 +837,17 @@ public class MainActivity extends AppCompatActivity {
         ((TextView) findViewById(R.id.weekBonusValue)).setText(formatAriary(weekBonus));
         ((TextView) findViewById(R.id.monthBonusValue)).setText(formatAriary(monthBonus));
         ((TextView) findViewById(R.id.yearBonusValue)).setText(formatAriary(yearBonus));
+    }
+
+    private void renderTransactionValues() {
+        ((TextView) findViewById(R.id.totalTransactionsValue))
+                .setText(String.valueOf(totalTransactions));
+        ((TextView) findViewById(R.id.depositTransactionsValue))
+                .setText(String.valueOf(depositTransactions));
+        ((TextView) findViewById(R.id.creditTransactionsValue))
+                .setText(String.valueOf(creditTransactions));
+        ((TextView) findViewById(R.id.offerTransactionsValue))
+                .setText(String.valueOf(offerTransactions));
     }
 
     private String formatAriary(long value) {
