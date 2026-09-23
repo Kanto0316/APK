@@ -1,7 +1,6 @@
 package com.example.testapp;
 
 import com.example.testapp.database.SmsMessage;
-import com.example.testapp.sms.ClientNumberNormalizer;
 import com.example.testapp.sms.MvolaMessageParser;
 
 import java.util.ArrayList;
@@ -27,7 +26,10 @@ final class ClientMessageGrouper {
 
         Map<String, List<SmsMessage>> grouped = new LinkedHashMap<>();
         for (SmsMessage message : newestFirst) {
-            grouped.computeIfAbsent(clientKey(message), ignored -> new ArrayList<>()).add(message);
+            String clientNumber = clientKey(message);
+            if (clientNumber != null) {
+                grouped.computeIfAbsent(clientNumber, ignored -> new ArrayList<>()).add(message);
+            }
         }
 
         List<ClientGroup> result = new ArrayList<>();
@@ -39,9 +41,7 @@ final class ClientMessageGrouper {
 
     static String clientKey(SmsMessage message) {
         MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(message.messageBody);
-        if (parsed != null) return parsed.clientNumber;
-        String normalized = ClientNumberNormalizer.normalize(message.sender);
-        return normalized == null ? message.sender : normalized;
+        return parsed == null ? null : parsed.clientNumber;
     }
 
     /** Filters the derived presentation without changing its newest-message-first order. */

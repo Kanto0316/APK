@@ -7,32 +7,20 @@ import com.example.testapp.database.SmsMessage;
 
 import org.junit.Test;
 
-import java.util.TimeZone;
 
 public class SmsTableRowTest {
     @Test
-    public void from_usesReliableSmsFieldsAndLeavesFutureFieldsUnavailable() {
-        TimeZone previous = TimeZone.getDefault();
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    public void from_rejectsUnparsedSmsInsteadOfDisplayingItsSender() {
+        SmsMessage message = SmsMessage.create("MVola", "Texte intégral conservé", 1L, true);
         try {
-            SmsMessage message = SmsMessage.create("+261344153878", "Texte intégral conservé",
-                    1790186280000L, true);
-            SmsTableRow row = SmsTableRow.from(new SmsDateFilter.DisplayMessage(message, 15));
-
-            assertEquals(15, row.number);
-            assertEquals("23/09/2026 17:58", row.dateTime);
-            assertEquals("034 41 538 78", row.numero);
-            assertNull(row.type);
-            assertNull(row.nom);
-            assertNull(row.montant);
-            assertNull(row.reference);
-            assertNull(row.bonus);
-            assertNull(row.frais);
-            assertNull(row.solde);
+            SmsTableRow.from(new SmsDateFilter.DisplayMessage(message, 15));
+        } catch (IllegalArgumentException expected) {
+            assertEquals("A parsed transaction is required for display", expected.getMessage());
             assertEquals("Texte intégral conservé", message.messageBody);
-        } finally {
-            TimeZone.setDefault(previous);
+            assertEquals("MVola", message.sender);
+            return;
         }
+        throw new AssertionError("An unparsed SMS must not become a table row");
     }
 
     @Test

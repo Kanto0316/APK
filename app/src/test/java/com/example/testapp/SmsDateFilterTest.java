@@ -15,6 +15,22 @@ public class SmsDateFilterTest {
     private static final TimeZone ZONE = TimeZone.getTimeZone("Europe/Paris");
 
     @Test
+    public void unparsedMvolaIsStoredButExcludedFromEveryDisplayFilter() {
+        SmsMessage raw = SmsMessage.create("MVola", "format pas encore reconnu",
+                time(2026, 9, 22, 10), true);
+        SmsMessage parsed = message("0343242318", 2026, 9, 22, 9);
+
+        List<SmsDateFilter.DisplayMessage> result = SmsDateFilter.apply(
+                Arrays.asList(raw, parsed), SmsDateFilter.Period.ALL, null,
+                time(2026, 9, 22, 12), ZONE);
+
+        assertEquals(1, result.size());
+        assertEquals(parsed, result.get(0).message);
+        assertEquals("format pas encore reconnu", raw.messageBody);
+        assertEquals("MVola", raw.sender);
+    }
+
+    @Test
     public void allPreservesEveryMessageAndOriginalNumbers() {
         List<SmsMessage> source = Arrays.asList(message(2027, 1, 1, 12),
                 message(2026, 12, 31, 12), message(2026, 12, 20, 12));
@@ -106,7 +122,13 @@ public class SmsDateFilterTest {
     }
 
     private static SmsMessage message(String sender, int year, int month, int day, int hour) {
-        return SmsMessage.create(sender, "body", time(year, month, day, hour), true);
+        String number = sender.replaceAll("[^0-9+]", "");
+        if (!(number.startsWith("0") || number.startsWith("+261"))) number = "0343242318";
+        String body = "1 000 Ar recu de Client " + number + " le "
+                + String.format(java.util.Locale.ROOT, "%02d/%02d/%02d a %02d:00. ",
+                day, month, year % 100, hour)
+                + "Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.";
+        return SmsMessage.create(sender, body, time(year, month, day, hour), true);
     }
 
     private static long time(int year, int month, int day, int hour) {
