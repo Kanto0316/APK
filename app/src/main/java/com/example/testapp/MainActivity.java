@@ -3,6 +3,7 @@ package com.example.testapp;
 import android.Manifest;
 import android.app.DatePickerDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.net.Uri;
@@ -14,6 +15,7 @@ import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.text.method.DigitsKeyListener;
 import android.graphics.Typeface;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
@@ -77,6 +79,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_RESTORE_PENDING = "restore_pending";
     private static final String BACKGROUND_PREFERENCES = "background_execution";
     private static final String BACKGROUND_PROMPT_SHOWN = "initial_prompt_shown";
+    private static final String DEPOSIT_PREFERENCES = "deposit_preferences";
+    private static final String LAST_DEPOSIT_RECIPIENT = "last_deposit_recipient";
     private TextView permissionText;
     private TextView backgroundExecutionText;
     private TextView emptyText;
@@ -331,9 +335,42 @@ public class MainActivity extends AppCompatActivity {
         EditText input = depositInput(InputType.TYPE_CLASS_PHONE,
                 "Ex. 034 14 110 58", DepositUssd.formatRecipientInput(recipientValue));
         addDepositFormatter(input, DepositUssd::formatRecipientInput);
+
+        SharedPreferences depositPreferences = getSharedPreferences(
+                DEPOSIT_PREFERENCES, MODE_PRIVATE);
+        String lastRecipient = DepositUssd.normalizeRecipientNumber(
+                depositPreferences.getString(LAST_DEPOSIT_RECIPIENT, null));
+
+        LinearLayout recipientRow = new LinearLayout(this);
+        recipientRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        recipientRow.addView(input, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+
+        ImageButton useLastRecipient = new ImageButton(this);
+        useLastRecipient.setImageResource(R.drawable.ic_history_24);
+        useLastRecipient.setContentDescription("Utiliser le dernier numéro");
+        TypedValue buttonBackground = new TypedValue();
+        getTheme().resolveAttribute(
+                androidx.appcompat.R.attr.selectableItemBackgroundBorderless,
+                buttonBackground, true);
+        useLastRecipient.setBackgroundResource(buttonBackground.resourceId);
+        useLastRecipient.setFocusable(false);
+        useLastRecipient.setEnabled(lastRecipient != null);
+        useLastRecipient.setAlpha(lastRecipient == null ? 0.38f : 1f);
+        int touchTarget = (int) (48 * getResources().getDisplayMetrics().density);
+        int iconPadding = (int) (12 * getResources().getDisplayMetrics().density);
+        useLastRecipient.setPadding(iconPadding, iconPadding, iconPadding, iconPadding);
+        recipientRow.addView(useLastRecipient, new LinearLayout.LayoutParams(
+                touchTarget, touchTarget));
+        useLastRecipient.setOnClickListener(view -> {
+            input.setText(lastRecipient);
+            input.setSelection(input.getText().length());
+            input.requestFocus();
+        });
+
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Numéro destinataire")
-                .setView(input)
+                .setView(recipientRow)
                 .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
                 .setPositiveButton("SUIVANT", null)
                 .create();
@@ -345,6 +382,9 @@ public class MainActivity extends AppCompatActivity {
                         input.setError("Numéro malgache invalide");
                         return;
                     }
+                    depositPreferences.edit()
+                            .putString(LAST_DEPOSIT_RECIPIENT, recipientNumber)
+                            .apply();
                     dialog.dismiss();
                     showAmountDialog(recipientNumber, amountValue);
                 }));
