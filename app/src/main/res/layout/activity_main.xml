@@ -378,13 +378,14 @@
 
                     <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="104dp"
                         android:background="@drawable/bg_statistics_card"
                         android:elevation="1dp"
+                        android:gravity="center_vertical"
                         android:orientation="vertical"
                         android:padding="20dp">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="BONUS TOTAL" android:textColor="@color/sms_text_secondary" android:textSize="13sp" android:textStyle="bold" />
-                        <TextView android:id="@+id/totalBonusValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="0 Ar" android:textColor="@color/sms_text_primary" android:textSize="28sp" android:textStyle="bold" />
+                        <TextView style="@style/BonusPeriodLabel" android:text="AUJOURD'HUI" />
+                        <TextView android:id="@+id/todayBonusValue" style="@style/BonusPrimaryValue" />
                     </LinearLayout>
 
                     <LinearLayout
@@ -393,13 +394,29 @@
                         android:layout_marginTop="12dp"
                         android:baselineAligned="false"
                         android:orientation="horizontal">
-                        <LinearLayout android:layout_width="0dp" android:layout_height="112dp" android:layout_marginEnd="6dp" android:layout_weight="1" android:background="@drawable/bg_statistics_card" android:elevation="1dp" android:gravity="center_vertical" android:orientation="vertical" android:padding="16dp">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CE MOIS" android:textColor="@color/sms_text_secondary" android:textSize="12sp" android:textStyle="bold" />
-                            <TextView android:id="@+id/monthlyBonusValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="0 Ar" android:textColor="@color/sms_text_primary" android:textSize="22sp" android:textStyle="bold" />
+                        <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginEnd="6dp">
+                            <TextView style="@style/BonusPeriodLabel" android:text="HIER" />
+                            <TextView android:id="@+id/yesterdayBonusValue" style="@style/BonusSecondaryValue" />
                         </LinearLayout>
-                        <LinearLayout android:layout_width="0dp" android:layout_height="112dp" android:layout_marginStart="6dp" android:layout_weight="1" android:background="@drawable/bg_statistics_card" android:elevation="1dp" android:gravity="center_vertical" android:orientation="vertical" android:padding="16dp">
-                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="AUJOURD'HUI" android:textColor="@color/sms_text_secondary" android:textSize="12sp" android:textStyle="bold" />
-                            <TextView android:id="@+id/todayBonusValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="0 Ar" android:textColor="@color/sms_text_primary" android:textSize="22sp" android:textStyle="bold" />
+                        <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginStart="6dp">
+                            <TextView style="@style/BonusPeriodLabel" android:text="CETTE SEMAINE" />
+                            <TextView android:id="@+id/weekBonusValue" style="@style/BonusSecondaryValue" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
+                        <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginEnd="6dp">
+                            <TextView style="@style/BonusPeriodLabel" android:text="CE MOIS" />
+                            <TextView android:id="@+id/monthBonusValue" style="@style/BonusSecondaryValue" />
+                        </LinearLayout>
+                        <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginStart="6dp">
+                            <TextView style="@style/BonusPeriodLabel" android:text="CETTE ANNÉE" />
+                            <TextView android:id="@+id/yearBonusValue" style="@style/BonusSecondaryValue" />
                         </LinearLayout>
                     </LinearLayout>
 
