@@ -140,10 +140,15 @@
                         android:paddingEnd="4dp">
 
                         <TextView style="@style/SmsTableHeader.Number" android:text="#" />
+                        <TextView style="@style/SmsTableHeader.DateTime" android:text="Date et heure" />
+                        <TextView style="@style/SmsTableHeader.Type" android:text="Type" />
                         <TextView style="@style/SmsTableHeader.Sender" android:text="Numéro" />
-                        <TextView style="@style/SmsTableHeader.Message" android:text="Message" />
-                        <TextView style="@style/SmsTableHeader.Date" android:text="Date" />
-                        <TextView style="@style/SmsTableHeader.Time" android:text="Heure" />
+                        <TextView style="@style/SmsTableHeader.Name" android:text="Nom" />
+                        <TextView style="@style/SmsTableHeader.Money" android:text="Montant" />
+                        <TextView style="@style/SmsTableHeader.Reference" android:text="Réf" />
+                        <TextView style="@style/SmsTableHeader.Money" android:text="Bonus" />
+                        <TextView style="@style/SmsTableHeader.Money" android:text="Frais" />
+                        <TextView style="@style/SmsTableHeader.Money" android:text="Solde" />
                     </LinearLayout>
 
                     <TextView

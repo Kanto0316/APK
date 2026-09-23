@@ -1642,15 +1642,17 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(SmsViewHolder holder, int position) {
-            SmsDateFilter.DisplayMessage displayed = items.get(position);
-            SmsMessage item = displayed.message;
-            holder.number.setText(String.valueOf(displayed.originalNumber));
-            holder.sender.setText(SmsDisplayFormatter.sender(item.sender));
-            holder.date.setText(new SimpleDateFormat("dd/MM/yy", Locale.FRENCH)
-                    .format(item.receivedDate));
-            holder.time.setText(new SimpleDateFormat("HH:mm", Locale.FRENCH)
-                    .format(item.receivedDate));
-            holder.body.setText(item.messageBody);
+            SmsTableRow row = SmsTableRow.from(items.get(position));
+            holder.number.setText(String.valueOf(row.number));
+            holder.dateTime.setText(row.dateTime);
+            holder.type.setText(SmsTableRow.display(row.type));
+            holder.sender.setText(SmsTableRow.display(row.numero));
+            holder.name.setText(SmsTableRow.display(row.nom));
+            holder.amount.setText(SmsTableRow.display(row.montant));
+            holder.reference.setText(SmsTableRow.display(row.reference));
+            holder.bonus.setText(SmsTableRow.display(row.bonus));
+            holder.fees.setText(SmsTableRow.display(row.frais));
+            holder.balance.setText(SmsTableRow.display(row.solde));
         }
 
         @Override public int getItemCount() { return items.size(); }
@@ -1658,18 +1660,28 @@ public class MainActivity extends AppCompatActivity {
 
     private static class SmsViewHolder extends RecyclerView.ViewHolder {
         final TextView number;
+        final TextView dateTime;
+        final TextView type;
         final TextView sender;
-        final TextView date;
-        final TextView time;
-        final TextView body;
+        final TextView name;
+        final TextView amount;
+        final TextView reference;
+        final TextView bonus;
+        final TextView fees;
+        final TextView balance;
 
         SmsViewHolder(View itemView) {
             super(itemView);
             number = itemView.findViewById(R.id.itemNumber);
+            dateTime = itemView.findViewById(R.id.itemDateTime);
+            type = itemView.findViewById(R.id.itemType);
             sender = itemView.findViewById(R.id.itemSender);
-            date = itemView.findViewById(R.id.itemDate);
-            time = itemView.findViewById(R.id.itemTime);
-            body = itemView.findViewById(R.id.itemBody);
+            name = itemView.findViewById(R.id.itemName);
+            amount = itemView.findViewById(R.id.itemAmount);
+            reference = itemView.findViewById(R.id.itemReference);
+            bonus = itemView.findViewById(R.id.itemBonus);
+            fees = itemView.findViewById(R.id.itemFees);
+            balance = itemView.findViewById(R.id.itemBalance);
         }
     }
 }
