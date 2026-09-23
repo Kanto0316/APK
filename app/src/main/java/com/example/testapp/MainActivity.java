@@ -153,8 +153,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean depositRequestInProgress;
     private boolean launchDepositAfterPermission;
     private boolean depositCallLaunched;
-    private String pendingRecipientNumber;
-    private String pendingAmount;
+    private String pendingUssdCode;
 
     private final ActivityResultLauncher<String> exportLauncher = registerForActivityResult(
             new ActivityResultContracts.CreateDocument("application/json"), uri -> {
@@ -180,7 +179,7 @@ public class MainActivity extends AppCompatActivity {
                 if (!launchDepositAfterPermission) return;
                 launchDepositAfterPermission = false;
                 if (granted) {
-                    launchDepositWithCallIntent(pendingRecipientNumber, pendingAmount);
+                    launchUssdWithCallIntent(pendingUssdCode);
                 } else {
                     finishDepositRequest();
                     Toast.makeText(this,
@@ -641,26 +640,9 @@ public class MainActivity extends AppCompatActivity {
                         showCreditRecipientDialog(recipientNumber, String.valueOf(amount)))
                 .setNegativeButton("ANNULER", null)
                 .setPositiveButton("ENVOYER", (ignored, which) ->
-                        launchCreditDialer(recipientNumber, amount))
+                        requestUssdCall(CreditUssd.buildUssdCode(recipientNumber, amount)))
                 .create();
         dialog.show();
-    }
-
-    private void launchCreditDialer(String recipientNumber, long amount) {
-        String ussdCode = CreditUssd.buildUssdCode(recipientNumber, amount);
-        Intent dialIntent = new Intent(Intent.ACTION_DIAL,
-                Uri.parse("tel:" + Uri.encode(ussdCode)));
-        try {
-            if (dialIntent.resolveActivity(getPackageManager()) == null) {
-                Toast.makeText(this, "Aucun composeur téléphonique compatible.",
-                        Toast.LENGTH_LONG).show();
-                return;
-            }
-            startActivity(dialIntent);
-        } catch (android.content.ActivityNotFoundException | SecurityException error) {
-            Toast.makeText(this, "Impossible d’ouvrir le composeur téléphonique.",
-                    Toast.LENGTH_LONG).show();
-        }
     }
 
     /** Focuses a dialog input only after its window is attached and visible. */
@@ -825,18 +807,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void requestDepositCall(String recipientNumber, String amount) {
-        pendingRecipientNumber = recipientNumber;
-        pendingAmount = amount;
+        requestUssdCall(DepositUssd.buildUssdCode(recipientNumber, amount));
+    }
+
+    private void requestUssdCall(String ussdCode) {
+        pendingUssdCode = ussdCode;
         if (hasPermission(Manifest.permission.CALL_PHONE)) {
-            launchDepositWithCallIntent(recipientNumber, amount);
+            launchUssdWithCallIntent(ussdCode);
         } else {
             launchDepositAfterPermission = true;
             phonePermissionLauncher.launch(Manifest.permission.CALL_PHONE);
         }
     }
 
-    private void launchDepositWithCallIntent(String recipientNumber, String amount) {
-        String ussdCode = DepositUssd.buildUssdCode(recipientNumber, amount);
+    private void launchUssdWithCallIntent(String ussdCode) {
         Intent callIntent = new Intent(Intent.ACTION_CALL,
                 Uri.fromParts("tel", ussdCode, null));
         try {
@@ -852,15 +836,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void clearDepositWorkflow() {
         launchDepositAfterPermission = false;
-        pendingRecipientNumber = null;
-        pendingAmount = null;
+        pendingUssdCode = null;
         finishDepositRequest();
     }
 
     private void finishDepositRequest() {
         depositRequestInProgress = false;
-        pendingRecipientNumber = null;
-        pendingAmount = null;
+        pendingUssdCode = null;
         if (depositCard != null) depositCard.setEnabled(true);
     }
 
