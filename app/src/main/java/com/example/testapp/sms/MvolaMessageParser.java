@@ -19,6 +19,13 @@ public final class MvolaMessageParser {
             "(?iu)^\\s*achat\\s+de\\s+cr[eé]dit\\s+YAS\\s+r[eé]ussi\\s*:\\s*"
                     + AMOUNT + "\\s*Ar\\s+pour\\s+"
                     + "((?:\\+261|0)[0-9 \\u00a0]{9,14}?)(?=\\s*\\.|\\s+(?:frais|bonus|solde|ref|réf)\\b|\\s*$)");
+    private static final Pattern DEPOSIT = Pattern.compile(
+            "(?iu)\\bvous\\s+avez\\s+cr[eé]dit[eé]\\s+(.+?)\\s+\\(?\\s*"
+                    + "((?:\\+261|0)[0-9 \\u00a0]{9,14}?)(?=\\s*\\)?\\s+de\\b)"
+                    + "\\s*\\)?\\s+de\\s+" + AMOUNT + "\\s*Ar\\b");
+    private static final Pattern TRANSACTION_DATE = Pattern.compile(
+            "(?iu)\\ble\\s+(\\d{1,2})/(\\d{1,2})/(\\d{2}|\\d{4})\\s+[aà]\\s+"
+                    + "(\\d{1,2}):(\\d{2})(?=\\s*\\.|\\s|$)");
     private static final Pattern BONUS = field("bonus");
     private static final Pattern FEE = field("frais");
     private static final Pattern BALANCE = Pattern.compile(
@@ -43,9 +50,31 @@ public final class MvolaMessageParser {
         Matcher match = RECEIVED.matcher(message);
         if (match.find()) return parseReceived(match, message, rawMessage);
 
+        match = DEPOSIT.matcher(message);
+        if (match.find()) return parseDeposit(match, message, rawMessage, receivedAt);
+
         match = CREDIT_PURCHASE.matcher(message);
         if (match.find()) return parseCredit(match, message, rawMessage, receivedAt);
         return null;
+    }
+
+    private static ParsedTransaction parseDeposit(Matcher match, String message,
+                                                   String rawMessage, long receivedAt) {
+        String clientNumber = ClientNumberNormalizer.normalize(match.group(2));
+        Long amount = number(match.group(3));
+        if (clientNumber == null || amount == null) return null;
+
+        long transactionAt = receivedAt;
+        Matcher dateMatch = TRANSACTION_DATE.matcher(message);
+        if (dateMatch.find()) {
+            Long parsedDate = date(dateMatch.group(1), dateMatch.group(2), dateMatch.group(3),
+                    dateMatch.group(4), dateMatch.group(5), TimeZone.getDefault());
+            if (parsedDate != null) transactionAt = parsedDate;
+        }
+        String clientName = match.group(1).trim().replaceAll("\\s+", " ");
+        return new ParsedTransaction("Dépôt", clientNumber, clientName, amount,
+                text(REFERENCE, message), number(BONUS, message), number(FEE, message),
+                number(BALANCE, message), transactionAt, rawMessage);
     }
 
     private static ParsedTransaction parseReceived(Matcher match, String message,
