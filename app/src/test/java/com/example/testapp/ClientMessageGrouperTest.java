@@ -43,6 +43,56 @@ public class ClientMessageGrouperTest {
                 ClientMessageGrouper.Filter.ALL).get(0).sender);
     }
 
+    @Test public void filter_preservesLeadingZeroAndMatchesAllLocalNumberForms() {
+        List<ClientMessageGrouper.ClientGroup> groups = ClientMessageGrouper.group(
+                Collections.singletonList(
+                        SmsMessage.create("038 49 002 47", "message", 100L, true)));
+
+        for (String query : Arrays.asList(
+                "03849", "3849", "0384900247", "038 49", "49 002", "00247")) {
+            assertEquals(query, 1, ClientMessageGrouper.filter(
+                    groups, query, ClientMessageGrouper.Filter.ALL).size());
+        }
+    }
+
+    @Test public void filter_matchesInternationalMalagasyNumberWithLocalAndCountryCodeQueries() {
+        List<ClientMessageGrouper.ClientGroup> groups = ClientMessageGrouper.group(
+                Collections.singletonList(
+                        SmsMessage.create("+261384900247", "message", 100L, true)));
+
+        for (String query : Arrays.asList("03849", "3849", "2613849", "+2613849")) {
+            assertEquals(query, 1, ClientMessageGrouper.filter(
+                    groups, query, ClientMessageGrouper.Filter.ALL).size());
+        }
+    }
+
+    @Test public void filter_matchesTextSendersIgnoringCaseAndPresentationSeparators() {
+        List<ClientMessageGrouper.ClientGroup> groups = ClientMessageGrouper.group(
+                Collections.singletonList(SmsMessage.create("MVola", "service", 100L, true)));
+
+        for (String query : Arrays.asList("MVola", "mvola", "MVO", "vola")) {
+            assertEquals(query, 1, ClientMessageGrouper.filter(
+                    groups, query, ClientMessageGrouper.Filter.ALL).size());
+        }
+    }
+
+    @Test public void filter_numberSearchWorksWithEveryClientFilter() {
+        List<ClientMessageGrouper.ClientGroup> newClient = ClientMessageGrouper.group(
+                Collections.singletonList(
+                        SmsMessage.create("038 49 002 47", "unique", 100L, true)));
+        assertEquals(1, ClientMessageGrouper.filter(
+                newClient, "03849", ClientMessageGrouper.Filter.ALL).size());
+        assertEquals(1, ClientMessageGrouper.filter(
+                newClient, "03849", ClientMessageGrouper.Filter.NEW).size());
+
+        List<ClientMessageGrouper.ClientGroup> existingClient = ClientMessageGrouper.group(
+                Arrays.asList(
+                        SmsMessage.create("038 49 002 47", "récent", 200L, true),
+                        SmsMessage.create("038 49 002 47", "ancien", 100L, true)));
+        assertEquals(1, ClientMessageGrouper.filter(
+                existingClient, "03849", ClientMessageGrouper.Filter.EXISTING).size());
+    }
+
     @Test public void filter_usesCurrentMessageCountAndPreservesRecencyOrder() {
         List<ClientMessageGrouper.ClientGroup> groups = ClientMessageGrouper.group(Arrays.asList(
                 SmsMessage.create("new", "unique", 200L, true),
