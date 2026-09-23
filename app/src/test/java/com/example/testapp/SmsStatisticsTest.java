@@ -19,6 +19,13 @@ public class SmsStatisticsTest {
         assertEquals(0, SmsStatistics.groupByDate(new ArrayList<>(), UTC).size());
     }
 
+    @Test public void unparsedSmsDoesNotAppearInTransactionChart() {
+        SmsMessage raw = SmsMessage.create("MVola", "message non reconnu", 1L, true);
+        assertEquals(0, SmsStatistics.groupByDate(Arrays.asList(raw), UTC).size());
+        assertEquals(false, SmsStatistics.hasActivity(SmsStatistics.forMonth(
+                Arrays.asList(raw), 2026, Calendar.SEPTEMBER, UTC)));
+    }
+
     @Test public void oneSmsHasCountOne() {
         List<SmsStatistics.DailyCount> result = SmsStatistics.groupByDate(
                 Arrays.asList(sms(2026, 9, 21, 8)), UTC);
@@ -165,8 +172,12 @@ public class SmsStatisticsTest {
     private static SmsMessage sms(int year, int month, int day, int hour) {
         Calendar calendar = Calendar.getInstance(UTC);
         calendar.clear();
-        calendar.set(year, month - 1, day, hour, 0);
-        return SmsMessage.create("sender", "message", calendar.getTimeInMillis(), true);
+        calendar.set(year, month - 1, day, hour % 24, 0);
+        String body = "1 000 Ar recu de Client 0343242318 le "
+                + String.format(java.util.Locale.ROOT, "%02d/%02d/%02d a %02d:00. ",
+                day, month, year % 100, hour % 24)
+                + "Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.";
+        return SmsMessage.create("MVola", body, calendar.getTimeInMillis(), true);
     }
 
     private static SmsMessage mvola(String number, String time, long bonus, long receivedAt) {

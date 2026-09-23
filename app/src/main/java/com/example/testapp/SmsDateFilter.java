@@ -66,8 +66,11 @@ final class SmsDateFilter {
             SmsMessage message = source.get(index);
             MvolaMessageParser.ParsedTransaction parsed =
                     MvolaMessageParser.parse(message.messageBody);
-            String searchableNumber = parsed == null ? message.sender : parsed.clientNumber;
-            long effectiveDate = parsed == null ? message.receivedDate : parsed.transactionAt;
+            // A persisted SMS is not necessarily a business transaction. Keep unrecognised
+            // messages in Room for future reprocessing, but never expose them in this view.
+            if (parsed == null) continue;
+            String searchableNumber = parsed.clientNumber;
+            long effectiveDate = parsed.transactionAt;
             boolean numberMatches = normalizedQuery.isEmpty()
                     || normalizeNumber(SmsDisplayFormatter.sender(searchableNumber))
                     .contains(normalizedQuery);

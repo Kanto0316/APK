@@ -7,7 +7,7 @@ import com.example.testapp.sms.MvolaMessageParser;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 
-/** Presentation-only SMS row, ready for transaction fields without changing stored SMS data. */
+/** Presentation-only row for an SMS already recognised as a business transaction. */
 final class SmsTableRow {
     static final String MISSING_VALUE = "-";
 
@@ -40,19 +40,21 @@ final class SmsTableRow {
         SmsMessage message = displayed.message;
         MvolaMessageParser.ParsedTransaction transaction =
                 MvolaMessageParser.parse(message.messageBody);
-        long displayDate = transaction == null ? message.receivedDate : transaction.transactionAt;
+        if (transaction == null) {
+            throw new IllegalArgumentException("A parsed transaction is required for display");
+        }
         return new SmsTableRow(
                 displayed.originalNumber,
-                new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRENCH).format(displayDate),
-                transaction == null ? null : transaction.type,
-                transaction == null ? SmsDisplayFormatter.sender(message.sender)
-                        : ClientNumberNormalizer.format(transaction.clientNumber),
-                transaction == null ? null : transaction.clientName,
-                transaction == null ? null : ariary(transaction.amount),
-                transaction == null ? null : transaction.reference,
-                transaction == null || transaction.bonus == null ? null : ariary(transaction.bonus),
-                transaction == null || transaction.fee == null ? null : ariary(transaction.fee),
-                transaction == null || transaction.balance == null ? null : ariary(transaction.balance));
+                new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRENCH)
+                        .format(transaction.transactionAt),
+                transaction.type,
+                ClientNumberNormalizer.format(transaction.clientNumber),
+                transaction.clientName,
+                ariary(transaction.amount),
+                transaction.reference,
+                transaction.bonus == null ? null : ariary(transaction.bonus),
+                transaction.fee == null ? null : ariary(transaction.fee),
+                transaction.balance == null ? null : ariary(transaction.balance));
     }
 
     private static String ariary(long value) {

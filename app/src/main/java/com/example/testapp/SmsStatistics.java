@@ -33,7 +33,10 @@ final class SmsStatistics {
         if (messages != null) {
             Calendar received = Calendar.getInstance(timeZone);
             for (SmsMessage message : messages) {
-                received.setTimeInMillis(message.receivedDate);
+                MvolaMessageParser.ParsedTransaction parsed =
+                        MvolaMessageParser.parse(message.messageBody);
+                if (parsed == null) continue;
+                received.setTimeInMillis(parsed.transactionAt);
                 if (received.get(Calendar.YEAR) == year && received.get(Calendar.MONTH) == month) {
                     counts[received.get(Calendar.DAY_OF_MONTH) - 1]++;
                 }
@@ -147,7 +150,10 @@ final class SmsStatistics {
         Calendar calendar = Calendar.getInstance(timeZone);
         Map<Long, Integer> counts = new TreeMap<>();
         for (SmsMessage message : messages) {
-            calendar.setTimeInMillis(message.receivedDate);
+            MvolaMessageParser.ParsedTransaction parsed =
+                    MvolaMessageParser.parse(message.messageBody);
+            if (parsed == null) continue;
+            calendar.setTimeInMillis(parsed.transactionAt);
             calendar.set(Calendar.HOUR_OF_DAY, 0);
             calendar.set(Calendar.MINUTE, 0);
             calendar.set(Calendar.SECOND, 0);
