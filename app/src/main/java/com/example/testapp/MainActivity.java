@@ -349,6 +349,7 @@ public class MainActivity extends AppCompatActivity {
                     showAmountDialog(recipientNumber, amountValue);
                 }));
         dialog.show();
+        focusAndShowNumericKeyboard(dialog, input);
     }
 
     private void showAmountDialog(String recipientNumber, String amountValue) {
