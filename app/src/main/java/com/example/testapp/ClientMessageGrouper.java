@@ -44,8 +44,7 @@ final class ClientMessageGrouper {
             boolean matchesFilter = filter == Filter.ALL
                     || (filter == Filter.NEW && messageCount == 1)
                     || (filter == Filter.EXISTING && messageCount >= 2);
-            if (matchesFilter
-                    && normalizeForSearch(client.sender).contains(normalizedQuery)) {
+            if (matchesFilter && matchesSearch(client.sender, normalizedQuery)) {
                 result.add(client);
             }
         }
@@ -53,8 +52,32 @@ final class ClientMessageGrouper {
     }
 
     private static String normalizeForSearch(String value) {
-        return value == null ? "" : value.replaceAll("\\s+", "")
+        return value == null ? "" : value.replaceAll("[^\\p{L}\\p{Nd}]", "")
                 .toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean matchesSearch(String sender, String normalizedQuery) {
+        String normalizedSender = normalizeForSearch(sender);
+        if (normalizedSender.contains(normalizedQuery)) return true;
+        if (!isDigitsOnly(normalizedSender) || !isDigitsOnly(normalizedQuery)) return false;
+
+        String localSender = toMalagasyLocalNumber(normalizedSender);
+        String localQuery = toMalagasyLocalNumber(normalizedQuery);
+        return localSender.contains(localQuery)
+                || withoutLeadingZero(localSender).contains(withoutLeadingZero(localQuery));
+    }
+
+    private static boolean isDigitsOnly(String value) {
+        return !value.isEmpty() && value.matches("\\d+");
+    }
+
+    /** Converts an international Malagasy search representation without altering stored data. */
+    private static String toMalagasyLocalNumber(String value) {
+        return value.startsWith("261") ? "0" + value.substring(3) : value;
+    }
+
+    private static String withoutLeadingZero(String value) {
+        return value.length() > 1 && value.startsWith("0") ? value.substring(1) : value;
     }
 
     static final class ClientGroup {
