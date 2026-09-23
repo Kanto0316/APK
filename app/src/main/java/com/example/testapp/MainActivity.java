@@ -136,6 +136,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView emptyBonusChartText;
     private StatisticsChartView userChart;
     private TextView emptyUserChartText;
+    private StatisticsChartView transactionChart;
+    private TextView emptyTransactionChartText;
     private int selectedStatisticsTab = STATISTICS_TAB_BONUS;
     private long todayUsers = 0;
     private long yesterdayUsers = 0;
@@ -156,6 +158,7 @@ public class MainActivity extends AppCompatActivity {
     private long weekTransactions = 0;
     private long monthlyTransactions = 0;
     private long yearlyTransactions = 0;
+    private List<SmsStatistics.DailyCount> monthlyTransactionBars = new ArrayList<>();
     private long todayDepositTransactions = 0;
     private long todayCreditTransactions = 0;
     private long todayOfferTransactions = 0;
@@ -260,6 +263,8 @@ public class MainActivity extends AppCompatActivity {
         emptyBonusChartText = findViewById(R.id.emptyBonusChartText);
         userChart = findViewById(R.id.userChart);
         emptyUserChartText = findViewById(R.id.emptyUserChartText);
+        transactionChart = findViewById(R.id.transactionChart);
+        emptyTransactionChartText = findViewById(R.id.emptyTransactionChartText);
         userStatisticsContent = findViewById(R.id.userStatisticsContent);
         bonusStatisticsContent = findViewById(R.id.bonusStatisticsContent);
         transactionStatisticsContent = findViewById(R.id.transactionStatisticsContent);
@@ -1206,6 +1211,7 @@ public class MainActivity extends AppCompatActivity {
         weekTransactions = summary.weekTransactions;
         monthlyTransactions = summary.monthTransactions;
         yearlyTransactions = summary.yearTransactions;
+        monthlyTransactionBars = summary.monthlyTransactions;
     }
 
     private void selectStatisticsTab(int tab) {
@@ -1276,6 +1282,10 @@ public class MainActivity extends AppCompatActivity {
                 .setText(String.valueOf(yearlyTransactions));
 
         renderPeriodLabels(transactionMonthLabel, transactionYearLabel);
+        transactionChart.setTransactionData(monthlyTransactionBars);
+        boolean hasTransactions = !monthlyTransactionBars.isEmpty();
+        transactionChart.setVisibility(hasTransactions ? View.VISIBLE : View.GONE);
+        emptyTransactionChartText.setVisibility(hasTransactions ? View.GONE : View.VISIBLE);
     }
 
     private void renderPeriodLabels(TextView monthLabel, TextView yearLabel) {

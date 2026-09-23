@@ -195,6 +195,43 @@ public class SmsStatisticsTest {
         assertEquals(0, september2025.monthlyBonus.size());
     }
 
+    @Test public void transactionChartUsesSummarySourceAndGroupsSelectedMonthByDay() {
+        Calendar now = Calendar.getInstance(UTC);
+        now.clear();
+        now.set(2026, Calendar.SEPTEMBER, 23, 12, 0);
+        List<SmsMessage> messages = Arrays.asList(
+                mvolaOnDay("0343242318", 21, "08:19"),
+                mvolaOnDay("0381453472", 21, "09:19"),
+                mvolaOnDay("0331234567", 21, "10:19"),
+                mvolaOnDay("0321234567", 22, "08:19"));
+
+        SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(messages,
+                now.getTimeInMillis(), 2026, Calendar.SEPTEMBER, UTC);
+
+        assertEquals(4, summary.monthTransactions);
+        assertEquals(2, summary.monthlyTransactions.size());
+        assertEquals(3, summary.monthlyTransactions.get(0).count);
+        assertEquals(1, summary.monthlyTransactions.get(1).count);
+        assertEquals(4, SmsStatistics.sum(summary.monthlyTransactions));
+    }
+
+    @Test public void singleParsedTransactionProducesVisibleSeptemberBar() {
+        Calendar now = Calendar.getInstance(UTC);
+        now.clear();
+        now.set(2026, Calendar.SEPTEMBER, 23, 12, 0);
+
+        SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(
+                Arrays.asList(mvolaOnDay("0343242318", 21, "08:19")),
+                now.getTimeInMillis(), 2026, Calendar.SEPTEMBER, UTC);
+
+        assertEquals(1, summary.monthTransactions);
+        assertEquals(1, summary.monthlyTransactions.size());
+        assertEquals(1, summary.monthlyTransactions.get(0).count);
+        Calendar barDate = Calendar.getInstance(UTC);
+        barDate.setTimeInMillis(summary.monthlyTransactions.get(0).localDayTimestamp);
+        assertEquals(21, barDate.get(Calendar.DAY_OF_MONTH));
+    }
+
     @Test public void bonusChartSumsBonusesOnTheSameBusinessDay() {
         Calendar now = Calendar.getInstance(UTC);
         now.clear();
