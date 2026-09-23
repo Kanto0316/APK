@@ -40,14 +40,20 @@
     <style name="SmsTableHeader.Sender" parent="SmsTableHeader">
         <item name="android:layout_width">@dimen/sms_column_sender_width</item><item name="android:paddingStart">4dp</item><item name="android:paddingEnd">4dp</item>
     </style>
-    <style name="SmsTableHeader.Message" parent="SmsTableHeader">
-        <item name="android:layout_width">@dimen/sms_column_message_width</item><item name="android:paddingStart">4dp</item><item name="android:paddingEnd">4dp</item>
+    <style name="SmsTableHeader.DateTime" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_datetime_width</item><item name="android:gravity">center</item>
     </style>
-    <style name="SmsTableHeader.Date" parent="SmsTableHeader">
-        <item name="android:layout_width">@dimen/sms_column_date_width</item><item name="android:gravity">center</item>
+    <style name="SmsTableHeader.Type" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_type_width</item><item name="android:gravity">center</item>
     </style>
-    <style name="SmsTableHeader.Time" parent="SmsTableHeader">
-        <item name="android:layout_width">@dimen/sms_column_time_width</item><item name="android:gravity">center</item>
+    <style name="SmsTableHeader.Name" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_name_width</item><item name="android:gravity">center</item>
+    </style>
+    <style name="SmsTableHeader.Money" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_money_width</item><item name="android:gravity">center</item>
+    </style>
+    <style name="SmsTableHeader.Reference" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_reference_width</item><item name="android:gravity">center</item>
     </style>
 
     <style name="SmsFilterChip">
