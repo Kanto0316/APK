@@ -1,0 +1,37 @@
+package com.example.testapp;
+
+import com.example.testapp.history.HistoryTransaction;
+
+import java.text.NumberFormat;
+import java.util.Locale;
+
+/** Pure formatting rules for history cards. */
+final class HistoryDisplayFormatter {
+    private HistoryDisplayFormatter() {}
+
+    static String number(String clientNumber) {
+        return SmsDisplayFormatter.sender(clientNumber);
+    }
+
+    static String reference(String reference) {
+        return "Réf " + (reference == null || reference.trim().isEmpty() ? "-" : reference);
+    }
+
+    static String bonus(Long bonus) {
+        return bonus == null ? "-" : ariary(bonus);
+    }
+
+    static String amount(HistoryTransaction item) {
+        // Direction comes only from the parser's explicit type; Retrait is an incoming agent
+        // transaction in the existing MVola parser.
+        boolean outgoing = "Envoi".equalsIgnoreCase(item.type)
+                || "Paiement".equalsIgnoreCase(item.type)
+                || "Transfert".equalsIgnoreCase(item.type);
+        return (outgoing ? "-" : "+") + ariary(Math.abs(item.amount));
+    }
+
+    private static String ariary(long value) {
+        return NumberFormat.getIntegerInstance(Locale.FRENCH).format(value)
+                .replace('\u202f', ' ').replace('\u00a0', ' ') + " Ar";
+    }
+}

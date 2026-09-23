@@ -391,11 +391,6 @@
             </LinearLayout>
         </ScrollView>
 
-        <!--
-            History is intentionally UI-only for now. The hidden list is ready to receive
-            dated transaction rows once a data source is defined; no existing SMS or
-            transaction source is connected to it.
-        -->
         <FrameLayout
             android:id="@+id/historySection"
             android:layout_width="match_parent"
@@ -408,7 +403,7 @@
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
                 android:paddingStart="20dp"
-                android:paddingTop="20dp"
+                android:paddingTop="2dp"
                 android:paddingEnd="20dp"
                 android:paddingBottom="20dp"
                 android:scrollbars="vertical"
