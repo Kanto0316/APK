@@ -586,7 +586,6 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         int padding = (int) (24 * getResources().getDisplayMetrics().density);
-        content.setPadding(padding, 0, 0, 0);
         addWithdrawalFeeChoice(content, "1   500 Ar");
         addWithdrawalFeeChoice(content, "2   1 000 Ar");
 
@@ -595,6 +594,7 @@ public class MainActivity extends AppCompatActivity {
         addCreditAmountFormatter(input);
         LinearLayout row = new LinearLayout(this);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setPadding(padding, 0, 0, 0);
         row.addView(input, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         TextView currency = new TextView(this);
