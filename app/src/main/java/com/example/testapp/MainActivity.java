@@ -94,6 +94,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView permissionText;
     private TextView backgroundExecutionText;
     private TextView emptyText;
+    private TextView balanceTitle;
     private ProgressBar loadingIndicator;
     private SmsAdapter adapter;
     private SmsViewModel viewModel;
@@ -230,6 +231,7 @@ public class MainActivity extends AppCompatActivity {
         backgroundExecutionManager = new BackgroundExecutionManager(this);
         backgroundExecutionText.setOnClickListener(view -> showBackgroundPermissionDialog(false));
         emptyText = findViewById(R.id.emptyText);
+        balanceTitle = findViewById(R.id.balanceTitle);
         loadingIndicator = findViewById(R.id.loadingIndicator);
         configureMessageFilters(savedInstanceState);
         backupManager = new SmsBackupManager(this);
@@ -345,6 +347,7 @@ public class MainActivity extends AppCompatActivity {
         viewModel = new ViewModelProvider(this).get(SmsViewModel.class);
         viewModel.getMessages().observe(this, storedMessages -> {
             messages = storedMessages == null ? new ArrayList<>() : storedMessages;
+            balanceTitle.setText(BalanceTitle.from(messages));
             roomLoaded = true;
             renderState();
             renderClients();
