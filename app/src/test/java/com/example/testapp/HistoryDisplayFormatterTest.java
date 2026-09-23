@@ -37,4 +37,16 @@ public class HistoryDisplayFormatterTest {
         assertEquals("500 Ar", HistoryDisplayFormatter.amount(item));
         assertEquals("24 Ar", HistoryDisplayFormatter.bonus(item.bonus));
     }
+
+    @Test public void formatsDepositWithoutCashDirectionSign() {
+        SmsMessage sms = SmsMessage.create("MVola",
+                "Vous avez credite MARIETTE (0340677891) de 41 300 Ar le 21/09/26 "
+                        + "a 06:46. Bonus:292 Ar. Ref:7576288436", 1L, true);
+        HistoryTransaction item = HistoryTransaction.fromMessages(Arrays.asList(sms)).get(0);
+
+        assertEquals("034 06 778 91", HistoryDisplayFormatter.number(item.clientNumber));
+        assertEquals("41 300 Ar", HistoryDisplayFormatter.amount(item));
+        assertEquals("Réf 7576288436", HistoryDisplayFormatter.reference(item.reference));
+        assertEquals("292 Ar", HistoryDisplayFormatter.bonus(item.bonus));
+    }
 }

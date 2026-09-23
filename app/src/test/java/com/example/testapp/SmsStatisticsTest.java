@@ -304,6 +304,23 @@ public class SmsStatisticsTest {
         assertEquals(24L, summary.monthBonus);
     }
 
+    @Test public void depositIncrementsDepositCounterAndContributesItsParsedBonus() {
+        long receivedAt = utcDate(2026, Calendar.SEPTEMBER, 23, 10);
+        SmsMessage deposit = SmsMessage.create("MVola",
+                "Vous avez credite MARIETTE (0340677891) de 41 300 Ar le 23/09/26 "
+                        + "a 10:00. Bonus:292 Ar. Solde : 87 115 Ar. Ref: 7576288436",
+                receivedAt, true);
+
+        SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(
+                Arrays.asList(deposit), receivedAt, 2026, Calendar.SEPTEMBER, UTC);
+
+        assertEquals(1L, summary.todayTransactions);
+        assertEquals(1L, summary.todayDepositTransactions);
+        assertEquals(0L, summary.todayCreditTransactions);
+        assertEquals(292L, summary.todayBonus);
+        assertEquals(292L, summary.monthBonus);
+    }
+
     private static long utcDate(int year, int month, int day, int hour) {
         Calendar calendar = Calendar.getInstance(UTC);
         calendar.clear();

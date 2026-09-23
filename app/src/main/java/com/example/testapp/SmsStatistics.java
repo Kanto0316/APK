@@ -202,7 +202,7 @@ final class SmsStatistics {
         long todayBonus, yesterdayBonus, weekBonus, monthBonus, yearBonus;
         long todayTransactions, yesterdayTransactions, weekTransactions, monthTransactions,
                 yearTransactions;
-        long todayCreditTransactions;
+        long todayDepositTransactions, todayCreditTransactions;
         final Set<String> todayClients = new HashSet<>();
         final Set<String> yesterdayClients = new HashSet<>();
         final Set<String> weekClients = new HashSet<>();
@@ -220,6 +220,7 @@ final class SmsStatistics {
             long bonus = transaction.bonus == null ? 0 : transaction.bonus;
             if (today) {
                 todayTransactions++;
+                if ("Dépôt".equalsIgnoreCase(transaction.type)) todayDepositTransactions++;
                 if ("Crédit".equalsIgnoreCase(transaction.type)) todayCreditTransactions++;
                 todayBonus += bonus;
                 todayClients.add(transaction.clientNumber);

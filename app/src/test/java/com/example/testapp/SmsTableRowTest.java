@@ -66,4 +66,24 @@ public class SmsTableRowTest {
         assertEquals("80 869 Ar", row.solde);
         assertEquals("22/12/2026 00:00", row.dateTime);
     }
+
+    @Test
+    public void from_displaysDepositBodyFieldsAndKeepsMissingFeeDistinctFromZero() {
+        SmsMessage message = SmsMessage.create("MVola",
+                "Vous avez credite MARIETTE (0340677891) de 41 300 Ar le 21/09/26 "
+                        + "a 06:46. Bonus:292 Ar. Solde : 87 115 Ar. Ref: 7576288436",
+                1L, true);
+        SmsTableRow row = SmsTableRow.from(new SmsDateFilter.DisplayMessage(message, 3));
+
+        assertEquals("Dépôt", row.type);
+        assertEquals("034 06 778 91", row.numero);
+        assertEquals("MARIETTE", row.nom);
+        assertEquals("41 300 Ar", row.montant);
+        assertEquals("7576288436", row.reference);
+        assertEquals("292 Ar", row.bonus);
+        assertNull(row.frais);
+        assertEquals("-", SmsTableRow.display(row.frais));
+        assertEquals("87 115 Ar", row.solde);
+        assertEquals("21/09/2026 06:46", row.dateTime);
+    }
 }

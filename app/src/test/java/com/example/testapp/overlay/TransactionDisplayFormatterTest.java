@@ -25,6 +25,7 @@ public class TransactionDisplayFormatterTest {
 
     @Test public void creditAmountDoesNotLookLikeAnIncomingCashMovement() {
         assertEquals("500 Ar", TransactionDisplayFormatter.amount("Crédit", 500));
+        assertEquals("41 300 Ar", TransactionDisplayFormatter.amount("Dépôt", 41300));
         assertEquals("+ 500 Ar", TransactionDisplayFormatter.amount("Retrait", 500));
     }
 }
