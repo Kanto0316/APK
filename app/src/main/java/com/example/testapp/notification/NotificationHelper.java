@@ -16,6 +16,8 @@ import androidx.core.content.ContextCompat;
 import com.example.testapp.MainActivity;
 import com.example.testapp.R;
 import com.example.testapp.database.Transaction;
+import com.example.testapp.overlay.TransactionDisplayFormatter;
+import com.example.testapp.sms.MvolaMessageParser;
 
 import java.util.Locale;
 
@@ -58,5 +60,32 @@ public class NotificationHelper {
                 .setSilent(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW);
         NotificationManagerCompat.from(context).notify((int) transaction.date, builder.build());
+    }
+
+    /** Fallback used only when a valid parsed SMS cannot be shown as a system overlay. */
+    public void showParsedTransaction(MvolaMessageParser.ParsedTransaction transaction) {
+        if (Build.VERSION.SDK_INT >= 33
+                && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) return;
+
+        Intent intent = new Intent(context, MainActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, 1, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        String number = TransactionDisplayFormatter.phone(transaction.clientNumber);
+        String amount = TransactionDisplayFormatter.amount(transaction.amount)
+                .replace("+ ", "+");
+        String balance = TransactionDisplayFormatter.balance(transaction.balance);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_notify_more)
+                .setContentTitle("Transaction reçue")
+                .setContentText(number + " • " + amount)
+                .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText(number + " • " + amount + "\nSolde : " + balance))
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+        NotificationManagerCompat.from(context).notify(
+                (int) (transaction.transactionAt ^ (transaction.transactionAt >>> 32)),
+                builder.build());
     }
 }
