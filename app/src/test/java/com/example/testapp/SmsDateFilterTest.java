@@ -69,8 +69,44 @@ public class SmsDateFilterTest {
         assertEquals(2, result.get(0).originalNumber);
     }
 
+    @Test
+    public void numberSearchIgnoresSpacesAndPreservesLeadingZero() {
+        List<SmsMessage> source = Arrays.asList(
+                message("+261384900237", 2026, 9, 22, 10),
+                message("0344153878", 2026, 9, 22, 9));
+
+        for (String query : Arrays.asList("03849", "038 49", "03849002", "038 49 002 37")) {
+            List<SmsDateFilter.DisplayMessage> result = SmsDateFilter.apply(source,
+                    SmsDateFilter.Period.ALL, null, time(2026, 9, 22, 12), ZONE, query);
+            assertEquals(query, 1, result.size());
+            assertEquals("+261384900237", result.get(0).message.sender);
+            assertEquals(2, result.get(0).originalNumber);
+        }
+    }
+
+    @Test
+    public void numberSearchCombinesWithDateFilterAndEmptyQueryRestoresPeriod() {
+        List<SmsMessage> source = Arrays.asList(
+                message("0384900237", 2026, 9, 22, 10),
+                message("038 49 111 11", 2026, 9, 21, 10),
+                message("0344153878", 2026, 9, 22, 9));
+
+        List<SmsDateFilter.DisplayMessage> matchingToday = SmsDateFilter.apply(source,
+                SmsDateFilter.Period.TODAY, null, time(2026, 9, 22, 12), ZONE, "038 49");
+        assertEquals(1, matchingToday.size());
+        assertEquals("0384900237", matchingToday.get(0).message.sender);
+
+        List<SmsDateFilter.DisplayMessage> restoredToday = SmsDateFilter.apply(source,
+                SmsDateFilter.Period.TODAY, null, time(2026, 9, 22, 12), ZONE, "");
+        assertEquals(2, restoredToday.size());
+    }
+
     private static SmsMessage message(int year, int month, int day, int hour) {
-        return SmsMessage.create("sender", "body", time(year, month, day, hour), true);
+        return message("sender", year, month, day, hour);
+    }
+
+    private static SmsMessage message(String sender, int year, int month, int day, int hour) {
+        return SmsMessage.create(sender, "body", time(year, month, day, hour), true);
     }
 
     private static long time(int year, int month, int day, int hour) {
