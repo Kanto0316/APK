@@ -1017,7 +1017,9 @@ public class MainActivity extends AppCompatActivity {
                 SmsDateFilter.Period.ALL, null, System.currentTimeMillis(),
                 java.util.TimeZone.getDefault());
         for (SmsDateFilter.DisplayMessage displayed : all) {
-            if (sender.equals(displayed.message.sender)) result.add(displayed);
+            if (sender.equals(ClientMessageGrouper.clientKey(displayed.message))) {
+                result.add(displayed);
+            }
         }
         return result;
     }
@@ -1162,6 +1164,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void renderStatistics() {
+        updateTransactionStatistics();
         String monthLabel = new SimpleDateFormat("MMMM yyyy", Locale.FRENCH)
                 .format(statisticsMonth.getTime());
         statisticsMonthText.setText(monthLabel.substring(0, 1).toUpperCase(Locale.FRENCH)
@@ -1171,6 +1174,27 @@ public class MainActivity extends AppCompatActivity {
         if (selectedStatisticsTab == STATISTICS_TAB_BONUS) renderBonusValues();
         else if (selectedStatisticsTab == STATISTICS_TAB_USER) renderUserValues();
         else renderTransactionValues();
+    }
+
+    private void updateTransactionStatistics() {
+        SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(messages,
+                System.currentTimeMillis(), statisticsMonth.get(Calendar.YEAR),
+                statisticsMonth.get(Calendar.MONTH), java.util.TimeZone.getDefault());
+        todayUsers = summary.todayClients.size();
+        yesterdayUsers = summary.yesterdayClients.size();
+        weekUsers = summary.weekClients.size();
+        monthUsers = summary.monthClients.size();
+        yearUsers = summary.yearClients.size();
+        todayBonus = summary.todayBonus;
+        yesterdayBonus = summary.yesterdayBonus;
+        weekBonus = summary.weekBonus;
+        monthBonus = summary.monthBonus;
+        yearBonus = summary.yearBonus;
+        todayTransactions = summary.todayTransactions;
+        yesterdayTransactions = summary.yesterdayTransactions;
+        weekTransactions = summary.weekTransactions;
+        monthlyTransactions = summary.monthTransactions;
+        yearlyTransactions = summary.yearTransactions;
     }
 
     private void selectStatisticsTab(int tab) {

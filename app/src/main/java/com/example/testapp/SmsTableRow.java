@@ -1,6 +1,8 @@
 package com.example.testapp;
 
 import com.example.testapp.database.SmsMessage;
+import com.example.testapp.sms.ClientNumberNormalizer;
+import com.example.testapp.sms.MvolaMessageParser;
 
 import java.text.SimpleDateFormat;
 import java.util.Locale;
@@ -36,12 +38,26 @@ final class SmsTableRow {
 
     static SmsTableRow from(SmsDateFilter.DisplayMessage displayed) {
         SmsMessage message = displayed.message;
+        MvolaMessageParser.ParsedTransaction transaction =
+                MvolaMessageParser.parse(message.messageBody);
+        long displayDate = transaction == null ? message.receivedDate : transaction.transactionAt;
         return new SmsTableRow(
                 displayed.originalNumber,
-                new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRENCH).format(message.receivedDate),
-                null,
-                SmsDisplayFormatter.sender(message.sender),
-                null, null, null, null, null, null);
+                new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRENCH).format(displayDate),
+                transaction == null ? null : transaction.type,
+                transaction == null ? SmsDisplayFormatter.sender(message.sender)
+                        : ClientNumberNormalizer.format(transaction.clientNumber),
+                transaction == null ? null : transaction.clientName,
+                transaction == null ? null : ariary(transaction.amount),
+                transaction == null ? null : transaction.reference,
+                transaction == null || transaction.bonus == null ? null : ariary(transaction.bonus),
+                transaction == null || transaction.fee == null ? null : ariary(transaction.fee),
+                transaction == null || transaction.balance == null ? null : ariary(transaction.balance));
+    }
+
+    private static String ariary(long value) {
+        return String.format(Locale.FRENCH, "%,d Ar", value).replace('\u00a0', ' ')
+                .replace('\u202f', ' ');
     }
 
     static String display(String value) {

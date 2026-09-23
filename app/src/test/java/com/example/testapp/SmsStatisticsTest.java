@@ -138,6 +138,26 @@ public class SmsStatisticsTest {
         assertEquals(1, january.get(0).count);
     }
 
+    @Test public void mvolaSummaryUsesTransactionDateDistinctClientsAndExtractedBonus() {
+        Calendar now = Calendar.getInstance(UTC);
+        now.clear();
+        now.set(2026, Calendar.SEPTEMBER, 21, 12, 0);
+        List<SmsMessage> transactions = Arrays.asList(
+                mvola("0381453472", "08:31", 250, 1L),
+                mvola("0381453472", "09:31", 50, 2L),
+                mvola("0343242318", "08:19", 58, 3L),
+                SmsMessage.create("MVola", "message non reconnu", now.getTimeInMillis(), true));
+
+        SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(transactions,
+                now.getTimeInMillis(), 2026, Calendar.SEPTEMBER, UTC);
+
+        assertEquals(3, summary.todayTransactions);
+        assertEquals(358, summary.todayBonus);
+        assertEquals(2, summary.todayClients.size());
+        assertEquals(3, summary.monthTransactions);
+        assertEquals(2, summary.monthClients.size());
+    }
+
     private static void add(List<SmsMessage> messages, int count, int day) {
         for (int index = 0; index < count; index++) messages.add(sms(2026, 9, day, index));
     }
@@ -147,5 +167,11 @@ public class SmsStatisticsTest {
         calendar.clear();
         calendar.set(year, month - 1, day, hour, 0);
         return SmsMessage.create("sender", "message", calendar.getTimeInMillis(), true);
+    }
+
+    private static SmsMessage mvola(String number, String time, long bonus, long receivedAt) {
+        return SmsMessage.create("MVola", "1 000 Ar recu de Client Test " + number
+                + " le 21/09/26 a " + time + ". Bonus:" + bonus
+                + " Ar. Solde: 10 000 Ar. Ref: 123456.", receivedAt, true);
     }
 }

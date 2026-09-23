@@ -1,6 +1,7 @@
 package com.example.testapp;
 
 import com.example.testapp.database.SmsMessage;
+import com.example.testapp.sms.MvolaMessageParser;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -63,10 +64,14 @@ final class SmsDateFilter {
         String normalizedQuery = normalizeNumber(numberQuery);
         for (int index = 0; index < total; index++) {
             SmsMessage message = source.get(index);
+            MvolaMessageParser.ParsedTransaction parsed =
+                    MvolaMessageParser.parse(message.messageBody);
+            String searchableNumber = parsed == null ? message.sender : parsed.clientNumber;
+            long effectiveDate = parsed == null ? message.receivedDate : parsed.transactionAt;
             boolean numberMatches = normalizedQuery.isEmpty()
-                    || normalizeNumber(SmsDisplayFormatter.sender(message.sender))
+                    || normalizeNumber(SmsDisplayFormatter.sender(searchableNumber))
                     .contains(normalizedQuery);
-            if (message.receivedDate >= start && message.receivedDate < end && numberMatches) {
+            if (effectiveDate >= start && effectiveDate < end && numberMatches) {
                 result.add(new DisplayMessage(message, total - index));
             }
         }
