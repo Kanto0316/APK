@@ -14,7 +14,6 @@ import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.text.method.DigitsKeyListener;
 import android.graphics.Typeface;
-import android.util.TypedValue;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
@@ -395,15 +394,8 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout choices = new LinearLayout(this);
         choices.setOrientation(LinearLayout.VERTICAL);
         int horizontalPadding = (int) (24 * getResources().getDisplayMetrics().density);
-        TextView yesChoice = addWithdrawalFeeChoice(choices, "1    Oui");
-        TextView noChoice = addWithdrawalFeeChoice(choices, "2    Non");
-
-        TextView choiceLabel = new TextView(this);
-        choiceLabel.setText("Choix");
-        choiceLabel.setTextSize(16);
-        choiceLabel.setTextColor(ContextCompat.getColor(this, android.R.color.black));
-        choiceLabel.setPadding(horizontalPadding, horizontalPadding / 2, horizontalPadding, 0);
-        choices.addView(choiceLabel);
+        addWithdrawalFeeChoice(choices, "1    Oui");
+        addWithdrawalFeeChoice(choices, "2    Non");
 
         EditText choiceInput = new EditText(this);
         choiceInput.setHint("1 ou 2");
@@ -413,7 +405,7 @@ public class MainActivity extends AppCompatActivity {
         choiceInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(1)});
         LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        inputParams.setMargins(horizontalPadding, 0, horizontalPadding, 0);
+        inputParams.setMargins(horizontalPadding, horizontalPadding / 3, horizontalPadding, 0);
         choices.addView(choiceInput, inputParams);
 
         TextView errorText = new TextView(this);
@@ -431,10 +423,6 @@ public class MainActivity extends AppCompatActivity {
                         showAmountDialog(recipientNumber, String.valueOf(originalAmount)))
                 .create();
         boolean[] transitionStarted = {false};
-        yesChoice.setOnClickListener(view -> handleWithdrawalFeeChoice(recipientNumber,
-                originalAmount, true, dialog, errorText, transitionStarted));
-        noChoice.setOnClickListener(view -> handleWithdrawalFeeChoice(recipientNumber,
-                originalAmount, false, dialog, errorText, transitionStarted));
         choiceInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence text, int start, int count,
                                                     int after) {}
@@ -479,7 +467,7 @@ public class MainActivity extends AppCompatActivity {
                 withdrawalFee, finalAmount);
     }
 
-    private TextView addWithdrawalFeeChoice(LinearLayout choices, String text) {
+    private void addWithdrawalFeeChoice(LinearLayout choices, String text) {
         TextView choice = new TextView(this);
         choice.setText(text);
         choice.setTextSize(18);
@@ -487,16 +475,9 @@ public class MainActivity extends AppCompatActivity {
         choice.setGravity(android.view.Gravity.CENTER_VERTICAL);
         int horizontalPadding = (int) (24 * getResources().getDisplayMetrics().density);
         choice.setPadding(horizontalPadding, 0, horizontalPadding, 0);
-        choice.setMinHeight((int) (56 * getResources().getDisplayMetrics().density));
-        TypedValue selectableBackground = new TypedValue();
-        getTheme().resolveAttribute(android.R.attr.selectableItemBackground,
-                selectableBackground, true);
-        choice.setBackgroundResource(selectableBackground.resourceId);
-        choice.setClickable(true);
-        choice.setFocusable(true);
+        choice.setMinHeight((int) (28 * getResources().getDisplayMetrics().density));
         choices.addView(choice, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        return choice;
     }
 
     private void showDepositConfirmation(String recipientNumber, long originalAmount,
