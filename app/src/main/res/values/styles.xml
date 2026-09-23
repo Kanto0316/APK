@@ -107,6 +107,12 @@
     <style name="BonusPrimaryValue" parent="BonusSecondaryValue">
         <item name="android:textSize">28sp</item>
     </style>
+    <style name="UserSecondaryValue" parent="BonusSecondaryValue">
+        <item name="android:text">0</item>
+    </style>
+    <style name="UserPrimaryValue" parent="UserSecondaryValue">
+        <item name="android:textSize">28sp</item>
+    </style>
 
     <style name="CommercialServiceCard">
         <item name="android:layout_width">match_parent</item><item name="android:layout_height">96dp</item>

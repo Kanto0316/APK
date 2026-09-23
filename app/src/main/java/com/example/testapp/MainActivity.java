@@ -100,16 +100,21 @@ public class MainActivity extends AppCompatActivity {
     private View statisticsSection;
     private TextView messagesNavigationItem;
     private TextView statisticsNavigationItem;
-    private TextView statisticsEmptyText;
-    private StatisticsChartView statisticsChart;
+    private TextView statisticsSubtitle;
     private TextView statisticsMonthText;
     private Calendar statisticsMonth;
-    private View smsStatisticsContent;
+    private View userStatisticsContent;
     private View bonusStatisticsContent;
-    private TextView statisticsSmsTab;
+    private TextView statisticsUserTab;
     private TextView statisticsBonusTab;
     private TextView bonusMonthText;
     private boolean bonusTabSelected;
+    // Static placeholders only; user counting criteria will be defined in a future version.
+    private long todayUsers = 0;
+    private long yesterdayUsers = 0;
+    private long weekUsers = 0;
+    private long monthUsers = 0;
+    private long yearUsers = 0;
     // Static placeholders ready to be supplied by the future bonus calculation layer.
     private long todayBonus = 0;
     private long yesterdayBonus = 0;
@@ -186,13 +191,12 @@ public class MainActivity extends AppCompatActivity {
         statisticsNavigationItem = findViewById(R.id.bottomStatistics);
         depositCard = findViewById(R.id.cardDeposit);
         depositCard.setOnClickListener(view -> showRecipientDialog("", ""));
-        statisticsEmptyText = findViewById(R.id.statisticsEmptyText);
-        statisticsChart = findViewById(R.id.statisticsChart);
+        statisticsSubtitle = findViewById(R.id.statisticsSubtitle);
         statisticsMonthText = findViewById(R.id.statisticsMonthText);
         bonusMonthText = findViewById(R.id.bonusMonthText);
-        smsStatisticsContent = findViewById(R.id.smsStatisticsContent);
+        userStatisticsContent = findViewById(R.id.userStatisticsContent);
         bonusStatisticsContent = findViewById(R.id.bonusStatisticsContent);
-        statisticsSmsTab = findViewById(R.id.statisticsSmsTab);
+        statisticsUserTab = findViewById(R.id.statisticsUserTab);
         statisticsBonusTab = findViewById(R.id.statisticsBonusTab);
         statisticsMonth = Calendar.getInstance();
         statisticsMonth.set(Calendar.DAY_OF_MONTH, 1);
@@ -207,9 +211,10 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.statisticsNextMonth).setOnClickListener(view -> changeMonth(1));
         findViewById(R.id.bonusPreviousMonth).setOnClickListener(view -> changeMonth(-1));
         findViewById(R.id.bonusNextMonth).setOnClickListener(view -> changeMonth(1));
-        statisticsSmsTab.setOnClickListener(view -> selectStatisticsTab(false));
+        statisticsUserTab.setOnClickListener(view -> selectStatisticsTab(false));
         statisticsBonusTab.setOnClickListener(view -> selectStatisticsTab(true));
         selectStatisticsTab(bonusTabSelected);
+        renderUserValues();
         renderBonusValues();
         homeLabel = findViewById(R.id.homeLabel);
         homeButton = findViewById(R.id.homeButton);
@@ -771,26 +776,26 @@ public class MainActivity extends AppCompatActivity {
         statisticsMonthText.setText(monthLabel.substring(0, 1).toUpperCase(Locale.FRENCH)
                 + monthLabel.substring(1));
         bonusMonthText.setText(statisticsMonthText.getText());
-        List<SmsStatistics.DailyCount> dailyCounts = SmsStatistics.forMonth(messages,
-                statisticsMonth.get(Calendar.YEAR), statisticsMonth.get(Calendar.MONTH),
-                statisticsMonth.getTimeZone());
-        boolean empty = !SmsStatistics.hasActivity(dailyCounts);
-        statisticsEmptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
-        statisticsChart.setVisibility(empty ? View.GONE : View.VISIBLE);
-        Calendar today = Calendar.getInstance();
-        boolean currentMonth = today.get(Calendar.YEAR) == statisticsMonth.get(Calendar.YEAR)
-                && today.get(Calendar.MONTH) == statisticsMonth.get(Calendar.MONTH);
-        statisticsChart.setData(dailyCounts,
-                currentMonth ? Math.max(0, today.get(Calendar.DAY_OF_MONTH) - 4) : 0);
+        renderUserValues();
     }
 
     private void selectStatisticsTab(boolean showBonus) {
         bonusTabSelected = showBonus;
-        statisticsSmsTab.setSelected(!showBonus);
+        statisticsUserTab.setSelected(!showBonus);
         statisticsBonusTab.setSelected(showBonus);
-        smsStatisticsContent.setVisibility(showBonus ? View.GONE : View.VISIBLE);
+        userStatisticsContent.setVisibility(showBonus ? View.GONE : View.VISIBLE);
         bonusStatisticsContent.setVisibility(showBonus ? View.VISIBLE : View.GONE);
+        statisticsSubtitle.setText(showBonus ? "Suivi des bonus" : "Nombre d’utilisateurs");
         if (showBonus) renderBonusValues();
+        else renderUserValues();
+    }
+
+    private void renderUserValues() {
+        ((TextView) findViewById(R.id.todayUsersValue)).setText(String.valueOf(todayUsers));
+        ((TextView) findViewById(R.id.yesterdayUsersValue)).setText(String.valueOf(yesterdayUsers));
+        ((TextView) findViewById(R.id.weekUsersValue)).setText(String.valueOf(weekUsers));
+        ((TextView) findViewById(R.id.monthUsersValue)).setText(String.valueOf(monthUsers));
+        ((TextView) findViewById(R.id.yearUsersValue)).setText(String.valueOf(yearUsers));
     }
 
     private void renderBonusValues() {
