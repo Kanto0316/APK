@@ -613,7 +613,25 @@
                             <TextView android:id="@+id/bonusMonthText" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:textColor="@color/sms_text_primary" android:textSize="17sp" android:textStyle="bold" />
                             <TextView android:id="@+id/bonusNextMonth" style="@style/StatisticsMonthButton" android:contentDescription="Mois bonus suivant" android:text="›" />
                         </LinearLayout>
-                        <TextView android:layout_width="match_parent" android:layout_height="232dp" android:gravity="center" android:padding="20dp" android:text="Aucune donnée bonus pour ce mois" android:textAlignment="center" android:textColor="@color/sms_text_secondary" android:textSize="15sp" />
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="232dp">
+                            <com.example.testapp.StatisticsChartView
+                                android:id="@+id/bonusChart"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:visibility="gone" />
+                            <TextView
+                                android:id="@+id/emptyBonusChartText"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:gravity="center"
+                                android:padding="20dp"
+                                android:text="Aucune donnée bonus pour ce mois"
+                                android:textAlignment="center"
+                                android:textColor="@color/sms_text_secondary"
+                                android:textSize="15sp" />
+                        </FrameLayout>
                     </LinearLayout>
                 </LinearLayout>
 
