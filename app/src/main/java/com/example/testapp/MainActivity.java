@@ -114,6 +114,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView statisticsTransactionTab;
     private TextView bonusMonthText;
     private TextView transactionMonthText;
+    private TextView userMonthLabel;
+    private TextView userYearLabel;
+    private TextView bonusMonthLabel;
+    private TextView bonusYearLabel;
     private TextView transactionMonthLabel;
     private TextView transactionYearLabel;
     private int selectedStatisticsTab = STATISTICS_TAB_BONUS;
@@ -212,6 +216,10 @@ public class MainActivity extends AppCompatActivity {
         statisticsMonthText = findViewById(R.id.statisticsMonthText);
         bonusMonthText = findViewById(R.id.bonusMonthText);
         transactionMonthText = findViewById(R.id.transactionMonthText);
+        userMonthLabel = findViewById(R.id.userMonthLabel);
+        userYearLabel = findViewById(R.id.userYearLabel);
+        bonusMonthLabel = findViewById(R.id.bonusMonthLabel);
+        bonusYearLabel = findViewById(R.id.bonusYearLabel);
         transactionMonthLabel = findViewById(R.id.transactionMonthLabel);
         transactionYearLabel = findViewById(R.id.transactionYearLabel);
         userStatisticsContent = findViewById(R.id.userStatisticsContent);
@@ -842,6 +850,7 @@ public class MainActivity extends AppCompatActivity {
         ((TextView) findViewById(R.id.weekUsersValue)).setText(String.valueOf(weekUsers));
         ((TextView) findViewById(R.id.monthUsersValue)).setText(String.valueOf(monthUsers));
         ((TextView) findViewById(R.id.yearUsersValue)).setText(String.valueOf(yearUsers));
+        renderPeriodLabels(userMonthLabel, userYearLabel);
     }
 
     private void renderBonusValues() {
@@ -850,6 +859,7 @@ public class MainActivity extends AppCompatActivity {
         ((TextView) findViewById(R.id.weekBonusValue)).setText(formatAriary(weekBonus));
         ((TextView) findViewById(R.id.monthBonusValue)).setText(formatAriary(monthBonus));
         ((TextView) findViewById(R.id.yearBonusValue)).setText(formatAriary(yearBonus));
+        renderPeriodLabels(bonusMonthLabel, bonusYearLabel);
     }
 
     private void renderTransactionValues() {
@@ -870,20 +880,16 @@ public class MainActivity extends AppCompatActivity {
         ((TextView) findViewById(R.id.yearlyTransactionsValue))
                 .setText(String.valueOf(yearlyTransactions));
 
+        renderPeriodLabels(transactionMonthLabel, transactionYearLabel);
+    }
+
+    private void renderPeriodLabels(TextView monthLabel, TextView yearLabel) {
         Calendar currentMonth = Calendar.getInstance();
-        boolean showingCurrentMonth = statisticsMonth.get(Calendar.YEAR)
-                == currentMonth.get(Calendar.YEAR)
-                && statisticsMonth.get(Calendar.MONTH) == currentMonth.get(Calendar.MONTH);
-        if (showingCurrentMonth) {
-            transactionMonthLabel.setText("CE MOIS");
-            transactionYearLabel.setText("CETTE ANNÉE");
-        } else {
-            String selectedMonth = new SimpleDateFormat("MMMM yyyy", Locale.FRENCH)
-                    .format(statisticsMonth.getTime()).toUpperCase(Locale.FRENCH);
-            transactionMonthLabel.setText(selectedMonth);
-            transactionYearLabel.setText(String.format(Locale.FRENCH, "ANNÉE %d",
-                    statisticsMonth.get(Calendar.YEAR)));
-        }
+        StatisticsPeriodLabels.Labels labels = StatisticsPeriodLabels.getPeriodLabels(
+                statisticsMonth.get(Calendar.MONTH), statisticsMonth.get(Calendar.YEAR),
+                currentMonth.get(Calendar.MONTH), currentMonth.get(Calendar.YEAR));
+        monthLabel.setText(labels.month);
+        yearLabel.setText(labels.year);
     }
 
     private String formatAriary(long value) {

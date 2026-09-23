@@ -334,11 +334,11 @@
                         android:baselineAligned="false"
                         android:orientation="horizontal">
                         <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginEnd="6dp">
-                            <TextView style="@style/BonusPeriodLabel" android:text="CE MOIS" />
+                            <TextView android:id="@+id/userMonthLabel" style="@style/BonusPeriodLabel" android:text="CE MOIS" />
                             <TextView android:id="@+id/monthUsersValue" style="@style/UserSecondaryValue" />
                         </LinearLayout>
                         <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginStart="6dp">
-                            <TextView style="@style/BonusPeriodLabel" android:text="CETTE ANNÉE" />
+                            <TextView android:id="@+id/userYearLabel" style="@style/BonusPeriodLabel" android:text="CETTE ANNÉE" />
                             <TextView android:id="@+id/yearUsersValue" style="@style/UserSecondaryValue" />
                         </LinearLayout>
                     </LinearLayout>
@@ -400,11 +400,11 @@
                         android:baselineAligned="false"
                         android:orientation="horizontal">
                         <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginEnd="6dp">
-                            <TextView style="@style/BonusPeriodLabel" android:text="CE MOIS" />
+                            <TextView android:id="@+id/bonusMonthLabel" style="@style/BonusPeriodLabel" android:text="CE MOIS" />
                             <TextView android:id="@+id/monthBonusValue" style="@style/BonusSecondaryValue" />
                         </LinearLayout>
                         <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginStart="6dp">
-                            <TextView style="@style/BonusPeriodLabel" android:text="CETTE ANNÉE" />
+                            <TextView android:id="@+id/bonusYearLabel" style="@style/BonusPeriodLabel" android:text="CETTE ANNÉE" />
                             <TextView android:id="@+id/yearBonusValue" style="@style/BonusSecondaryValue" />
                         </LinearLayout>
                     </LinearLayout>
