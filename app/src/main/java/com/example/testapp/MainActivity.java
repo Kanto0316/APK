@@ -72,6 +72,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_MESSAGE_FILTER = "message_filter";
     private static final String STATE_CUSTOM_FILTER_DATE = "custom_filter_date";
     private static final String STATE_CLIENT_SENDER = "client_sender";
+    private static final String STATE_CLIENT_QUERY = "client_query";
+    private static final String STATE_CLIENT_FILTER = "client_filter";
     private static final int SECTION_MESSAGES = 0;
     private static final int SECTION_HOME = 1;
     private static final int SECTION_STATISTICS = 2;
@@ -158,6 +160,9 @@ public class MainActivity extends AppCompatActivity {
     private ClientAdapter clientAdapter;
     private ClientMessageAdapter clientMessageAdapter;
     private String selectedClientSender;
+    private EditText clientSearchInput;
+    private TextView[] clientFilterChips;
+    private ClientMessageGrouper.Filter selectedClientFilter = ClientMessageGrouper.Filter.ALL;
     private int selectedSection = SECTION_MESSAGES;
     private SmsDateFilter.Period selectedMessageFilter = SmsDateFilter.Period.ALL;
     private Long customFilterDate;
@@ -278,8 +283,22 @@ public class MainActivity extends AppCompatActivity {
         homeButton = findViewById(R.id.homeButton);
         clientEmptyText = findViewById(R.id.clientEmptyText);
         clientDetailTitle = findViewById(R.id.clientDetailTitle);
+        clientSearchInput = findViewById(R.id.clientSearchInput);
+        clientFilterChips = new TextView[]{findViewById(R.id.clientFilterAll),
+                findViewById(R.id.clientFilterNew), findViewById(R.id.clientFilterExisting)};
         selectedClientSender = savedInstanceState == null ? null
                 : savedInstanceState.getString(STATE_CLIENT_SENDER);
+        if (savedInstanceState != null) {
+            clientSearchInput.setText(savedInstanceState.getString(STATE_CLIENT_QUERY, ""));
+            try {
+                selectedClientFilter = ClientMessageGrouper.Filter.valueOf(
+                        savedInstanceState.getString(STATE_CLIENT_FILTER,
+                                ClientMessageGrouper.Filter.ALL.name()));
+            } catch (IllegalArgumentException ignored) {
+                selectedClientFilter = ClientMessageGrouper.Filter.ALL;
+            }
+        }
+        configureClientFilters();
         messagesNavigationItem.setOnClickListener(view -> showSection(SECTION_MESSAGES));
         clientNavigationItem.setOnClickListener(view -> {
             selectedClientSender = null;
@@ -943,16 +962,33 @@ public class MainActivity extends AppCompatActivity {
 
     private void renderClients() {
         if (clientAdapter == null || clientMessageAdapter == null) return;
-        List<ClientMessageGrouper.ClientGroup> clients = ClientMessageGrouper.group(messages);
-        clientAdapter.submitList(clients);
-        clientEmptyText.setVisibility(clients.isEmpty() ? View.VISIBLE : View.GONE);
+        List<ClientMessageGrouper.ClientGroup> allClients = ClientMessageGrouper.group(messages);
+        String query = clientSearchInput == null ? "" : clientSearchInput.getText().toString();
+        List<ClientMessageGrouper.ClientGroup> visibleClients = ClientMessageGrouper.filter(
+                allClients, query, selectedClientFilter);
+        clientAdapter.submitList(visibleClients);
+        boolean empty = visibleClients.isEmpty();
+        clientEmptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
+        if (empty) {
+            if (allClients.isEmpty()) {
+                clientEmptyText.setText("Aucun client");
+            } else if (!query.trim().isEmpty()) {
+                clientEmptyText.setText("Aucun client trouvé");
+            } else if (selectedClientFilter == ClientMessageGrouper.Filter.NEW) {
+                clientEmptyText.setText("Aucun nouveau client");
+            } else if (selectedClientFilter == ClientMessageGrouper.Filter.EXISTING) {
+                clientEmptyText.setText("Aucun ancien client");
+            } else {
+                clientEmptyText.setText("Aucun client");
+            }
+        }
 
         if (selectedClientSender == null) {
             clientListContent.setVisibility(View.VISIBLE);
             clientDetailContent.setVisibility(View.GONE);
             return;
         }
-        for (ClientMessageGrouper.ClientGroup client : clients) {
+        for (ClientMessageGrouper.ClientGroup client : allClients) {
             if (selectedClientSender.equals(client.sender)) {
                 clientDetailTitle.setText(SmsDisplayFormatter.sender(client.sender));
                 clientMessageAdapter.submitList(client.messages);
@@ -977,6 +1013,40 @@ public class MainActivity extends AppCompatActivity {
         renderClients();
     }
 
+    private void configureClientFilters() {
+        clientFilterChips[0].setOnClickListener(view ->
+                selectClientFilter(ClientMessageGrouper.Filter.ALL));
+        clientFilterChips[1].setOnClickListener(view ->
+                selectClientFilter(ClientMessageGrouper.Filter.NEW));
+        clientFilterChips[2].setOnClickListener(view ->
+                selectClientFilter(ClientMessageGrouper.Filter.EXISTING));
+        clientSearchInput.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence value, int start, int count,
+                    int after) {}
+
+            @Override public void onTextChanged(CharSequence value, int start, int before,
+                    int count) {
+                renderClients();
+            }
+
+            @Override public void afterTextChanged(Editable value) {}
+        });
+        updateClientFilterChips();
+    }
+
+    private void selectClientFilter(ClientMessageGrouper.Filter filter) {
+        selectedClientFilter = filter;
+        updateClientFilterChips();
+        renderClients();
+    }
+
+    private void updateClientFilterChips() {
+        ClientMessageGrouper.Filter[] filters = ClientMessageGrouper.Filter.values();
+        for (int index = 0; index < clientFilterChips.length; index++) {
+            clientFilterChips[index].setSelected(selectedClientFilter == filters[index]);
+        }
+    }
+
     @Override
     public void onBackPressed() {
         if (selectedSection == SECTION_CLIENT && selectedClientSender != null) {
@@ -994,6 +1064,10 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_STATISTICS_TAB, selectedStatisticsTab);
         outState.putString(STATE_MESSAGE_FILTER, selectedMessageFilter.name());
         if (selectedClientSender != null) outState.putString(STATE_CLIENT_SENDER, selectedClientSender);
+        if (clientSearchInput != null) {
+            outState.putString(STATE_CLIENT_QUERY, clientSearchInput.getText().toString());
+        }
+        outState.putString(STATE_CLIENT_FILTER, selectedClientFilter.name());
         if (customFilterDate != null) {
             outState.putLong(STATE_CUSTOM_FILTER_DATE, customFilterDate);
         }

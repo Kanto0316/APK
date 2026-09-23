@@ -191,12 +191,40 @@
                 android:layout_height="match_parent"
                 android:orientation="vertical"
                 android:paddingStart="20dp"
-                android:paddingTop="24dp"
+                android:paddingTop="12dp"
                 android:paddingEnd="20dp">
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginBottom="18dp" android:text="Client"
-                    android:textColor="@color/sms_text_primary" android:textSize="24sp"
-                    android:textStyle="bold" />
+
+                <EditText
+                    android:id="@+id/clientSearchInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_client_search"
+                    android:drawableStart="@drawable/ic_search_24"
+                    android:drawablePadding="10dp"
+                    android:hint="Rechercher un numéro"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:textColor="@color/sms_text_primary"
+                    android:textColorHint="@color/sms_text_secondary"
+                    android:textSize="14sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView android:id="@+id/clientFilterAll" style="@style/SmsFilterChip"
+                        android:text="Tous" />
+                    <TextView android:id="@+id/clientFilterNew" style="@style/SmsFilterChip"
+                        android:text="Nouveau" />
+                    <TextView android:id="@+id/clientFilterExisting" style="@style/SmsFilterChip"
+                        android:text="Ancien" />
+                </LinearLayout>
+
                 <TextView android:id="@+id/clientEmptyText" android:layout_width="match_parent"
                     android:layout_height="wrap_content" android:gravity="center"
                     android:padding="24dp" android:text="Aucun client"
