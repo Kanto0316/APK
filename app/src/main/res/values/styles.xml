@@ -66,7 +66,7 @@
     <style name="StatisticsTab">
         <item name="android:layout_width">0dp</item><item name="android:layout_height">match_parent</item><item name="android:layout_weight">1</item>
         <item name="android:background">@drawable/bg_filter_chip</item><item name="android:clickable">true</item><item name="android:focusable">true</item>
-        <item name="android:gravity">center</item><item name="android:textColor">@color/filter_chip_text</item><item name="android:textSize">14sp</item><item name="android:textStyle">bold</item>
+        <item name="android:gravity">center</item><item name="android:maxLines">1</item><item name="android:textColor">@color/filter_chip_text</item><item name="android:textSize">12sp</item><item name="android:textStyle">bold</item>
     </style>
     <style name="StatisticsMonthButton">
         <item name="android:layout_width">48dp</item><item name="android:layout_height">48dp</item><item name="android:background">?attr/selectableItemBackgroundBorderless</item>
@@ -81,6 +81,9 @@
         <item name="android:elevation">1dp</item>
         <item name="android:gravity">center_vertical</item>
         <item name="android:orientation">vertical</item>
+        <item name="android:padding">12dp</item>
+    </style>
+    <style name="TransactionTypeCard" parent="BonusSecondaryCard">
         <item name="android:padding">12dp</item>
     </style>
     <style name="BonusPeriodLabel">
