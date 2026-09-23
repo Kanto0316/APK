@@ -368,9 +368,9 @@ public class MainActivity extends AppCompatActivity {
         historyList.setAdapter(historyAdapter);
 
         viewModel = new ViewModelProvider(this).get(SmsViewModel.class);
+        viewModel.getGlobalBalanceTitle().observe(this, balanceTitle::setText);
         viewModel.getMessages().observe(this, storedMessages -> {
             messages = storedMessages == null ? new ArrayList<>() : storedMessages;
-            balanceTitle.setText(BalanceTitle.from(messages));
             roomLoaded = true;
             renderState();
             renderClients();

@@ -11,12 +11,21 @@ final class BalanceTitle {
     private BalanceTitle() {}
 
     static String from(List<SmsMessage> messages) {
+        long balance = latestBalance(messages);
+        String formatted = String.format(Locale.FRENCH, "%,d", balance)
+                .replace('\u00a0', ' ').replace('\u202f', ' ');
+        return "Solde : " + formatted + " Ar >";
+    }
+
+    /** Returns the balance carried by the chronologically newest eligible transaction. */
+    static long latestBalance(List<SmsMessage> messages) {
         long latestDate = Long.MIN_VALUE;
         long latestReceivedDate = Long.MIN_VALUE;
         Long latestBalance = null;
 
         if (messages != null) {
             for (SmsMessage message : messages) {
+                if (message == null) continue;
                 MvolaMessageParser.ParsedTransaction transaction =
                         MvolaMessageParser.parse(message.messageBody, message.receivedDate);
                 if (transaction == null || transaction.balance == null) continue;
@@ -34,10 +43,6 @@ final class BalanceTitle {
                 }
             }
         }
-
-        long balance = latestBalance == null ? 0 : latestBalance;
-        String formatted = String.format(Locale.FRENCH, "%,d", balance)
-                .replace('\u00a0', ' ').replace('\u202f', ' ');
-        return "Solde : " + formatted + " Ar >";
+        return latestBalance == null ? 0 : latestBalance;
     }
 }
