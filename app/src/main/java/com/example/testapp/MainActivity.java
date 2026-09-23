@@ -628,6 +628,8 @@ public class MainActivity extends AppCompatActivity {
 
         EditText input = depositInput(InputType.TYPE_CLASS_NUMBER, "Montant",
                 DepositUssd.formatAmountInput(amountValue));
+        input.setPadding(0, input.getPaddingTop(), input.getPaddingRight(),
+                input.getPaddingBottom());
         addCreditAmountFormatter(input);
         LinearLayout row = new LinearLayout(this);
         row.setGravity(android.view.Gravity.CENTER_VERTICAL);
