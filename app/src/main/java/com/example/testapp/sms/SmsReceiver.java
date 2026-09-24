@@ -87,7 +87,8 @@ public class SmsReceiver extends BroadcastReceiver {
                                     + parts.length + " segment(s))");
                             if (parsedTransaction != null) {
                                 com.example.testapp.overlay.TransactionOverlayCoordinator
-                                        .get(appContext).show(sender, parsedTransaction);
+                                        .get(appContext).onTransactionReceived(
+                                                rowId, sender, parsedTransaction);
                             }
                         }
                     } else {

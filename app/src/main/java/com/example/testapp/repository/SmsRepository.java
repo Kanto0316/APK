@@ -35,6 +35,14 @@ public class SmsRepository {
         void onLoaded(List<SmsMessage> messages);
     }
 
+    public interface MessageCallback {
+        void onLoaded(SmsMessage message);
+    }
+
+    public void loadMessage(long id, MessageCallback callback) {
+        DATABASE_EXECUTOR.execute(() -> callback.onLoaded(dao.getById(id)));
+    }
+
     public void loadMessages(MessagesCallback callback) {
         DATABASE_EXECUTOR.execute(() -> callback.onLoaded(dao.getAllNewestFirst()));
     }
