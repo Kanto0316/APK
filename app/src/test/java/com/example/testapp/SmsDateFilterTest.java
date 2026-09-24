@@ -155,6 +155,84 @@ public class SmsDateFilterTest {
         assertEquals("0385829562", SmsDateFilter.normalizeNumber("038 58-295.62"));
     }
 
+    @Test
+    public void todayAndWithdrawalFiltersAreCombined() {
+        List<SmsMessage> source = Arrays.asList(
+                typedMessage("Retrait", "Ravaka", "0385829562", 2026, 9, 22, 10),
+                typedMessage("Dépôt", "Ravaka", "0385829562", 2026, 9, 22, 9),
+                typedMessage("Retrait", "Ravaka", "0385829562", 2026, 9, 21, 10));
+
+        assertSingleTypeResult(source, SmsDateFilter.Period.TODAY, "",
+                SmsDateFilter.TransactionType.WITHDRAWAL, "Retrait");
+    }
+
+    @Test
+    public void allDatesAndDepositFiltersAreCombined() {
+        List<SmsMessage> source = Arrays.asList(
+                typedMessage("Dépôt", "Ravaka", "0385829562", 2026, 8, 1, 10),
+                typedMessage("Crédit", "-", "0386825677", 2026, 9, 22, 9));
+
+        assertSingleTypeResult(source, SmsDateFilter.Period.ALL, "",
+                SmsDateFilter.TransactionType.DEPOSIT, "Dépôt");
+    }
+
+    @Test
+    public void sevenDaysAndCreditFiltersAreCombined() {
+        List<SmsMessage> source = Arrays.asList(
+                typedMessage("Crédit", "-", "0386825677", 2026, 9, 16, 10),
+                typedMessage("Crédit", "-", "0386825677", 2026, 9, 15, 10),
+                typedMessage("Retrait", "Ravaka", "0385829562", 2026, 9, 22, 9));
+
+        assertSingleTypeResult(source, SmsDateFilter.Period.SEVEN_DAYS, "",
+                SmsDateFilter.TransactionType.CREDIT, "Crédit");
+    }
+
+    @Test
+    public void nameSearchAndWithdrawalFiltersAreCombined() {
+        List<SmsMessage> source = Arrays.asList(
+                typedMessage("Retrait", "Ravaka", "0385829562", 2026, 9, 22, 10),
+                typedMessage("Dépôt", "Ravaka", "0340677891", 2026, 9, 22, 9),
+                typedMessage("Retrait", "Falitiana", "0345829482", 2026, 9, 22, 8));
+
+        assertSingleTypeResult(source, SmsDateFilter.Period.ALL, "ravaka",
+                SmsDateFilter.TransactionType.WITHDRAWAL, "Retrait");
+    }
+
+    @Test
+    public void numberSearchAndCreditFiltersAreCombined() {
+        List<SmsMessage> source = Arrays.asList(
+                typedMessage("Crédit", "-", "0386825677", 2026, 9, 22, 10),
+                typedMessage("Retrait", "Ravaka", "0386825677", 2026, 9, 22, 9),
+                typedMessage("Crédit", "-", "0341444033", 2026, 9, 22, 8));
+
+        assertSingleTypeResult(source, SmsDateFilter.Period.ALL, "03868",
+                SmsDateFilter.TransactionType.CREDIT, "Crédit");
+    }
+
+    @Test
+    public void allTypesAndYesterdayPreserveEveryRecognizedType() {
+        List<SmsMessage> source = Arrays.asList(
+                typedMessage("Dépôt", "Ravaka", "0385829562", 2026, 9, 21, 10),
+                typedMessage("Retrait", "Falitiana", "0345829482", 2026, 9, 21, 9),
+                typedMessage("Crédit", "-", "0386825677", 2026, 9, 22, 8));
+
+        List<SmsDateFilter.DisplayMessage> result = SmsDateFilter.apply(source,
+                SmsDateFilter.Period.YESTERDAY, null, time(2026, 9, 22, 12), ZONE, "",
+                SmsDateFilter.TransactionType.ALL);
+        assertEquals(2, result.size());
+    }
+
+    private static void assertSingleTypeResult(List<SmsMessage> source,
+                                               SmsDateFilter.Period period, String query,
+                                               SmsDateFilter.TransactionType type,
+                                               String expectedParsedType) {
+        List<SmsDateFilter.DisplayMessage> result = SmsDateFilter.apply(source, period, null,
+                time(2026, 9, 22, 12), ZONE, query, type);
+        assertEquals(1, result.size());
+        assertEquals(expectedParsedType, com.example.testapp.sms.MvolaMessageParser.parse(
+                result.get(0).message.messageBody, result.get(0).message.receivedDate).type);
+    }
+
     private static void assertSingleNamedResult(List<SmsMessage> source, String query,
                                                 String expectedName) {
         List<SmsDateFilter.DisplayMessage> result = SmsDateFilter.apply(source,
@@ -185,6 +263,24 @@ public class SmsDateFilterTest {
                 + String.format(java.util.Locale.ROOT, "%02d/%02d/%02d a %02d:00. ",
                 day, month, year % 100, hour)
                 + "Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.";
+        return SmsMessage.create(number, body, time(year, month, day, hour), true);
+    }
+
+    private static SmsMessage typedMessage(String type, String name, String number, int year,
+                                           int month, int day, int hour) {
+        String date = String.format(java.util.Locale.ROOT, "%02d/%02d/%02d a %02d:00",
+                day, month, year % 100, hour);
+        String body;
+        if ("Dépôt".equals(type)) {
+            body = "Vous avez credite " + name + " (" + number + ") de 1 000 Ar le " + date
+                    + ". Bonus:1 Ar. Solde : 10 000 Ar. Ref: 123456";
+        } else if ("Crédit".equals(type)) {
+            body = "Achat de credit YAS reussi: 500 Ar pour " + number
+                    + ". Frais: 0 Ar. Bonus:24 Ar. Solde MVola : 10 000 Ar. Ref: 123456";
+        } else {
+            body = "1 000 Ar recu de " + name + " " + number + " le " + date
+                    + ". Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.";
+        }
         return SmsMessage.create(number, body, time(year, month, day, hour), true);
     }
 

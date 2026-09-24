@@ -14,6 +14,15 @@ import java.util.TimeZone;
 /** Pure display filtering for the messages table; stored messages are never mutated. */
 final class SmsDateFilter {
     enum Period { ALL, TODAY, YESTERDAY, SEVEN_DAYS, THIRTY_DAYS, CUSTOM_DATE }
+    enum TransactionType {
+        ALL(null), DEPOSIT("Dépôt"), WITHDRAWAL("Retrait"), CREDIT("Crédit");
+
+        final String parsedType;
+
+        TransactionType(String parsedType) {
+            this.parsedType = parsedType;
+        }
+    }
 
     static final class DisplayMessage {
         final SmsMessage message;
@@ -35,6 +44,13 @@ final class SmsDateFilter {
     static List<DisplayMessage> apply(List<SmsMessage> source, Period period,
                                       Long customDateMillis, long nowMillis, TimeZone timeZone,
                                       String query) {
+        return apply(source, period, customDateMillis, nowMillis, timeZone, query,
+                TransactionType.ALL);
+    }
+
+    static List<DisplayMessage> apply(List<SmsMessage> source, Period period,
+                                      Long customDateMillis, long nowMillis, TimeZone timeZone,
+                                      String query, TransactionType transactionType) {
         if (source == null || source.isEmpty()) return Collections.emptyList();
 
         long start = Long.MIN_VALUE;
@@ -73,6 +89,8 @@ final class SmsDateFilter {
             // A persisted SMS is not necessarily a business transaction. Keep unrecognised
             // messages in Room for future reprocessing, but never expose them in this view.
             if (parsed == null) continue;
+            boolean typeMatches = transactionType == TransactionType.ALL
+                    || transactionType.parsedType.equals(parsed.type);
             String searchableNumber = parsed.clientNumber;
             long effectiveDate = parsed.transactionAt;
             boolean numberMatches = !normalizedNumberQuery.isEmpty()
@@ -83,7 +101,7 @@ final class SmsDateFilter {
                     && !searchableName.trim().isEmpty()
                     && !"-".equals(searchableName.trim())
                     && normalizeText(searchableName).contains(normalizedTextQuery);
-            if (effectiveDate >= start && effectiveDate < end
+            if (effectiveDate >= start && effectiveDate < end && typeMatches
                     && (emptyQuery || numberMatches || nameMatches)) {
                 result.add(new DisplayMessage(message, total - index));
             }
