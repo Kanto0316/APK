@@ -44,7 +44,6 @@ public final class StatisticsChartView extends View {
     private long tickStep = 1;
     private float horizontalOffset;
     private boolean ariaryValues;
-    private boolean transactionValues;
 
     public StatisticsChartView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -87,26 +86,17 @@ public final class StatisticsChartView extends View {
 
     void setData(List<SmsStatistics.DailyCount> dailyCounts, int firstVisibleIndex) {
         ariaryValues = false;
-        transactionValues = false;
         updateData(dailyCounts, firstVisibleIndex);
     }
 
     void setBonusData(List<SmsStatistics.DailyCount> dailyBonuses) {
         ariaryValues = true;
-        transactionValues = false;
         updateData(dailyBonuses, 0);
     }
 
     void setUserData(List<SmsStatistics.DailyCount> dailyUsers) {
         ariaryValues = false;
-        transactionValues = false;
         updateData(dailyUsers, 0);
-    }
-
-    void setTransactionData(List<SmsStatistics.DailyCount> dailyTransactions) {
-        ariaryValues = false;
-        transactionValues = true;
-        updateData(dailyTransactions, 0);
     }
 
     private void updateData(List<SmsStatistics.DailyCount> dailyCounts, int firstVisibleIndex) {
@@ -177,8 +167,7 @@ public final class StatisticsChartView extends View {
         textPaint.setTextSize(11 * getResources().getDisplayMetrics().scaledDensity);
         textPaint.setFakeBoldText(false);
         textPaint.setTextAlign(Paint.Align.LEFT);
-        canvas.drawText(ariaryValues ? "Bonus (Ar)" : transactionValues
-                        ? "Nombre de transactions" : "Nombre d’utilisateurs", chartLeft,
+        canvas.drawText(ariaryValues ? "Bonus (Ar)" : "Nombre d’utilisateurs", chartLeft,
                 getPaddingTop() + dp(17), textPaint);
         textPaint.setTextSize(12 * getResources().getDisplayMetrics().scaledDensity);
 
@@ -246,12 +235,11 @@ public final class StatisticsChartView extends View {
 
     private String buildDescription() {
         StringBuilder result = new StringBuilder(ariaryValues
-                ? "Bonus quotidiens. " : transactionValues
-                ? "Transactions par jour. " : "Utilisateurs distincts par jour. ");
+                ? "Bonus quotidiens. " : "Utilisateurs par jour. ");
         for (SmsStatistics.DailyCount item : data) {
             result.append(accessibleDateFormat.format(new Date(item.localDayTimestamp))).append(" : ")
-                    .append(formatValue(item.count)).append(ariaryValues ? ". "
-                            : transactionValues ? " transactions. " : " utilisateurs. ");
+                    .append(formatValue(item.count)).append(ariaryValues
+                            ? ". " : " utilisateurs. ");
         }
         return result.toString();
     }
