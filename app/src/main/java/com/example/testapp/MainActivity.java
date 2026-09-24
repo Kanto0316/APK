@@ -21,6 +21,7 @@ import android.text.method.DigitsKeyListener;
 import android.graphics.Typeface;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -2158,11 +2159,21 @@ public class MainActivity extends AppCompatActivity {
                 columns[index].setTextSize(TypedValue.COMPLEX_UNIT_SP,
                         (index < 3 ? 12f : 13f) * zoom);
             }
-            LinearLayout content = (LinearLayout) itemView.getChildAt(0);
-            content.setMinimumHeight(Math.round(48f * resources.getDisplayMetrics().density * zoom));
-            int verticalPadding = Math.round(7f * resources.getDisplayMetrics().density * zoom);
-            content.setPadding(content.getPaddingLeft(), verticalPadding,
-                    content.getPaddingRight(), verticalPadding);
+            if (itemView instanceof ViewGroup) {
+                ViewGroup group = (ViewGroup) itemView;
+                if (group.getChildCount() > 0) {
+                    View child = group.getChildAt(0);
+                    if (child instanceof LinearLayout) {
+                        LinearLayout content = (LinearLayout) child;
+                        content.setMinimumHeight(Math.round(48f
+                                * resources.getDisplayMetrics().density * zoom));
+                        int verticalPadding = Math.round(7f
+                                * resources.getDisplayMetrics().density * zoom);
+                        content.setPadding(content.getPaddingLeft(), verticalPadding,
+                                content.getPaddingRight(), verticalPadding);
+                    }
+                }
+            }
             type.getLayoutParams().height = Math.round(22f
                     * resources.getDisplayMetrics().density * zoom);
             int badgePadding = Math.round(7f * resources.getDisplayMetrics().density * zoom);
