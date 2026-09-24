@@ -1777,7 +1777,7 @@ public class MainActivity extends AppCompatActivity {
             SmsTableRow row = SmsTableRow.from(items.get(position));
             holder.number.setText(String.valueOf(row.number));
             holder.dateTime.setText(row.dateTime);
-            holder.type.setText(SmsTableRow.display(row.type));
+            bindTypeBadge(holder.type, row.type);
             holder.amount.setText(SmsTableRow.display(row.montant));
             holder.reference.setText(SmsTableRow.display(row.reference));
         }
@@ -1821,7 +1821,7 @@ public class MainActivity extends AppCompatActivity {
             SmsTableRow row = SmsTableRow.from(items.get(position));
             holder.number.setText(String.valueOf(row.number));
             holder.dateTime.setText(row.dateTime);
-            holder.type.setText(SmsTableRow.display(row.type));
+            bindTypeBadge(holder.type, row.type);
             holder.sender.setText(SmsTableRow.display(row.numero));
             holder.name.setText(SmsTableRow.display(row.nom));
             holder.amount.setText(SmsTableRow.display(row.montant));
@@ -1832,6 +1832,28 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override public int getItemCount() { return items.size(); }
+    }
+
+    /** Styles only the compact type value; the table row itself always keeps its white surface. */
+    private static void bindTypeBadge(TextView view, String type) {
+        String displayedType = SmsTableRow.display(type);
+        view.setText(displayedType);
+
+        int background = 0;
+        int textColor = R.color.sms_text_secondary;
+        if ("Dépôt".equalsIgnoreCase(type)) {
+            background = R.drawable.bg_type_deposit;
+            textColor = R.color.sms_type_deposit_text;
+        } else if ("Retrait".equalsIgnoreCase(type)) {
+            background = R.drawable.bg_type_withdrawal;
+            textColor = R.color.sms_type_withdrawal_text;
+        } else if ("Crédit".equalsIgnoreCase(type)) {
+            background = R.drawable.bg_type_credit;
+            textColor = R.color.sms_type_credit_text;
+        }
+
+        view.setBackgroundResource(background);
+        view.setTextColor(ContextCompat.getColor(view.getContext(), textColor));
     }
 
     private static class SmsViewHolder extends RecyclerView.ViewHolder {

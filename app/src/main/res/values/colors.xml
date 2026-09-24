@@ -8,6 +8,12 @@
     <color name="sms_divider">#E8EDF1</color>
     <color name="sms_table_header">#263B50</color>
     <color name="sms_table_header_text">#FFFFFF</color>
+    <color name="sms_type_deposit_background">#E8F2FF</color>
+    <color name="sms_type_deposit_text">#174E87</color>
+    <color name="sms_type_withdrawal_background">#E8F7EE</color>
+    <color name="sms_type_withdrawal_text">#1D6338</color>
+    <color name="sms_type_credit_background">#FFF3DC</color>
+    <color name="sms_type_credit_text">#8A4B08</color>
     <color name="sms_accent">#1565C0</color>
     <color name="sms_filter_background">#F7F9FB</color>
     <color name="sms_filter_border">#CCD6DF</color>
