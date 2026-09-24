@@ -14,10 +14,15 @@
             android:layout_width="@dimen/sms_column_datetime_width" android:layout_height="wrap_content"
             android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_secondary"
             android:textSize="12sp" />
-        <TextView android:id="@+id/clientMessageType"
-            android:layout_width="@dimen/sms_column_type_width" android:layout_height="wrap_content"
-            android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_primary"
-            android:textSize="13sp" />
+        <FrameLayout android:layout_width="@dimen/sms_column_type_width"
+            android:layout_height="wrap_content" android:foregroundGravity="center">
+            <TextView android:id="@+id/clientMessageType"
+                android:layout_width="wrap_content" android:layout_height="22dp"
+                android:layout_gravity="center" android:gravity="center"
+                android:includeFontPadding="false" android:maxLines="1"
+                android:paddingStart="7dp" android:paddingEnd="7dp"
+                android:textColor="@color/sms_text_secondary" android:textSize="12sp" />
+        </FrameLayout>
         <TextView android:id="@+id/clientMessageAmount"
             android:layout_width="@dimen/sms_column_money_width" android:layout_height="wrap_content"
             android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_primary"
