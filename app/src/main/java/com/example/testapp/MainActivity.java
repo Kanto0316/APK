@@ -169,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
     private List<SmsStatistics.DailyCount> monthlyTransactionBars = new ArrayList<>();
     private long todayDepositTransactions = 0;
     private long todayCreditTransactions = 0;
-    private long todayOfferTransactions = 0;
+    private long todayWithdrawalTransactions = 0;
     private TextView homeLabel;
     private ImageButton homeButton;
     private TextView clientEmptyText;
@@ -1247,6 +1247,7 @@ public class MainActivity extends AppCompatActivity {
         todayTransactions = summary.todayTransactions;
         todayDepositTransactions = summary.todayDepositTransactions;
         todayCreditTransactions = summary.todayCreditTransactions;
+        todayWithdrawalTransactions = summary.todayWithdrawalTransactions;
         yesterdayTransactions = summary.yesterdayTransactions;
         weekTransactions = summary.weekTransactions;
         monthlyTransactions = summary.monthTransactions;
@@ -1279,6 +1280,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void renderUserValues() {
         ((TextView) findViewById(R.id.todayUsersValue)).setText(String.valueOf(todayUsers));
+        ((TextView) findViewById(R.id.depositTransactionsValue))
+                .setText(String.valueOf(todayDepositTransactions));
+        ((TextView) findViewById(R.id.creditTransactionsValue))
+                .setText(String.valueOf(todayCreditTransactions));
+        ((TextView) findViewById(R.id.withdrawalTransactionsValue))
+                .setText(String.valueOf(todayWithdrawalTransactions));
         ((TextView) findViewById(R.id.yesterdayUsersValue)).setText(String.valueOf(yesterdayUsers));
         ((TextView) findViewById(R.id.weekUsersValue)).setText(String.valueOf(weekUsers));
         ((TextView) findViewById(R.id.monthUsersValue)).setText(String.valueOf(monthUsers));
@@ -1306,12 +1313,6 @@ public class MainActivity extends AppCompatActivity {
     private void renderTransactionValues() {
         ((TextView) findViewById(R.id.totalTransactionsValue))
                 .setText(String.valueOf(todayTransactions));
-        ((TextView) findViewById(R.id.depositTransactionsValue))
-                .setText(String.valueOf(todayDepositTransactions));
-        ((TextView) findViewById(R.id.creditTransactionsValue))
-                .setText(String.valueOf(todayCreditTransactions));
-        ((TextView) findViewById(R.id.offerTransactionsValue))
-                .setText(String.valueOf(todayOfferTransactions));
         ((TextView) findViewById(R.id.yesterdayTransactionsValue))
                 .setText(String.valueOf(yesterdayTransactions));
         ((TextView) findViewById(R.id.weekTransactionsValue))
