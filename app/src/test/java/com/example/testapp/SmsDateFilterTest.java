@@ -117,6 +117,54 @@ public class SmsDateFilterTest {
         assertEquals(2, restoredToday.size());
     }
 
+    @Test
+    public void nameSearchIsPartialCaseAndAccentInsensitive() {
+        List<SmsMessage> source = Arrays.asList(
+                namedMessage("Ravaka", "0385829562", 2026, 9, 22, 10),
+                namedMessage("Falitiana", "0345829482", 2026, 9, 22, 9),
+                namedMessage("MARIÉTTE", "0344153878", 2026, 9, 22, 8));
+
+        assertSingleNamedResult(source, "rav", "Ravaka");
+        assertSingleNamedResult(source, "RAVAKA", "Ravaka");
+        assertSingleNamedResult(source, "fali", "Falitiana");
+        assertSingleNamedResult(source, "mariette", "MARIÉTTE");
+    }
+
+    @Test
+    public void nameSearchCombinesWithDateAndDoesNotSearchRawSmsFields() {
+        List<SmsMessage> source = Arrays.asList(
+                namedMessage("Ravaka", "0385829562", 2026, 9, 22, 10),
+                namedMessage("Ravaka", "0345829482", 2026, 9, 21, 10),
+                namedMessage("Falitiana", "0344153878", 2026, 9, 22, 9));
+
+        List<SmsDateFilter.DisplayMessage> today = SmsDateFilter.apply(source,
+                SmsDateFilter.Period.TODAY, null, time(2026, 9, 22, 12), ZONE, "ravaka");
+        assertEquals(1, today.size());
+        assertEquals("0385829562", today.get(0).message.sender);
+        assertEquals(0, SmsDateFilter.apply(source, SmsDateFilter.Period.ALL, null,
+                time(2026, 9, 22, 12), ZONE, "solde").size());
+    }
+
+    @Test
+    public void numberSearchRemovesSeparators() {
+        List<SmsMessage> source = Arrays.asList(
+                namedMessage("Ravaka", "0385829562", 2026, 9, 22, 10));
+
+        assertEquals(1, SmsDateFilter.apply(source, SmsDateFilter.Period.ALL, null,
+                time(2026, 9, 22, 12), ZONE, "038-58").size());
+        assertEquals("0385829562", SmsDateFilter.normalizeNumber("038 58-295.62"));
+    }
+
+    private static void assertSingleNamedResult(List<SmsMessage> source, String query,
+                                                String expectedName) {
+        List<SmsDateFilter.DisplayMessage> result = SmsDateFilter.apply(source,
+                SmsDateFilter.Period.ALL, null, time(2026, 9, 22, 12), ZONE, query);
+        assertEquals(query, 1, result.size());
+        assertEquals(expectedName,
+                com.example.testapp.sms.MvolaMessageParser.parse(
+                        result.get(0).message.messageBody).clientName);
+    }
+
     private static SmsMessage message(int year, int month, int day, int hour) {
         return message("sender", year, month, day, hour);
     }
@@ -129,6 +177,15 @@ public class SmsDateFilterTest {
                 day, month, year % 100, hour)
                 + "Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.";
         return SmsMessage.create(sender, body, time(year, month, day, hour), true);
+    }
+
+    private static SmsMessage namedMessage(String name, String number, int year, int month,
+                                           int day, int hour) {
+        String body = "1 000 Ar recu de " + name + " " + number + " le "
+                + String.format(java.util.Locale.ROOT, "%02d/%02d/%02d a %02d:00. ",
+                day, month, year % 100, hour)
+                + "Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.";
+        return SmsMessage.create(number, body, time(year, month, day, hour), true);
     }
 
     private static long time(int year, int month, int day, int hour) {
