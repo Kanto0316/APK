@@ -88,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_MESSAGE_FILTER = "message_filter";
     private static final String STATE_MESSAGE_TYPE_FILTER = "message_type_filter";
     private static final String STATE_MESSAGE_QUERY = "message_query";
+    private static final String STATE_TABLE_ZOOM = "table_zoom";
     private static final String STATE_CUSTOM_FILTER_DATE = "custom_filter_date";
     private static final String STATE_CLIENT_SENDER = "client_sender";
     private static final String STATE_CLIENT_QUERY = "client_query";
@@ -116,6 +117,9 @@ public class MainActivity extends AppCompatActivity {
     private View mainHeaderDivider;
     private ProgressBar loadingIndicator;
     private SmsAdapter adapter;
+    private float tableZoom = 1f;
+    private LinearLayout transactionTable;
+    private LinearLayout smsTableHeader;
     private SmsViewModel viewModel;
     private SmsBackupManager backupManager;
     private List<SmsMessage> messages = new ArrayList<>();
@@ -373,9 +377,25 @@ public class MainActivity extends AppCompatActivity {
         showSection(savedInstanceState == null ? SECTION_MESSAGES
                 : savedInstanceState.getInt(STATE_SELECTED_SECTION, SECTION_MESSAGES));
         RecyclerView list = findViewById(R.id.transactionsList);
-        adapter = new SmsAdapter();
+        if (savedInstanceState != null) {
+            tableZoom = clampTableZoom(savedInstanceState.getFloat(STATE_TABLE_ZOOM, 1f));
+        }
+        transactionTable = findViewById(R.id.transactionTable);
+        smsTableHeader = findViewById(R.id.smsTableHeader);
+        adapter = new SmsAdapter(tableZoom);
         list.setLayoutManager(new LinearLayoutManager(this));
         list.setAdapter(adapter);
+        ZoomableTableScrollView tableScroll = findViewById(R.id.transactionTableScroll);
+        tableScroll.setZoomListener(new ZoomableTableScrollView.ZoomListener() {
+            @Override public void onZoom(float scaleFactor) {
+                setTableZoom(tableZoom * scaleFactor);
+            }
+
+            @Override public void onResetZoom() {
+                setTableZoom(1f);
+            }
+        });
+        applyTableZoom();
         RecyclerView clientList = findViewById(R.id.clientList);
         clientAdapter = new ClientAdapter(this::showClientDetail);
         clientList.setLayoutManager(new LinearLayoutManager(this));
@@ -1162,6 +1182,7 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_STATISTICS_TAB, selectedStatisticsTab);
         outState.putString(STATE_MESSAGE_FILTER, selectedMessageFilter.name());
         outState.putString(STATE_MESSAGE_TYPE_FILTER, selectedMessageType.name());
+        outState.putFloat(STATE_TABLE_ZOOM, tableZoom);
         if (messageSearchInput != null) {
             outState.putString(STATE_MESSAGE_QUERY, messageSearchInput.getText().toString());
         }
@@ -1988,8 +2009,58 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void setTableZoom(float zoom) {
+        float clamped = clampTableZoom(zoom);
+        if (Math.abs(clamped - tableZoom) < 0.001f) return;
+        tableZoom = clamped;
+        applyTableZoom();
+    }
+
+    private static float clampTableZoom(float zoom) {
+        return Math.max(0.7f, Math.min(1.5f, zoom));
+    }
+
+    private void applyTableZoom() {
+        if (transactionTable == null || smsTableHeader == null || adapter == null) return;
+        transactionTable.getLayoutParams().width = scaledDimension(R.dimen.sms_table_width, tableZoom);
+        transactionTable.requestLayout();
+        smsTableHeader.getLayoutParams().height = dp(40f * tableZoom);
+        int[] widths = {R.dimen.sms_column_number_width, R.dimen.sms_column_datetime_width,
+                R.dimen.sms_column_type_width, R.dimen.sms_column_sender_width,
+                R.dimen.sms_column_name_width, R.dimen.sms_column_money_width,
+                R.dimen.sms_column_reference_width, R.dimen.sms_column_money_width,
+                R.dimen.sms_column_money_width, R.dimen.sms_column_money_width};
+        for (int index = 0; index < smsTableHeader.getChildCount(); index++) {
+            View column = smsTableHeader.getChildAt(index);
+            column.getLayoutParams().width = scaledDimension(widths[index], tableZoom);
+            if (column instanceof TextView) {
+                ((TextView) column).setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f * tableZoom);
+            }
+        }
+        smsTableHeader.requestLayout();
+        adapter.setZoom(tableZoom);
+    }
+
+    private int scaledDimension(int resource, float zoom) {
+        return Math.round(getResources().getDimension(resource) * zoom);
+    }
+
+    private int dp(float value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
     private static class SmsAdapter extends RecyclerView.Adapter<SmsViewHolder> {
         private List<SmsDateFilter.DisplayMessage> items = new ArrayList<>();
+        private float zoom;
+
+        SmsAdapter(float zoom) {
+            this.zoom = zoom;
+        }
+
+        void setZoom(float zoom) {
+            this.zoom = zoom;
+            notifyItemRangeChanged(0, getItemCount(), "zoom");
+        }
 
         void submitList(List<SmsDateFilter.DisplayMessage> messages) {
             items = new ArrayList<>(messages);
@@ -2016,6 +2087,7 @@ public class MainActivity extends AppCompatActivity {
             holder.bonus.setText(SmsTableRow.display(row.bonus));
             holder.fees.setText(SmsTableRow.displayFee(row.frais));
             holder.balance.setText(SmsTableRow.display(row.solde));
+            holder.applyZoom(zoom);
         }
 
         @Override public int getItemCount() { return items.size(); }
@@ -2067,6 +2139,36 @@ public class MainActivity extends AppCompatActivity {
             bonus = itemView.findViewById(R.id.itemBonus);
             fees = itemView.findViewById(R.id.itemFees);
             balance = itemView.findViewById(R.id.itemBalance);
+        }
+
+        void applyZoom(float zoom) {
+            android.content.res.Resources resources = itemView.getResources();
+            int[] dimensions = {R.dimen.sms_column_number_width,
+                    R.dimen.sms_column_datetime_width, R.dimen.sms_column_type_width,
+                    R.dimen.sms_column_sender_width, R.dimen.sms_column_name_width,
+                    R.dimen.sms_column_money_width, R.dimen.sms_column_reference_width,
+                    R.dimen.sms_column_money_width, R.dimen.sms_column_money_width,
+                    R.dimen.sms_column_money_width};
+            TextView[] columns = {number, dateTime, type, sender, name, amount, reference,
+                    bonus, fees, balance};
+            for (int index = 0; index < columns.length; index++) {
+                View widthTarget = index == 2 ? (View) columns[index].getParent() : columns[index];
+                widthTarget.getLayoutParams().width = Math.round(
+                        resources.getDimension(dimensions[index]) * zoom);
+                columns[index].setTextSize(TypedValue.COMPLEX_UNIT_SP,
+                        (index < 3 ? 12f : 13f) * zoom);
+            }
+            LinearLayout content = (LinearLayout) itemView.getChildAt(0);
+            content.setMinimumHeight(Math.round(48f * resources.getDisplayMetrics().density * zoom));
+            int verticalPadding = Math.round(7f * resources.getDisplayMetrics().density * zoom);
+            content.setPadding(content.getPaddingLeft(), verticalPadding,
+                    content.getPaddingRight(), verticalPadding);
+            type.getLayoutParams().height = Math.round(22f
+                    * resources.getDisplayMetrics().density * zoom);
+            int badgePadding = Math.round(7f * resources.getDisplayMetrics().density * zoom);
+            type.setPadding(badgePadding, type.getPaddingTop(), badgePadding,
+                    type.getPaddingBottom());
+            itemView.requestLayout();
         }
     }
 }
