@@ -103,6 +103,28 @@ public class SmsStatisticsTest {
         assertEquals(1_190f, StatisticsChartView.maximumOffsetDp(30, 250), 0f);
     }
 
+    @Test public void chartIdentifiesTodayByCompleteLocalDate() {
+        long today = utcDate(2026, Calendar.SEPTEMBER, 24, 12);
+
+        assertEquals(true, StatisticsChartView.isSameLocalDay(
+                utcDate(2026, Calendar.SEPTEMBER, 24, 1), today, UTC));
+        assertEquals(false, StatisticsChartView.isSameLocalDay(
+                utcDate(2026, Calendar.SEPTEMBER, 23, 23), today, UTC));
+        assertEquals(false, StatisticsChartView.isSameLocalDay(
+                utcDate(2025, Calendar.SEPTEMBER, 24, 12), today, UTC));
+    }
+
+    @Test public void chartUsesTheDeviceTimeZoneToIdentifyToday() {
+        TimeZone antananarivo = TimeZone.getTimeZone("Indian/Antananarivo");
+        long lateUtcSeptember23 = utcDate(2026, Calendar.SEPTEMBER, 23, 22);
+        long earlyUtcSeptember24 = utcDate(2026, Calendar.SEPTEMBER, 24, 1);
+
+        assertEquals(true, StatisticsChartView.isSameLocalDay(
+                lateUtcSeptember23, earlyUtcSeptember24, antananarivo));
+        assertEquals(false, StatisticsChartView.isSameLocalDay(
+                lateUtcSeptember23, earlyUtcSeptember24, UTC));
+    }
+
     @Test public void selectedMonthFiltersBothMonthAndYearAndFillsMissingDays() {
         List<SmsMessage> messages = Arrays.asList(
                 sms(2026, 9, 21, 8), sms(2026, 9, 21, 18),

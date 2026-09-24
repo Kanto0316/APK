@@ -16,9 +16,11 @@ import androidx.core.content.ContextCompat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 
 /** Horizontally scrollable vertical daily bar chart. */
 public final class StatisticsChartView extends View {
@@ -33,6 +35,8 @@ public final class StatisticsChartView extends View {
     private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint axisPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final int regularBarColor;
+    private final int todayBarColor;
     private final SimpleDateFormat shortDateFormat = new SimpleDateFormat("dd/MM", Locale.FRENCH);
     private final SimpleDateFormat accessibleDateFormat =
             new SimpleDateFormat("dd/MM/yyyy", Locale.FRENCH);
@@ -54,7 +58,9 @@ public final class StatisticsChartView extends View {
         gridPaint.setStrokeWidth(density);
         axisPaint.setColor(ContextCompat.getColor(context, R.color.sms_text_secondary));
         axisPaint.setStrokeWidth(density);
-        barPaint.setColor(ContextCompat.getColor(context, R.color.sms_accent));
+        regularBarColor = ContextCompat.getColor(context, R.color.sms_accent);
+        todayBarColor = ContextCompat.getColor(context, R.color.statistics_today);
+        barPaint.setColor(regularBarColor);
         scroller = new OverScroller(context);
         gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
             @Override public boolean onDown(MotionEvent event) {
@@ -188,6 +194,8 @@ public final class StatisticsChartView extends View {
         float leadingSpace = contentWidth < viewportWidth ? (viewportWidth - contentWidth) / 2f : 0;
         int save = canvas.save();
         canvas.clipRect(chartLeft, chartTop - dp(24), chartRight, chartBottom + dp(30));
+        long now = System.currentTimeMillis();
+        TimeZone localTimeZone = TimeZone.getDefault();
         for (int index = 0; index < data.size(); index++) {
             SmsStatistics.DailyCount item = data.get(index);
             float centerX = chartLeft + leadingSpace + dp(SLOT_WIDTH_DP) * (index + 0.5f)
@@ -196,6 +204,8 @@ public final class StatisticsChartView extends View {
                 float barTop = chartBottom - chartHeight * item.count / scaleMaximum;
                 RectF bar = new RectF(centerX - dp(BAR_WIDTH_DP) / 2f, barTop,
                         centerX + dp(BAR_WIDTH_DP) / 2f, chartBottom);
+                barPaint.setColor(isSameLocalDay(item.localDayTimestamp, now, localTimeZone)
+                        ? todayBarColor : regularBarColor);
                 canvas.drawRoundRect(bar, dp(4), dp(4), barPaint);
                 textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_primary));
                 textPaint.setFakeBoldText(true);
@@ -246,6 +256,16 @@ public final class StatisticsChartView extends View {
 
     private String formatValue(long value) {
         return numberFormat.format(value) + (ariaryValues ? " Ar" : "");
+    }
+
+    static boolean isSameLocalDay(long firstTimestamp, long secondTimestamp, TimeZone timeZone) {
+        Calendar first = Calendar.getInstance(timeZone);
+        first.setTimeInMillis(firstTimestamp);
+        Calendar second = Calendar.getInstance(timeZone);
+        second.setTimeInMillis(secondTimestamp);
+        return first.get(Calendar.YEAR) == second.get(Calendar.YEAR)
+                && first.get(Calendar.MONTH) == second.get(Calendar.MONTH)
+                && first.get(Calendar.DAY_OF_MONTH) == second.get(Calendar.DAY_OF_MONTH);
     }
 
     private int dp(int value) { return Math.round(value * density); }
