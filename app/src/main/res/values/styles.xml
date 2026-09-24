@@ -118,7 +118,7 @@
         <item name="android:textSize">12sp</item>
         <item name="android:textStyle">bold</item>
     </style>
-    <style name="BonusSecondaryValue">
+    <style name="StatisticsSecondaryValue">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginTop">8dp</item>
@@ -127,10 +127,20 @@
         <item name="android:textSize">22sp</item>
         <item name="android:textStyle">bold</item>
     </style>
+    <style name="BonusSecondaryValue" parent="StatisticsSecondaryValue">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:maxLines">1</item>
+        <item name="autoSizeMaxTextSize">22sp</item>
+        <item name="autoSizeMinTextSize">18sp</item>
+        <item name="autoSizeStepGranularity">1sp</item>
+        <item name="autoSizeTextType">uniform</item>
+    </style>
     <style name="BonusPrimaryValue" parent="BonusSecondaryValue">
+        <item name="autoSizeMaxTextSize">28sp</item>
+        <item name="autoSizeMinTextSize">20sp</item>
         <item name="android:textSize">28sp</item>
     </style>
-    <style name="UserSecondaryValue" parent="BonusSecondaryValue">
+    <style name="UserSecondaryValue" parent="StatisticsSecondaryValue">
         <item name="android:text">0</item>
     </style>
     <style name="UserPrimaryValue" parent="UserSecondaryValue">
