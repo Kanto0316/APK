@@ -32,6 +32,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -47,6 +48,10 @@ import com.example.testapp.background.BackgroundExecutionManager;
 import com.example.testapp.history.HistoryTransaction;
 import com.example.testapp.overlay.TransactionOverlayCoordinator;
 import com.example.testapp.notification.NotificationHelper;
+import com.example.testapp.export.ExportTransaction;
+import com.example.testapp.export.PdfExporter;
+import com.example.testapp.export.XlsxExporter;
+import com.example.testapp.sms.MvolaMessageParser;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -60,6 +65,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -180,6 +188,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean launchDepositAfterPermission;
     private boolean depositCallLaunched;
     private String pendingUssdCode;
+    private File pendingExportFile;
+    private String pendingExportMime;
 
     @Override
     protected void onStart() {
@@ -208,9 +218,16 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
     }
 
-    private final ActivityResultLauncher<String> exportLauncher = registerForActivityResult(
+    private final ActivityResultLauncher<String> backupExportLauncher = registerForActivityResult(
             new ActivityResultContracts.CreateDocument("application/json"), uri -> {
                 if (uri != null) exportMessages(uri);
+            });
+    private final ActivityResultLauncher<Intent> transactionSaveLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null
+                        && result.getData().getData() != null && pendingExportFile != null) {
+                    copyExportTo(result.getData().getData(), pendingExportFile);
+                }
             });
     private final ActivityResultLauncher<String[]> importLauncher = registerForActivityResult(
             new ActivityResultContracts.OpenDocument(), uri -> {
@@ -1340,11 +1357,15 @@ public class MainActivity extends AppCompatActivity {
 
     private void showOverflowMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add("Exporter").setOnMenuItemClickListener(item -> {
+            showTransactionExportDialog();
+            return true;
+        });
         menu.getMenu().add("Importer les messages").setOnMenuItemClickListener(item -> {
             launchImport();
             return true;
         });
-        menu.getMenu().add("Exporter les messages").setOnMenuItemClickListener(item -> {
+        menu.getMenu().add("Sauvegarder les messages (JSON)").setOnMenuItemClickListener(item -> {
             launchExport();
             return true;
         });
@@ -1385,7 +1406,116 @@ public class MainActivity extends AppCompatActivity {
 
     private void launchExport() {
         String date = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.ROOT).format(new Date());
-        exportLauncher.launch("suivi-sms_" + date + ".json");
+        backupExportLauncher.launch("suivi-sms_" + date + ".json");
+    }
+
+    private void showTransactionExportDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Exporter les transactions")
+                .setItems(new String[]{"Excel (.xlsx)", "PDF"}, (dialog, which) ->
+                        generateTransactionExport(which == 0))
+                .setNegativeButton("Annuler", null)
+                .show();
+    }
+
+    /** Uses exactly the list selected by Messages; filtering is deliberately not duplicated here. */
+    private List<SmsDateFilter.DisplayMessage> filteredMessagesForExport() {
+        String query = messageSearchInput == null ? "" : messageSearchInput.getText().toString();
+        return SmsDateFilter.apply(messages, selectedMessageFilter, customFilterDate,
+                System.currentTimeMillis(), java.util.TimeZone.getDefault(), query,
+                selectedMessageType);
+    }
+
+    private void generateTransactionExport(boolean excel) {
+        List<SmsDateFilter.DisplayMessage> visible = filteredMessagesForExport();
+        if (visible.isEmpty()) {
+            Toast.makeText(this, "Aucune transaction à exporter.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        List<ExportTransaction> rows = new ArrayList<>();
+        for (SmsDateFilter.DisplayMessage displayed : visible) {
+            MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
+                    displayed.message.messageBody, displayed.message.receivedDate);
+            if (parsed != null) rows.add(new ExportTransaction(displayed.originalNumber,
+                    parsed.transactionAt, parsed.type, parsed.clientNumber, parsed.clientName,
+                    parsed.amount, parsed.reference, parsed.bonus, parsed.fee, parsed.balance));
+        }
+        String period = exportPeriodLabel();
+        String type = selectedMessageType == SmsDateFilter.TransactionType.ALL ? "Tous"
+                : selectedMessageType.parsedType;
+        long exportedAt = System.currentTimeMillis();
+        String extension = excel ? ".xlsx" : ".pdf";
+        String mime = excel ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                : "application/pdf";
+        String name = "Suivi_SMS_" + new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
+                .format(new Date(exportedAt)) + extension;
+        Toast.makeText(this, "Création du fichier...", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            try {
+                File directory = new File(getCacheDir(), "exports");
+                if (!directory.exists() && !directory.mkdirs()) throw new IOException("Dossier indisponible");
+                File file = new File(directory, name);
+                try (OutputStream output = new FileOutputStream(file)) {
+                    if (excel) XlsxExporter.write(output, rows, period, type, exportedAt);
+                    else PdfExporter.write(output, rows, period, type, exportedAt);
+                }
+                runOnUiThread(() -> showExportCompleted(file, mime));
+            } catch (IOException error) {
+                showTransferError("Export impossible", error);
+            }
+        }, "transaction-export").start();
+    }
+
+    private String exportPeriodLabel() {
+        switch (selectedMessageFilter) {
+            case TODAY: return "Aujourd’hui";
+            case YESTERDAY: return "Hier";
+            case SEVEN_DAYS: return "7 derniers jours";
+            case THIRTY_DAYS: return "30 derniers jours";
+            case CUSTOM_DATE:
+                return customFilterDate == null ? "Date" : new SimpleDateFormat("dd/MM/yyyy",
+                        Locale.FRENCH).format(new Date(customFilterDate));
+            default: return "Tous";
+        }
+    }
+
+    private void showExportCompleted(File file, String mime) {
+        pendingExportFile = file;
+        pendingExportMime = mime;
+        new AlertDialog.Builder(this).setTitle("Export terminé")
+                .setMessage(file.getName())
+                .setPositiveButton("Enregistrer", (dialog, which) -> savePendingExport())
+                .setNeutralButton("Partager", (dialog, which) -> shareExport(file, mime))
+                .setNegativeButton("Fermer", null).show();
+    }
+
+    private void savePendingExport() {
+        if (pendingExportFile == null) return;
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType(pendingExportMime)
+                .putExtra(Intent.EXTRA_TITLE, pendingExportFile.getName());
+        transactionSaveLauncher.launch(intent);
+    }
+
+    private void copyExportTo(Uri destination, File source) {
+        new Thread(() -> {
+            try (InputStream input = new FileInputStream(source);
+                 OutputStream output = getContentResolver().openOutputStream(destination)) {
+                if (output == null) throw new IOException("Destination indisponible");
+                byte[] buffer = new byte[8192]; int count;
+                while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+                runOnUiThread(() -> Toast.makeText(this, "Export terminé", Toast.LENGTH_SHORT).show());
+            } catch (IOException error) { showTransferError("Enregistrement impossible", error); }
+        }, "transaction-export-save").start();
+    }
+
+    private void shareExport(File file, String mime) {
+        Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", file);
+        Intent send = new Intent(Intent.ACTION_SEND).setType(mime)
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(send, "Partager l’export"));
     }
 
     private void refreshMessages(boolean announce) {
