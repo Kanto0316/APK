@@ -17,14 +17,18 @@ public final class TransactionDialog {
     private Dialog dialog;
 
     public void show(AppCompatActivity activity, String sender,
-                     MvolaMessageParser.ParsedTransaction transaction) {
-        dismiss();
+                     MvolaMessageParser.ParsedTransaction transaction, Runnable onAcknowledged) {
+        dismissSilently();
         if (activity.isFinishing() || activity.isDestroyed()) return;
         View content = LayoutInflater.from(activity).inflate(R.layout.transaction_overlay, null);
         dialog = new Dialog(activity);
         dialog.setContentView(content);
+        dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
-        TransactionCardBinder.bind(content, sender, transaction, view -> dismiss());
+        TransactionCardBinder.bind(content, sender, transaction, view -> {
+            dismissSilently();
+            onAcknowledged.run();
+        });
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
@@ -36,7 +40,7 @@ public final class TransactionDialog {
                 WindowManager.LayoutParams.WRAP_CONTENT);
     }
 
-    public void dismiss() {
+    public void dismissSilently() {
         if (dialog != null) {
             if (dialog.isShowing()) dialog.dismiss();
             dialog = null;

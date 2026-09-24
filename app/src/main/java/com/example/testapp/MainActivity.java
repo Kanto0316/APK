@@ -46,6 +46,7 @@ import com.example.testapp.backup.SmsBackupManager;
 import com.example.testapp.background.BackgroundExecutionManager;
 import com.example.testapp.history.HistoryTransaction;
 import com.example.testapp.overlay.TransactionOverlayCoordinator;
+import com.example.testapp.notification.NotificationHelper;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -181,6 +182,21 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         TransactionOverlayCoordinator.get(this).attach(this);
+        handleTransactionIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleTransactionIntent(intent);
+    }
+
+    private void handleTransactionIntent(Intent intent) {
+        if (intent == null || !intent.hasExtra(NotificationHelper.EXTRA_TRANSACTION_ID)) return;
+        long id = intent.getLongExtra(NotificationHelper.EXTRA_TRANSACTION_ID, -1L);
+        intent.removeExtra(NotificationHelper.EXTRA_TRANSACTION_ID);
+        TransactionOverlayCoordinator.get(this).openFromNotification(id);
     }
 
     @Override

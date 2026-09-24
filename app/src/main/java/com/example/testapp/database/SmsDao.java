@@ -19,6 +19,9 @@ public interface SmsDao {
     @Query("SELECT * FROM sms_messages ORDER BY receivedDate DESC, id DESC")
     List<SmsMessage> getAllNewestFirst();
 
+    @Query("SELECT * FROM sms_messages WHERE id = :id LIMIT 1")
+    SmsMessage getById(long id);
+
     @Query("SELECT * FROM sms_messages ORDER BY receivedDate DESC, id DESC")
     LiveData<List<SmsMessage>> observeAllNewestFirst();
 

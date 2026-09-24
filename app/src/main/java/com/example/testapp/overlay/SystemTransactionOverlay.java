@@ -22,11 +22,15 @@ final class SystemTransactionOverlay {
         windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
     }
 
-    synchronized boolean show(String sender, MvolaMessageParser.ParsedTransaction transaction) {
+    synchronized boolean show(String sender, MvolaMessageParser.ParsedTransaction transaction,
+                              Runnable onAcknowledged) {
         remove();
         if (windowManager == null) return false;
         View view = LayoutInflater.from(context).inflate(R.layout.transaction_overlay, null);
-        TransactionCardBinder.bind(view, sender, transaction, ignored -> remove());
+        TransactionCardBinder.bind(view, sender, transaction, ignored -> {
+            remove();
+            onAcknowledged.run();
+        });
         int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 : WindowManager.LayoutParams.TYPE_PHONE;
