@@ -8,6 +8,7 @@
     android:orientation="vertical">
 
     <LinearLayout
+        android:id="@+id/mainHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/sms_surface"
@@ -82,6 +83,7 @@
     </LinearLayout>
 
     <View
+        android:id="@+id/mainHeaderDivider"
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:background="@color/sms_divider" />
@@ -299,7 +301,7 @@
                     android:background="@drawable/bg_client_search"
                     android:drawableStart="@drawable/ic_search_24"
                     android:drawablePadding="10dp"
-                    android:hint="Rechercher un numéro"
+                    android:hint="Rechercher un numéro ou un nom"
                     android:imeOptions="actionSearch"
                     android:inputType="text"
                     android:maxLines="1"
