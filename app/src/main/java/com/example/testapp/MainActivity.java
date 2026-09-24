@@ -109,6 +109,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView emptyText;
     private TextView transactionCountText;
     private TextView balanceTitle;
+    private View mainHeader;
+    private View mainHeaderDivider;
     private ProgressBar loadingIndicator;
     private SmsAdapter adapter;
     private SmsViewModel viewModel;
@@ -274,6 +276,8 @@ public class MainActivity extends AppCompatActivity {
         emptyText = findViewById(R.id.emptyText);
         transactionCountText = findViewById(R.id.transactionCountText);
         balanceTitle = findViewById(R.id.balanceTitle);
+        mainHeader = findViewById(R.id.mainHeader);
+        mainHeaderDivider = findViewById(R.id.mainHeaderDivider);
         loadingIndicator = findViewById(R.id.loadingIndicator);
         configureMessageFilters(savedInstanceState);
         backupManager = new SmsBackupManager(this);
@@ -988,6 +992,8 @@ public class MainActivity extends AppCompatActivity {
         historySection.setVisibility(historySelected ? View.VISIBLE : View.GONE);
         statisticsSection.setVisibility(statisticsSelected ? View.VISIBLE : View.GONE);
         clientSection.setVisibility(clientSelected ? View.VISIBLE : View.GONE);
+        mainHeader.setVisibility(clientSelected ? View.GONE : View.VISIBLE);
+        mainHeaderDivider.setVisibility(clientSelected ? View.GONE : View.VISIBLE);
 
         int active = ContextCompat.getColor(this, R.color.sms_bottom_item_active);
         int inactive = ContextCompat.getColor(this, R.color.sms_bottom_item);
