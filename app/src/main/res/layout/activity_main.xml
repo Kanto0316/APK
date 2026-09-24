@@ -212,7 +212,8 @@
                 android:textSize="14sp"
                 android:visibility="gone" />
 
-            <HorizontalScrollView
+            <com.example.testapp.ZoomableTableScrollView
+                android:id="@+id/transactionTableScroll"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
@@ -220,6 +221,7 @@
                 android:scrollbars="horizontal">
 
                 <LinearLayout
+                    android:id="@+id/transactionTable"
                     android:layout_width="@dimen/sms_table_width"
                     android:layout_height="match_parent"
                     android:orientation="vertical">
@@ -276,7 +278,7 @@
                         android:paddingBottom="8dp"
                         android:scrollbars="vertical" />
                 </LinearLayout>
-            </HorizontalScrollView>
+            </com.example.testapp.ZoomableTableScrollView>
         </LinearLayout>
 
         <FrameLayout
