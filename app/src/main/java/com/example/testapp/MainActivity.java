@@ -107,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView permissionText;
     private TextView backgroundExecutionText;
     private TextView emptyText;
+    private TextView transactionCountText;
     private TextView balanceTitle;
     private ProgressBar loadingIndicator;
     private SmsAdapter adapter;
@@ -271,6 +272,7 @@ public class MainActivity extends AppCompatActivity {
         backgroundExecutionManager = new BackgroundExecutionManager(this);
         backgroundExecutionText.setOnClickListener(view -> showBackgroundPermissionDialog(false));
         emptyText = findViewById(R.id.emptyText);
+        transactionCountText = findViewById(R.id.transactionCountText);
         balanceTitle = findViewById(R.id.balanceTitle);
         loadingIndicator = findViewById(R.id.loadingIndicator);
         configureMessageFilters(savedInstanceState);
@@ -1809,6 +1811,9 @@ public class MainActivity extends AppCompatActivity {
                 messageSearchInput == null ? "" : messageSearchInput.getText().toString(),
                 selectedMessageType);
         adapter.submitList(displayed);
+        int displayedCount = displayed.size();
+        transactionCountText.setText(displayedCount
+                + (displayedCount > 1 ? " transactions" : " transaction"));
         boolean noDisplayedMessages = displayed.isEmpty();
         boolean searching = messageSearchInput != null
                 && !messageSearchInput.getText().toString().trim().isEmpty();

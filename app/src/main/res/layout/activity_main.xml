@@ -130,6 +130,19 @@
             </HorizontalScrollView>
 
             <TextView
+                android:id="@+id/transactionCountText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginTop="2dp"
+                android:layout_marginEnd="12dp"
+                android:layout_marginBottom="4dp"
+                android:text="0 transaction"
+                android:textColor="@color/sms_text_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
                 android:id="@+id/permissionText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
