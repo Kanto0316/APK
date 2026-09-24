@@ -49,6 +49,14 @@ public class SmsTableRowTest {
     }
 
     @Test
+    public void displayFee_rendersDashForMissingOrZeroAndKeepsPositiveAmounts() {
+        assertEquals("-", SmsTableRow.displayFee(null));
+        assertEquals("-", SmsTableRow.displayFee("0 Ar"));
+        assertEquals("500 Ar", SmsTableRow.displayFee("500 Ar"));
+        assertEquals("1 500 Ar", SmsTableRow.displayFee("1 500 Ar"));
+    }
+
+    @Test
     public void from_displaysCreditFieldsAndUsesSmsReceptionTimestamp() {
         SmsMessage message = SmsMessage.create("MVola",
                 "Achat de credit YAS reussi: 500 Ar pour 0386825677. Frais: 0 Ar. "
@@ -62,7 +70,9 @@ public class SmsTableRowTest {
         assertEquals("500 Ar", row.montant);
         assertEquals("7581687806", row.reference);
         assertEquals("24 Ar", row.bonus);
+        // The parsed zero remains distinct from an absent fee; only its table display changes.
         assertEquals("0 Ar", row.frais);
+        assertEquals("-", SmsTableRow.displayFee(row.frais));
         assertEquals("80 869 Ar", row.solde);
         assertEquals("22/12/2026 00:00", row.dateTime);
     }
@@ -82,8 +92,21 @@ public class SmsTableRowTest {
         assertEquals("7576288436", row.reference);
         assertEquals("292 Ar", row.bonus);
         assertNull(row.frais);
-        assertEquals("-", SmsTableRow.display(row.frais));
+        assertEquals("-", SmsTableRow.displayFee(row.frais));
         assertEquals("87 115 Ar", row.solde);
         assertEquals("21/09/2026 06:46", row.dateTime);
+    }
+
+    @Test
+    public void from_displaysPositiveDepositFeeNormally() {
+        SmsMessage message = SmsMessage.create("MVola",
+                "Vous avez credite MARIETTE (0340677891) de 41 300 Ar le 21/09/26 "
+                        + "a 06:46. Frais: 500 Ar. Bonus:292 Ar. Solde : 87 115 Ar. "
+                        + "Ref: 7576288436",
+                1L, true);
+        SmsTableRow row = SmsTableRow.from(new SmsDateFilter.DisplayMessage(message, 4));
+
+        assertEquals("500 Ar", row.frais);
+        assertEquals("500 Ar", SmsTableRow.displayFee(row.frais));
     }
 }
