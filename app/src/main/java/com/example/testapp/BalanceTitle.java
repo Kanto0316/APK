@@ -6,7 +6,7 @@ import com.example.testapp.sms.MvolaMessageParser;
 import java.util.List;
 import java.util.Locale;
 
-/** Builds the global balance title from parsed MVola SMS messages. */
+/** Builds the displayed balance amount from parsed MVola SMS messages. */
 final class BalanceTitle {
     private BalanceTitle() {}
 
@@ -14,7 +14,7 @@ final class BalanceTitle {
         long balance = latestBalance(messages);
         String formatted = String.format(Locale.FRENCH, "%,d", balance)
                 .replace('\u00a0', ' ').replace('\u202f', ' ');
-        return "Solde : " + formatted + " Ar >";
+        return formatted + " Ar";
     }
 
     /** Returns the balance carried by the most recently received eligible SMS. */
