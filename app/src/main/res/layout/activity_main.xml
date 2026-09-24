@@ -325,6 +325,14 @@
                         android:text="Ancien" />
                 </LinearLayout>
 
+                <TextView
+                    android:id="@+id/clientCountText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingBottom="8dp"
+                    android:textColor="@color/sms_text_secondary"
+                    android:textSize="14sp" />
+
                 <TextView android:id="@+id/clientEmptyText" android:layout_width="match_parent"
                     android:layout_height="wrap_content" android:gravity="center"
                     android:padding="24dp" android:text="Aucun client"
