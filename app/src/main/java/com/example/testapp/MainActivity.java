@@ -21,6 +21,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -1727,6 +1728,9 @@ public class MainActivity extends AppCompatActivity {
             holder.reference.setText(HistoryDisplayFormatter.reference(item.reference));
             holder.amount.setText(HistoryDisplayFormatter.amount(item));
             holder.bonus.setText(HistoryDisplayFormatter.bonus(item.bonus));
+            holder.icon.setImageResource(HistoryDisplayFormatter.direction(item)
+                    == HistoryDisplayFormatter.Direction.NORTH_EAST
+                    ? R.drawable.ic_north_east_24 : R.drawable.ic_south_east_24);
             holder.itemView.setContentDescription(item.type + ", " + holder.number.getText()
                     + ", " + holder.amount.getText() + ", " + holder.reference.getText()
                     + ", bonus " + holder.bonus.getText());
@@ -1741,6 +1745,7 @@ public class MainActivity extends AppCompatActivity {
         final TextView reference;
         final TextView amount;
         final TextView bonus;
+        final ImageView icon;
 
         HistoryViewHolder(View itemView) {
             super(itemView);
@@ -1749,6 +1754,7 @@ public class MainActivity extends AppCompatActivity {
             reference = itemView.findViewById(R.id.historyTransactionReference);
             amount = itemView.findViewById(R.id.historyTransactionAmount);
             bonus = itemView.findViewById(R.id.historyTransactionBonus);
+            icon = itemView.findViewById(R.id.historyTransactionIcon);
         }
     }
 
