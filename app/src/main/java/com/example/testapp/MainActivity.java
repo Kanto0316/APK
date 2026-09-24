@@ -13,7 +13,10 @@ import android.os.Build;
 import android.text.InputType;
 import android.text.Editable;
 import android.text.InputFilter;
+import android.text.SpannableString;
+import android.text.Spanned;
 import android.text.TextWatcher;
+import android.text.style.StyleSpan;
 import android.text.method.DigitsKeyListener;
 import android.graphics.Typeface;
 import android.util.TypedValue;
@@ -171,6 +174,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView homeLabel;
     private ImageButton homeButton;
     private TextView clientEmptyText;
+    private TextView clientCountText;
     private TextView clientDetailTitle;
     private ClientAdapter clientAdapter;
     private ClientMessageAdapter clientMessageAdapter;
@@ -289,6 +293,7 @@ public class MainActivity extends AppCompatActivity {
         clientSection = findViewById(R.id.clientSection);
         clientListContent = findViewById(R.id.clientListContent);
         clientDetailContent = findViewById(R.id.clientDetailContent);
+        clientCountText = findViewById(R.id.clientCountText);
         messagesNavigationItem = findViewById(R.id.bottomMessages);
         clientNavigationItem = findViewById(R.id.bottomClient);
         historyNavigationItem = findViewById(R.id.bottomHistory);
@@ -1040,6 +1045,12 @@ public class MainActivity extends AppCompatActivity {
         List<ClientMessageGrouper.ClientGroup> visibleClients = ClientMessageGrouper.filter(
                 allClients, query, selectedClientFilter);
         clientAdapter.submitList(visibleClients);
+        int clientCount = visibleClients.size();
+        String clientCountLabel = clientCount + (clientCount > 1 ? " clients" : " client");
+        SpannableString styledClientCount = new SpannableString(clientCountLabel);
+        styledClientCount.setSpan(new StyleSpan(Typeface.BOLD), 0,
+                Integer.toString(clientCount).length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        clientCountText.setText(styledClientCount);
         boolean empty = visibleClients.isEmpty();
         clientEmptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
         if (empty) {
@@ -1915,7 +1926,7 @@ public class MainActivity extends AppCompatActivity {
             ClientMessageGrouper.ClientGroup client = items.get(position);
             holder.name.setText(SmsDisplayFormatter.sender(client.sender));
             int count = client.messages.size();
-            holder.count.setText(count + (count == 1 ? " message" : " messages"));
+            holder.count.setText(count + (count == 1 ? " transaction" : " transactions"));
             holder.itemView.setContentDescription(SmsDisplayFormatter.sender(client.sender)
                     + ", " + holder.count.getText());
             holder.itemView.setOnClickListener(view -> listener.onClientClick(client));
