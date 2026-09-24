@@ -34,7 +34,6 @@
                 android:layout_height="24dp"
                 android:layout_gravity="center"
                 android:contentDescription="Type de transaction"
-                android:src="@drawable/ic_north_east_24"
                 android:tint="@color/sms_accent" />
         </FrameLayout>
 
