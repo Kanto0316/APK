@@ -75,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
     private static final String STATE_STATISTICS_TAB = "statistics_tab";
     private static final String STATE_MESSAGE_FILTER = "message_filter";
+    private static final String STATE_MESSAGE_TYPE_FILTER = "message_type_filter";
     private static final String STATE_MESSAGE_QUERY = "message_query";
     private static final String STATE_CUSTOM_FILTER_DATE = "custom_filter_date";
     private static final String STATE_CLIENT_SENDER = "client_sender";
@@ -168,9 +169,11 @@ public class MainActivity extends AppCompatActivity {
     private ClientMessageGrouper.Filter selectedClientFilter = ClientMessageGrouper.Filter.ALL;
     private int selectedSection = SECTION_MESSAGES;
     private SmsDateFilter.Period selectedMessageFilter = SmsDateFilter.Period.ALL;
+    private SmsDateFilter.TransactionType selectedMessageType = SmsDateFilter.TransactionType.ALL;
     private Long customFilterDate;
     private EditText messageSearchInput;
     private TextView[] filterChips;
+    private TextView[] typeFilterChips;
     private View depositCard;
     private View creditCard;
     private boolean depositRequestInProgress;
@@ -1122,6 +1125,7 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_STATISTICS_MONTH, statisticsMonth.get(Calendar.MONTH));
         outState.putInt(STATE_STATISTICS_TAB, selectedStatisticsTab);
         outState.putString(STATE_MESSAGE_FILTER, selectedMessageFilter.name());
+        outState.putString(STATE_MESSAGE_TYPE_FILTER, selectedMessageType.name());
         if (messageSearchInput != null) {
             outState.putString(STATE_MESSAGE_QUERY, messageSearchInput.getText().toString());
         }
@@ -1142,12 +1146,23 @@ public class MainActivity extends AppCompatActivity {
                 findViewById(R.id.filterToday), findViewById(R.id.filterYesterday),
                 findViewById(R.id.filterSevenDays), findViewById(R.id.filterThirtyDays),
                 findViewById(R.id.filterDate)};
+        typeFilterChips = new TextView[]{findViewById(R.id.typeFilterAll),
+                findViewById(R.id.typeFilterDeposit), findViewById(R.id.typeFilterWithdrawal),
+                findViewById(R.id.typeFilterCredit)};
         if (savedInstanceState != null) {
             String savedFilter = savedInstanceState.getString(STATE_MESSAGE_FILTER);
             try {
                 if (savedFilter != null) selectedMessageFilter = SmsDateFilter.Period.valueOf(savedFilter);
             } catch (IllegalArgumentException ignored) {
                 selectedMessageFilter = SmsDateFilter.Period.ALL;
+            }
+            String savedType = savedInstanceState.getString(STATE_MESSAGE_TYPE_FILTER);
+            try {
+                if (savedType != null) {
+                    selectedMessageType = SmsDateFilter.TransactionType.valueOf(savedType);
+                }
+            } catch (IllegalArgumentException ignored) {
+                selectedMessageType = SmsDateFilter.TransactionType.ALL;
             }
             if (savedInstanceState.containsKey(STATE_CUSTOM_FILTER_DATE)) {
                 customFilterDate = savedInstanceState.getLong(STATE_CUSTOM_FILTER_DATE);
@@ -1160,6 +1175,14 @@ public class MainActivity extends AppCompatActivity {
         filterChips[3].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.SEVEN_DAYS));
         filterChips[4].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.THIRTY_DAYS));
         filterChips[5].setOnClickListener(view -> showDateFilterPicker());
+        typeFilterChips[0].setOnClickListener(view ->
+                selectMessageType(SmsDateFilter.TransactionType.ALL));
+        typeFilterChips[1].setOnClickListener(view ->
+                selectMessageType(SmsDateFilter.TransactionType.DEPOSIT));
+        typeFilterChips[2].setOnClickListener(view ->
+                selectMessageType(SmsDateFilter.TransactionType.WITHDRAWAL));
+        typeFilterChips[3].setOnClickListener(view ->
+                selectMessageType(SmsDateFilter.TransactionType.CREDIT));
         messageSearchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence value, int start, int count,
                     int after) {}
@@ -1177,6 +1200,12 @@ public class MainActivity extends AppCompatActivity {
     private void selectMessageFilter(SmsDateFilter.Period period) {
         selectedMessageFilter = period;
         if (period != SmsDateFilter.Period.CUSTOM_DATE) customFilterDate = null;
+        updateFilterChips();
+        renderState();
+    }
+
+    private void selectMessageType(SmsDateFilter.TransactionType type) {
+        selectedMessageType = type;
         updateFilterChips();
         renderState();
     }
@@ -1204,6 +1233,10 @@ public class MainActivity extends AppCompatActivity {
         }
         filterChips[5].setText(customFilterDate == null ? "Date"
                 : new SimpleDateFormat("dd/MM/yy", Locale.FRENCH).format(customFilterDate));
+        SmsDateFilter.TransactionType[] types = SmsDateFilter.TransactionType.values();
+        for (int index = 0; index < typeFilterChips.length; index++) {
+            typeFilterChips[index].setSelected(selectedMessageType == types[index]);
+        }
     }
 
     private void renderStatistics() {
@@ -1643,13 +1676,15 @@ public class MainActivity extends AppCompatActivity {
         List<SmsDateFilter.DisplayMessage> displayed = denied ? new ArrayList<>()
                 : SmsDateFilter.apply(messages, selectedMessageFilter, customFilterDate,
                 System.currentTimeMillis(), java.util.TimeZone.getDefault(),
-                messageSearchInput == null ? "" : messageSearchInput.getText().toString());
+                messageSearchInput == null ? "" : messageSearchInput.getText().toString(),
+                selectedMessageType);
         adapter.submitList(displayed);
         boolean noDisplayedMessages = displayed.isEmpty();
         boolean searching = messageSearchInput != null
                 && !messageSearchInput.getText().toString().trim().isEmpty();
         emptyText.setText(searching ? "Aucun message trouvé"
                 : selectedMessageFilter == SmsDateFilter.Period.ALL
+                && selectedMessageType == SmsDateFilter.TransactionType.ALL
                 ? "Aucun message enregistré" : "Aucun message pour cette période");
         emptyText.setVisibility(!denied && !loading && noDisplayedMessages
                 ? View.VISIBLE : View.GONE);
