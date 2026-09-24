@@ -7,10 +7,11 @@
     android:orientation="vertical">
 
     <TextView
+        android:id="@+id/transactionSender"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:text="Transaction reçue"
+        android:text="Expéditeur inconnu"
         android:textColor="@color/sms_text_primary"
         android:textSize="20sp"
         android:textStyle="bold" />
@@ -31,7 +32,7 @@
         android:layout_marginTop="22dp"
         android:layout_marginBottom="22dp"
         android:gravity="center"
-        android:text="+ 11 000 Ar"
+        android:text="11 000 Ar"
         android:textColor="@color/sms_accent"
         android:textSize="30sp"
         android:textStyle="bold" />

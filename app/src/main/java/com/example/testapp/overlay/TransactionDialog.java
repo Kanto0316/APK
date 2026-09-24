@@ -16,7 +16,7 @@ import com.example.testapp.sms.MvolaMessageParser;
 public final class TransactionDialog {
     private Dialog dialog;
 
-    public void show(AppCompatActivity activity,
+    public void show(AppCompatActivity activity, String sender,
                      MvolaMessageParser.ParsedTransaction transaction) {
         dismiss();
         if (activity.isFinishing() || activity.isDestroyed()) return;
@@ -24,7 +24,7 @@ public final class TransactionDialog {
         dialog = new Dialog(activity);
         dialog.setContentView(content);
         dialog.setCanceledOnTouchOutside(false);
-        TransactionCardBinder.bind(content, transaction, view -> dismiss());
+        TransactionCardBinder.bind(content, sender, transaction, view -> dismiss());
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));

@@ -52,15 +52,15 @@ public final class TransactionOverlayCoordinator {
         });
     }
 
-    public void show(MvolaMessageParser.ParsedTransaction transaction) {
-        mainHandler.post(() -> route(transaction));
+    public void show(String sender, MvolaMessageParser.ParsedTransaction transaction) {
+        mainHandler.post(() -> route(sender, transaction));
     }
 
-    private void route(MvolaMessageParser.ParsedTransaction transaction) {
+    private void route(String sender, MvolaMessageParser.ParsedTransaction transaction) {
         AppCompatActivity activity = visibleActivity.get();
         if (activity != null && !activity.isFinishing() && !activity.isDestroyed()) {
             systemOverlay.remove();
-            dialog.show(activity, transaction);
+            dialog.show(activity, sender, transaction);
             return;
         }
 
@@ -71,12 +71,12 @@ public final class TransactionOverlayCoordinator {
         boolean canOverlay = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
                 || Settings.canDrawOverlays(context);
         if (!deviceLocked && canOverlay) {
-            if (!systemOverlay.show(transaction)) {
-                new NotificationHelper(context).showParsedTransaction(transaction);
+            if (!systemOverlay.show(sender, transaction)) {
+                new NotificationHelper(context).showParsedTransaction(sender, transaction);
             }
         } else {
             systemOverlay.remove();
-            new NotificationHelper(context).showParsedTransaction(transaction);
+            new NotificationHelper(context).showParsedTransaction(sender, transaction);
         }
     }
 }

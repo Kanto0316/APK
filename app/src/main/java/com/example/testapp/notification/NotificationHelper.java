@@ -63,7 +63,8 @@ public class NotificationHelper {
     }
 
     /** Fallback used only when a valid parsed SMS cannot be shown as a system overlay. */
-    public void showParsedTransaction(MvolaMessageParser.ParsedTransaction transaction) {
+    public void showParsedTransaction(String sender,
+                                      MvolaMessageParser.ParsedTransaction transaction) {
         if (Build.VERSION.SDK_INT >= 33
                 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) return;
@@ -77,7 +78,7 @@ public class NotificationHelper {
         String balance = TransactionDisplayFormatter.balance(transaction.balance);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_notify_more)
-                .setContentTitle("Transaction reçue")
+                .setContentTitle(TransactionDisplayFormatter.senderTitle(sender))
                 .setContentText(number + " • " + amount)
                 .setStyle(new NotificationCompat.BigTextStyle()
                         .bigText(number + " • " + amount + "\nSolde : " + balance))
