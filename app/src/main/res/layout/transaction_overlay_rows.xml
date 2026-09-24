@@ -1,13 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<merge xmlns:android="http://schemas.android.com/apk/res/android">
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
         <TextView style="@style/TransactionOverlayLabel" android:text="Type" />
         <TextView android:id="@+id/transactionType" style="@style/TransactionOverlayValue" android:text="-" />
     </LinearLayout>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center_vertical" android:orientation="horizontal">
-        <TextView style="@style/TransactionOverlayLabel" android:text="Numéro" />
-        <TextView android:id="@+id/transactionNumber" style="@style/TransactionOverlayValue" android:text="-" />
-    </LinearLayout>
+
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/transactionNumber"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:gravity="center"
+        android:maxLines="1"
+        android:text="-"
+        android:textColor="@color/sms_text_primary"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        app:autoSizeMaxTextSize="30sp"
+        app:autoSizeMinTextSize="18sp"
+        app:autoSizeStepGranularity="1sp"
+        app:autoSizeTextType="uniform" />
+
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:gravity="center_vertical" android:orientation="horizontal">
         <TextView style="@style/TransactionOverlayLabel" android:text="Nom" />
         <TextView android:id="@+id/transactionName" style="@style/TransactionOverlayValue" android:text="-" />
