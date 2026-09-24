@@ -86,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
     private static final int SECTION_CLIENT = 4;
     private static final int STATISTICS_TAB_BONUS = 0;
     private static final int STATISTICS_TAB_USER = 1;
-    private static final int STATISTICS_TAB_TRANSACTION = 2;
     private static final String INSTALLATION_PREFERENCES = "installation_restore";
     private static final String INSTALLATION_STATE = "state";
     private static final String STATE_CONFIGURED = "configured";
@@ -128,24 +127,17 @@ public class MainActivity extends AppCompatActivity {
     private Calendar statisticsMonth;
     private View userStatisticsContent;
     private View bonusStatisticsContent;
-    private View transactionStatisticsContent;
     private TextView statisticsUserTab;
     private TextView statisticsBonusTab;
-    private TextView statisticsTransactionTab;
     private TextView bonusMonthText;
-    private TextView transactionMonthText;
     private TextView userMonthLabel;
     private TextView userYearLabel;
     private TextView bonusMonthLabel;
     private TextView bonusYearLabel;
-    private TextView transactionMonthLabel;
-    private TextView transactionYearLabel;
     private StatisticsChartView bonusChart;
     private TextView emptyBonusChartText;
     private StatisticsChartView userChart;
     private TextView emptyUserChartText;
-    private StatisticsChartView transactionChart;
-    private TextView emptyTransactionChartText;
     private int selectedStatisticsTab = STATISTICS_TAB_BONUS;
     private long todayUsers = 0;
     private long yesterdayUsers = 0;
@@ -160,13 +152,6 @@ public class MainActivity extends AppCompatActivity {
     private long monthBonus = 0;
     private long yearBonus = 0;
     private List<SmsStatistics.DailyCount> monthlyBonusBars = new ArrayList<>();
-    // UI-only placeholders ready for the future transaction statistics layer.
-    private long todayTransactions = 0;
-    private long yesterdayTransactions = 0;
-    private long weekTransactions = 0;
-    private long monthlyTransactions = 0;
-    private long yearlyTransactions = 0;
-    private List<SmsStatistics.DailyCount> monthlyTransactionBars = new ArrayList<>();
     private long todayDepositTransactions = 0;
     private long todayCreditTransactions = 0;
     private long todayWithdrawalTransactions = 0;
@@ -273,25 +258,18 @@ public class MainActivity extends AppCompatActivity {
         statisticsSubtitle = findViewById(R.id.statisticsSubtitle);
         statisticsMonthText = findViewById(R.id.statisticsMonthText);
         bonusMonthText = findViewById(R.id.bonusMonthText);
-        transactionMonthText = findViewById(R.id.transactionMonthText);
         userMonthLabel = findViewById(R.id.userMonthLabel);
         userYearLabel = findViewById(R.id.userYearLabel);
         bonusMonthLabel = findViewById(R.id.bonusMonthLabel);
         bonusYearLabel = findViewById(R.id.bonusYearLabel);
-        transactionMonthLabel = findViewById(R.id.transactionMonthLabel);
-        transactionYearLabel = findViewById(R.id.transactionYearLabel);
         bonusChart = findViewById(R.id.bonusChart);
         emptyBonusChartText = findViewById(R.id.emptyBonusChartText);
         userChart = findViewById(R.id.userChart);
         emptyUserChartText = findViewById(R.id.emptyUserChartText);
-        transactionChart = findViewById(R.id.transactionChart);
-        emptyTransactionChartText = findViewById(R.id.emptyTransactionChartText);
         userStatisticsContent = findViewById(R.id.userStatisticsContent);
         bonusStatisticsContent = findViewById(R.id.bonusStatisticsContent);
-        transactionStatisticsContent = findViewById(R.id.transactionStatisticsContent);
         statisticsUserTab = findViewById(R.id.statisticsUserTab);
         statisticsBonusTab = findViewById(R.id.statisticsBonusTab);
-        statisticsTransactionTab = findViewById(R.id.statisticsTransactionTab);
         statisticsMonth = Calendar.getInstance();
         statisticsMonth.set(Calendar.DAY_OF_MONTH, 1);
         if (savedInstanceState != null) {
@@ -299,23 +277,20 @@ public class MainActivity extends AppCompatActivity {
                     statisticsMonth.get(Calendar.YEAR)));
             statisticsMonth.set(Calendar.MONTH, savedInstanceState.getInt(STATE_STATISTICS_MONTH,
                     statisticsMonth.get(Calendar.MONTH)));
-            selectedStatisticsTab = savedInstanceState.getInt(
+            int restoredTab = savedInstanceState.getInt(
                     STATE_STATISTICS_TAB, STATISTICS_TAB_BONUS);
+            selectedStatisticsTab = restoredTab == STATISTICS_TAB_USER
+                    ? STATISTICS_TAB_USER : STATISTICS_TAB_BONUS;
         }
         findViewById(R.id.statisticsPreviousMonth).setOnClickListener(view -> changeMonth(-1));
         findViewById(R.id.statisticsNextMonth).setOnClickListener(view -> changeMonth(1));
         findViewById(R.id.bonusPreviousMonth).setOnClickListener(view -> changeMonth(-1));
         findViewById(R.id.bonusNextMonth).setOnClickListener(view -> changeMonth(1));
-        findViewById(R.id.transactionPreviousMonth).setOnClickListener(view -> changeMonth(-1));
-        findViewById(R.id.transactionNextMonth).setOnClickListener(view -> changeMonth(1));
         statisticsBonusTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_BONUS));
         statisticsUserTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_USER));
-        statisticsTransactionTab.setOnClickListener(
-                view -> selectStatisticsTab(STATISTICS_TAB_TRANSACTION));
         selectStatisticsTab(selectedStatisticsTab);
         renderUserValues();
         renderBonusValues();
-        renderTransactionValues();
         homeLabel = findViewById(R.id.homeLabel);
         homeButton = findViewById(R.id.homeButton);
         clientEmptyText = findViewById(R.id.clientEmptyText);
@@ -1222,59 +1197,45 @@ public class MainActivity extends AppCompatActivity {
         statisticsMonthText.setText(monthLabel.substring(0, 1).toUpperCase(Locale.FRENCH)
                 + monthLabel.substring(1));
         bonusMonthText.setText(statisticsMonthText.getText());
-        transactionMonthText.setText(statisticsMonthText.getText());
         if (selectedStatisticsTab == STATISTICS_TAB_BONUS) renderBonusValues();
-        else if (selectedStatisticsTab == STATISTICS_TAB_USER) renderUserValues();
-        else renderTransactionValues();
+        else renderUserValues();
     }
 
     private void updateTransactionStatistics() {
         SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(messages,
                 System.currentTimeMillis(), statisticsMonth.get(Calendar.YEAR),
                 statisticsMonth.get(Calendar.MONTH), java.util.TimeZone.getDefault());
-        todayUsers = summary.todayClients.size();
-        yesterdayUsers = summary.yesterdayClients.size();
-        weekUsers = summary.weekClients.size();
-        monthUsers = summary.monthClients.size();
-        yearUsers = summary.yearClients.size();
-        monthlyUserBars = summary.monthlyUsers;
+        // In the current business model, every parsed transaction represents one user.
+        todayUsers = summary.todayTransactions;
+        yesterdayUsers = summary.yesterdayTransactions;
+        weekUsers = summary.weekTransactions;
+        monthUsers = summary.monthTransactions;
+        yearUsers = summary.yearTransactions;
+        monthlyUserBars = summary.monthlyTransactions;
         todayBonus = summary.todayBonus;
         yesterdayBonus = summary.yesterdayBonus;
         weekBonus = summary.weekBonus;
         monthBonus = summary.monthBonus;
         yearBonus = summary.yearBonus;
         monthlyBonusBars = summary.monthlyBonus;
-        todayTransactions = summary.todayTransactions;
         todayDepositTransactions = summary.todayDepositTransactions;
         todayCreditTransactions = summary.todayCreditTransactions;
         todayWithdrawalTransactions = summary.todayWithdrawalTransactions;
-        yesterdayTransactions = summary.yesterdayTransactions;
-        weekTransactions = summary.weekTransactions;
-        monthlyTransactions = summary.monthTransactions;
-        yearlyTransactions = summary.yearTransactions;
-        monthlyTransactionBars = summary.monthlyTransactions;
     }
 
     private void selectStatisticsTab(int tab) {
         selectedStatisticsTab = tab;
         boolean showBonus = tab == STATISTICS_TAB_BONUS;
-        boolean showUser = tab == STATISTICS_TAB_USER;
-        boolean showTransaction = tab == STATISTICS_TAB_TRANSACTION;
         statisticsBonusTab.setSelected(showBonus);
-        statisticsUserTab.setSelected(showUser);
-        statisticsTransactionTab.setSelected(showTransaction);
+        statisticsUserTab.setSelected(!showBonus);
         bonusStatisticsContent.setVisibility(showBonus ? View.VISIBLE : View.GONE);
-        userStatisticsContent.setVisibility(showUser ? View.VISIBLE : View.GONE);
-        transactionStatisticsContent.setVisibility(showTransaction ? View.VISIBLE : View.GONE);
+        userStatisticsContent.setVisibility(showBonus ? View.GONE : View.VISIBLE);
         if (showBonus) {
             statisticsSubtitle.setText("Suivi des bonus");
             renderBonusValues();
-        } else if (showUser) {
+        } else {
             statisticsSubtitle.setText("Nombre d’utilisateurs");
             renderUserValues();
-        } else {
-            statisticsSubtitle.setText("Nombre de transactions");
-            renderTransactionValues();
         }
     }
 
@@ -1308,25 +1269,6 @@ public class MainActivity extends AppCompatActivity {
         boolean hasBonus = !monthlyBonusBars.isEmpty();
         bonusChart.setVisibility(hasBonus ? View.VISIBLE : View.GONE);
         emptyBonusChartText.setVisibility(hasBonus ? View.GONE : View.VISIBLE);
-    }
-
-    private void renderTransactionValues() {
-        ((TextView) findViewById(R.id.totalTransactionsValue))
-                .setText(String.valueOf(todayTransactions));
-        ((TextView) findViewById(R.id.yesterdayTransactionsValue))
-                .setText(String.valueOf(yesterdayTransactions));
-        ((TextView) findViewById(R.id.weekTransactionsValue))
-                .setText(String.valueOf(weekTransactions));
-        ((TextView) findViewById(R.id.monthlyTransactionsValue))
-                .setText(String.valueOf(monthlyTransactions));
-        ((TextView) findViewById(R.id.yearlyTransactionsValue))
-                .setText(String.valueOf(yearlyTransactions));
-
-        renderPeriodLabels(transactionMonthLabel, transactionYearLabel);
-        transactionChart.setTransactionData(monthlyTransactionBars);
-        boolean hasTransactions = !monthlyTransactionBars.isEmpty();
-        transactionChart.setVisibility(hasTransactions ? View.VISIBLE : View.GONE);
-        emptyTransactionChartText.setVisibility(hasTransactions ? View.GONE : View.VISIBLE);
     }
 
     private void renderPeriodLabels(TextView monthLabel, TextView yearLabel) {
