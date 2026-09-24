@@ -9,8 +9,9 @@ import com.example.testapp.sms.MvolaMessageParser;
 final class TransactionCardBinder {
     private TransactionCardBinder() {}
 
-    static void bind(View view, MvolaMessageParser.ParsedTransaction transaction,
+    static void bind(View view, String sender, MvolaMessageParser.ParsedTransaction transaction,
                      View.OnClickListener closeListener) {
+        text(view, R.id.transactionSender, TransactionDisplayFormatter.senderTitle(sender));
         text(view, R.id.transactionType, TransactionDisplayFormatter.text(transaction.type));
         text(view, R.id.transactionNumber,
                 TransactionDisplayFormatter.phone(transaction.clientNumber));

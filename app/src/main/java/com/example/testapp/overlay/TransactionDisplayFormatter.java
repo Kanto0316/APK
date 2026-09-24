@@ -23,15 +23,20 @@ public final class TransactionDisplayFormatter {
     }
 
     public static String amount(long value) {
-        return "+ " + number(value) + " Ar";
+        return number(value) + " Ar";
     }
 
-    /** Credit purchases and deposits are displayed as values, without a direction prefix. */
+    /** Overlay amounts are values; transaction direction belongs to the separate type row. */
     public static String amount(String type, long value) {
-        String transactionType = text(type);
-        return "Crédit".equalsIgnoreCase(transactionType)
-                || "Dépôt".equalsIgnoreCase(transactionType)
-                ? number(value) + " Ar" : amount(value);
+        return amount(value);
+    }
+
+    /** Marks only a real, non-empty SMS address as supplied by Android. */
+    public static String senderTitle(String sender) {
+        if (sender == null || sender.trim().isEmpty()) {
+            return "Expéditeur inconnu";
+        }
+        return sender + " ✅";
     }
 
     public static String balance(Long value) {
