@@ -65,4 +65,10 @@ final class SmsTableRow {
     static String display(String value) {
         return value == null || value.trim().isEmpty() ? MISSING_VALUE : value;
     }
+
+    /** Applies the Messages table's display rule without changing the parsed fee value. */
+    static String displayFee(String value) {
+        return value == null || value.trim().isEmpty() || ariary(0).equals(value)
+                ? MISSING_VALUE : value;
+    }
 }

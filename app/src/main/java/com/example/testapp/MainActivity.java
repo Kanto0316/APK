@@ -1811,7 +1811,7 @@ public class MainActivity extends AppCompatActivity {
             holder.amount.setText(SmsTableRow.display(row.montant));
             holder.reference.setText(SmsTableRow.display(row.reference));
             holder.bonus.setText(SmsTableRow.display(row.bonus));
-            holder.fees.setText(SmsTableRow.display(row.frais));
+            holder.fees.setText(SmsTableRow.displayFee(row.frais));
             holder.balance.setText(SmsTableRow.display(row.solde));
         }
 
