@@ -6,7 +6,7 @@ import com.example.testapp.sms.MvolaMessageParser;
 import java.util.List;
 import java.util.Locale;
 
-/** Builds the global balance title from the already parsed MVola transactions. */
+/** Builds the global balance title from parsed MVola SMS messages. */
 final class BalanceTitle {
     private BalanceTitle() {}
 
@@ -17,10 +17,10 @@ final class BalanceTitle {
         return "Solde : " + formatted + " Ar >";
     }
 
-    /** Returns the balance carried by the chronologically newest eligible transaction. */
+    /** Returns the balance carried by the most recently received eligible SMS. */
     static long latestBalance(List<SmsMessage> messages) {
-        long latestDate = Long.MIN_VALUE;
         long latestReceivedDate = Long.MIN_VALUE;
+        long latestId = Long.MIN_VALUE;
         Long latestBalance = null;
 
         if (messages != null) {
@@ -30,15 +30,11 @@ final class BalanceTitle {
                         MvolaMessageParser.parse(message.messageBody, message.receivedDate);
                 if (transaction == null || transaction.balance == null) continue;
 
-                // A parsed transaction date is calendar-validated by the shared parser. The SMS
-                // reception date remains the fallback for formats that do not provide one.
-                long effectiveDate = transaction.transactionAt > 0
-                        ? transaction.transactionAt : message.receivedDate;
-                if (effectiveDate > latestDate
-                        || (effectiveDate == latestDate
-                        && message.receivedDate > latestReceivedDate)) {
-                    latestDate = effectiveDate;
+                // The title reflects arrival order, not the business date embedded in the SMS.
+                if (message.receivedDate > latestReceivedDate
+                        || (message.receivedDate == latestReceivedDate && message.id > latestId)) {
                     latestReceivedDate = message.receivedDate;
+                    latestId = message.id;
                     latestBalance = transaction.balance;
                 }
             }
