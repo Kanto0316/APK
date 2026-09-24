@@ -288,6 +288,30 @@ public class SmsStatisticsTest {
         assertEquals(2, summary.monthlyUsers.get(1).count);
     }
 
+    @Test public void todayTypeCountersUseParsedTransactionsOnly() {
+        long now = utcDate(2026, Calendar.SEPTEMBER, 23, 12);
+        long yesterday = utcDate(2026, Calendar.SEPTEMBER, 22, 12);
+        List<SmsMessage> messages = Arrays.asList(
+                deposit("ALICE", "0340000001", 1000, "1001", now),
+                deposit("BRUNO", "0340000002", 2000, "1002", now),
+                credit("0340000003", 500, "1003", now),
+                withdrawal("0340000004", 100, "1004", 23, now),
+                withdrawal("0340000005", 200, "1005", 23, now),
+                withdrawal("0340000006", 300, "1006", 23, now),
+                SmsMessage.create("MVola", "SMS ordinaire non parsé", now, true),
+                deposit("HIER", "0340000007", 4000, "1007", yesterday));
+
+        SmsStatistics.TransactionSummary summary = SmsStatistics.summarize(
+                messages, now, 2026, Calendar.SEPTEMBER, UTC);
+
+        assertEquals(6L, summary.todayTransactions);
+        assertEquals(2L, summary.todayDepositTransactions);
+        assertEquals(1L, summary.todayCreditTransactions);
+        assertEquals(3L, summary.todayWithdrawalTransactions);
+        assertEquals(summary.todayTransactions, summary.todayDepositTransactions
+                + summary.todayCreditTransactions + summary.todayWithdrawalTransactions);
+    }
+
     @Test public void creditIncrementsCreditCounterAndContributesItsParsedBonus() {
         long receivedAt = utcDate(2026, Calendar.SEPTEMBER, 23, 10);
         SmsMessage credit = SmsMessage.create("MVola",
@@ -319,6 +343,27 @@ public class SmsStatisticsTest {
         assertEquals(0L, summary.todayCreditTransactions);
         assertEquals(292L, summary.todayBonus);
         assertEquals(292L, summary.monthBonus);
+    }
+
+    private static SmsMessage deposit(String name, String number, long amount,
+                                      String reference, long receivedAt) {
+        return SmsMessage.create("Expéditeur quelconque",
+                "Vous avez credite " + name + " (" + number + ") de " + amount
+                        + " Ar. Ref: " + reference, receivedAt, true);
+    }
+
+    private static SmsMessage credit(String number, long amount, String reference,
+                                     long receivedAt) {
+        return SmsMessage.create("Expéditeur quelconque",
+                "Achat de credit YAS reussi: " + amount + " Ar pour " + number
+                        + ". Frais: 0 Ar. Ref: " + reference, receivedAt, true);
+    }
+
+    private static SmsMessage withdrawal(String number, long amount, String reference,
+                                         int day, long receivedAt) {
+        return SmsMessage.create("Expéditeur quelconque",
+                amount + " Ar recu de CLIENT " + number + " le " + day
+                        + "/09/26 a 10:00. Ref: " + reference, receivedAt, true);
     }
 
     private static long utcDate(int year, int month, int day, int hour) {

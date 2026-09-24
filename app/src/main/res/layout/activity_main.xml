@@ -505,6 +505,26 @@
                         android:layout_marginTop="12dp"
                         android:baselineAligned="false"
                         android:orientation="horizontal">
+                        <LinearLayout style="@style/TransactionTypeCard" android:layout_marginEnd="4dp">
+                            <TextView style="@style/BonusPeriodLabel" android:text="DÉPÔT" />
+                            <TextView android:id="@+id/depositTransactionsValue" style="@style/UserSecondaryValue" />
+                        </LinearLayout>
+                        <LinearLayout style="@style/TransactionTypeCard" android:layout_marginStart="4dp" android:layout_marginEnd="4dp">
+                            <TextView style="@style/BonusPeriodLabel" android:text="CRÉDIT" />
+                            <TextView android:id="@+id/creditTransactionsValue" style="@style/UserSecondaryValue" />
+                        </LinearLayout>
+                        <LinearLayout style="@style/TransactionTypeCard" android:layout_marginStart="4dp">
+                            <TextView style="@style/BonusPeriodLabel" android:text="RETRAIT" />
+                            <TextView android:id="@+id/withdrawalTransactionsValue" style="@style/UserSecondaryValue" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:baselineAligned="false"
+                        android:orientation="horizontal">
                         <LinearLayout style="@style/BonusSecondaryCard" android:layout_marginEnd="6dp">
                             <TextView style="@style/BonusPeriodLabel" android:text="HIER" />
                             <TextView android:id="@+id/yesterdayUsersValue" style="@style/UserSecondaryValue" />
@@ -666,26 +686,6 @@
                         android:padding="20dp">
                         <TextView style="@style/BonusPeriodLabel" android:text="TOTAL TRANSACTION" />
                         <TextView android:id="@+id/totalTransactionsValue" style="@style/UserPrimaryValue" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:baselineAligned="false"
-                        android:orientation="horizontal">
-                        <LinearLayout style="@style/TransactionTypeCard" android:layout_marginEnd="4dp">
-                            <TextView style="@style/BonusPeriodLabel" android:text="DÉPÔT" />
-                            <TextView android:id="@+id/depositTransactionsValue" style="@style/UserSecondaryValue" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/TransactionTypeCard" android:layout_marginStart="4dp" android:layout_marginEnd="4dp">
-                            <TextView style="@style/BonusPeriodLabel" android:text="CRÉDIT" />
-                            <TextView android:id="@+id/creditTransactionsValue" style="@style/UserSecondaryValue" />
-                        </LinearLayout>
-                        <LinearLayout style="@style/TransactionTypeCard" android:layout_marginStart="4dp">
-                            <TextView style="@style/BonusPeriodLabel" android:text="OFFRE" />
-                            <TextView android:id="@+id/offerTransactionsValue" style="@style/UserSecondaryValue" />
-                        </LinearLayout>
                     </LinearLayout>
 
                     <LinearLayout
