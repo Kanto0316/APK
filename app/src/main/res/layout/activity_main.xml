@@ -71,7 +71,7 @@
                 android:background="@drawable/bg_client_search"
                 android:drawableStart="@drawable/ic_search_24"
                 android:drawablePadding="10dp"
-                android:hint="Rechercher un numéro"
+                android:hint="Rechercher un numéro ou un nom"
                 android:imeOptions="actionSearch"
                 android:inputType="text"
                 android:maxLines="1"
