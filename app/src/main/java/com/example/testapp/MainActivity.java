@@ -304,10 +304,13 @@ public class MainActivity extends AppCompatActivity {
         historyNavigationItem = findViewById(R.id.bottomHistory);
         statisticsNavigationItem = findViewById(R.id.bottomStatistics);
         depositCard = findViewById(R.id.cardDeposit);
-        depositCard.setOnClickListener(view -> showRecipientDialog("", ""));
-        findViewById(R.id.cardOffer).setOnClickListener(view -> showOfferRecipientDialog(""));
+        depositCard.setOnClickListener(view -> showRecipientDialog("", "",
+                RecipientWorkflow.DEPOSIT));
+        findViewById(R.id.cardOffer).setOnClickListener(view -> showRecipientDialog("", "",
+                RecipientWorkflow.OFFER));
         creditCard = findViewById(R.id.cardCredit);
-        creditCard.setOnClickListener(view -> showCreditRecipientDialog("", ""));
+        creditCard.setOnClickListener(view -> showRecipientDialog("", "",
+                RecipientWorkflow.CREDIT));
         statisticsSubtitle = findViewById(R.id.statisticsSubtitle);
         statisticsMonthText = findViewById(R.id.statisticsMonthText);
         bonusMonthText = findViewById(R.id.bonusMonthText);
@@ -567,9 +570,13 @@ public class MainActivity extends AppCompatActivity {
         return value.length();
     }
 
-    private void showRecipientDialog(String recipientValue, String amountValue) {
+    private enum RecipientWorkflow { DEPOSIT, CREDIT, OFFER }
+
+    /** Shared recipient entry and validation step for every home-screen USSD workflow. */
+    private void showRecipientDialog(String recipientValue, String amountValue,
+                                     RecipientWorkflow workflow) {
         EditText input = depositInput(InputType.TYPE_CLASS_PHONE,
-                "Ex. 034 14 110 58", DepositUssd.formatRecipientInput(recipientValue));
+                "Numéro de téléphone", DepositUssd.formatRecipientInput(recipientValue));
         addDepositFormatter(input, DepositUssd::formatRecipientInput);
 
         SharedPreferences depositPreferences = getSharedPreferences(
@@ -605,9 +612,11 @@ public class MainActivity extends AppCompatActivity {
         });
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Numéro destinataire")
+                .setTitle("Entrer numéro destinataire")
                 .setView(recipientRow)
-                .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
+                .setNegativeButton("ANNULER", (ignored, which) -> {
+                    if (workflow == RecipientWorkflow.DEPOSIT) clearDepositWorkflow();
+                })
                 .setPositiveButton("SUIVANT", null)
                 .create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
@@ -622,7 +631,13 @@ public class MainActivity extends AppCompatActivity {
                             .putString(LAST_DEPOSIT_RECIPIENT, recipientNumber)
                             .apply();
                     dialog.dismiss();
-                    showAmountDialog(recipientNumber, amountValue);
+                    if (workflow == RecipientWorkflow.DEPOSIT) {
+                        showAmountDialog(recipientNumber, amountValue);
+                    } else if (workflow == RecipientWorkflow.CREDIT) {
+                        showCreditAmountDialog(recipientNumber, amountValue);
+                    } else {
+                        showOfferConfirmation(recipientNumber);
+                    }
                 }));
         dialog.show();
         focusAndShowNumericKeyboard(dialog, input);
@@ -672,111 +687,22 @@ public class MainActivity extends AppCompatActivity {
         focusAndShowNumericKeyboard(dialog, input);
     }
 
-    private void showCreditRecipientDialog(String recipientValue, String amountValue) {
-        EditText input = depositInput(InputType.TYPE_CLASS_PHONE,
-                "Ex. 034 14 110 58", DepositUssd.formatRecipientInput(recipientValue));
-        addDepositFormatter(input, DepositUssd::formatRecipientInput);
-        SharedPreferences preferences = getSharedPreferences(DEPOSIT_PREFERENCES, MODE_PRIVATE);
-        String lastRecipient = DepositUssd.normalizeRecipientNumber(
-                preferences.getString(LAST_DEPOSIT_RECIPIENT, null));
-
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        row.addView(input, new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        ImageButton history = new ImageButton(this);
-        history.setImageResource(R.drawable.ic_history_24);
-        history.setContentDescription("Utiliser le dernier numéro");
-        TypedValue background = new TypedValue();
-        getTheme().resolveAttribute(androidx.appcompat.R.attr.selectableItemBackgroundBorderless,
-                background, true);
-        history.setBackgroundResource(background.resourceId);
-        history.setFocusable(false);
-        history.setEnabled(lastRecipient != null);
-        history.setAlpha(lastRecipient == null ? 0.38f : 1f);
-        int touchTarget = (int) (48 * getResources().getDisplayMetrics().density);
-        int iconPadding = (int) (12 * getResources().getDisplayMetrics().density);
-        history.setPadding(iconPadding, iconPadding, iconPadding, iconPadding);
-        row.addView(history, new LinearLayout.LayoutParams(touchTarget, touchTarget));
-        history.setOnClickListener(view -> {
-            input.setText(lastRecipient);
-            input.setSelection(input.getText().length());
-            input.requestFocus();
-        });
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Numéro destinataire")
-                .setView(row)
-                .setNegativeButton("ANNULER", null)
-                .setPositiveButton("SUIVANT", null)
-                .create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener(view -> {
-                    String recipient = DepositUssd.normalizeRecipientNumber(
-                            input.getText().toString());
-                    if (recipient == null) {
-                        input.setError("Numéro malgache invalide");
-                        return;
-                    }
-                    preferences.edit().putString(LAST_DEPOSIT_RECIPIENT, recipient).apply();
-                    dialog.dismiss();
-                    showCreditAmountDialog(recipient, amountValue);
-                }));
-        dialog.show();
-        focusAndShowNumericKeyboard(dialog, input);
-    }
-
-    private void showOfferRecipientDialog(String recipientValue) {
-        EditText input = depositInput(InputType.TYPE_CLASS_PHONE,
-                "Numéro de téléphone", DepositUssd.formatRecipientInput(recipientValue));
-        addDepositFormatter(input, DepositUssd::formatRecipientInput);
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Entrer numéro destinataire")
-                .setView(input)
-                .setNegativeButton("ANNULER", null)
-                .setPositiveButton("SUIVANT", null)
-                .create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener(view -> {
-                    String recipient = DepositUssd.normalizeRecipientNumber(
-                            input.getText().toString());
-                    if (recipient == null) {
-                        input.setError("Numéro malgache invalide");
-                        return;
-                    }
-                    dialog.dismiss();
-                    showOfferConfirmation(recipient);
-                }));
-        dialog.show();
-        focusAndShowNumericKeyboard(dialog, input);
-    }
-
     private void showOfferConfirmation(String recipientNumber) {
-        TextView number = new TextView(this);
-        number.setText(DepositUssd.formatRecipientNumber(recipientNumber));
-        number.setTextSize(18);
-        number.setTextColor(ContextCompat.getColor(this, android.R.color.black));
-        int padding = (int) (24 * getResources().getDisplayMetrics().density);
-        number.setPadding(padding, padding / 2, padding, 0);
-
+        LinearLayout summary = new LinearLayout(this);
+        summary.setOrientation(LinearLayout.VERTICAL);
+        int margin = (int) (24 * getResources().getDisplayMetrics().density);
+        summary.setPadding(margin, margin / 2, margin, 0);
+        addConfirmationField(summary, "Numéro destinataire",
+                DepositUssd.formatRecipientNumber(recipientNumber), false, false);
         new AlertDialog.Builder(this)
                 .setTitle("Vérifier le numéro")
-                .setView(number)
+                .setView(summary)
+                .setNeutralButton("MODIFIER", (ignored, which) -> showRecipientDialog(
+                        recipientNumber, "", RecipientWorkflow.OFFER))
                 .setNegativeButton("ANNULER", null)
-                .setPositiveButton("CONTINUER", (ignored, which) ->
-                        launchOfferDialer(OfferUssd.buildUssdCode(recipientNumber)))
+                .setPositiveButton("ENVOYER", (ignored, which) ->
+                        requestUssdCall(OfferUssd.buildUssdCode(recipientNumber)))
                 .show();
-    }
-
-    private void launchOfferDialer(String ussdCode) {
-        Intent dialIntent = new Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", ussdCode, null));
-        try {
-            startActivity(dialIntent);
-        } catch (android.content.ActivityNotFoundException error) {
-            Toast.makeText(this, "Impossible d'ouvrir le composeur téléphonique.",
-                    Toast.LENGTH_LONG).show();
-        }
     }
 
     private void showCreditAmountDialog(String recipientNumber, String amountValue) {
@@ -836,7 +762,8 @@ public class MainActivity extends AppCompatActivity {
                 .setTitle("Vérifier le crédit")
                 .setView(summary)
                 .setNeutralButton("MODIFIER", (ignored, which) ->
-                        showCreditRecipientDialog(recipientNumber, String.valueOf(amount)))
+                        showRecipientDialog(recipientNumber, String.valueOf(amount),
+                                RecipientWorkflow.CREDIT))
                 .setNegativeButton("ANNULER", null)
                 .setPositiveButton("ENVOYER", (ignored, which) ->
                         requestUssdCall(CreditUssd.buildUssdCode(recipientNumber, amount)))
@@ -968,7 +895,8 @@ public class MainActivity extends AppCompatActivity {
                 .setView(summary)
                 .setNegativeButton("ANNULER", (ignored, which) -> clearDepositWorkflow())
                 .setNeutralButton("MODIFIER", (ignored, which) ->
-                        showRecipientDialog(recipientNumber, String.valueOf(originalAmount)))
+                        showRecipientDialog(recipientNumber, String.valueOf(originalAmount),
+                                RecipientWorkflow.DEPOSIT))
                 .setPositiveButton("ENVOYER", null)
                 .create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
