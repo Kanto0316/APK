@@ -55,6 +55,7 @@ import com.example.testapp.notification.NotificationHelper;
 import com.example.testapp.export.ExportTransaction;
 import com.example.testapp.export.PdfExporter;
 import com.example.testapp.export.XlsxExporter;
+import com.example.testapp.sms.ClientNumberNormalizer;
 import com.example.testapp.sms.MvolaMessageParser;
 
 import androidx.appcompat.app.AlertDialog;
@@ -373,6 +374,8 @@ public class MainActivity extends AppCompatActivity {
             showSection(SECTION_CLIENT);
         });
         findViewById(R.id.clientBackButton).setOnClickListener(view -> showClientList());
+        findViewById(R.id.clientDetailOverflowButton).setOnClickListener(
+                this::showClientDetailOverflowMenu);
         homeButton.setOnClickListener(view -> showSection(SECTION_HOME));
         historyNavigationItem.setOnClickListener(view -> showSection(SECTION_HISTORY));
         statisticsNavigationItem.setOnClickListener(view -> {
@@ -1400,6 +1403,15 @@ public class MainActivity extends AppCompatActivity {
         menu.show();
     }
 
+    private void showClientDetailOverflowMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add("Exporter").setOnMenuItemClickListener(item -> {
+            showClientTransactionExportDialog();
+            return true;
+        });
+        menu.show();
+    }
+
     private void showOverlayPermissionDialog() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
             Toast.makeText(this, "L’affichage au-dessus des applications est autorisé.",
@@ -1441,6 +1453,24 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    private void showClientTransactionExportDialog() {
+        if (selectedClientSender == null) return;
+        List<SmsDateFilter.DisplayMessage> clientTransactions =
+                clientMessagesWithOriginalNumbers(selectedClientSender);
+        String normalizedNumber = ClientNumberNormalizer.normalize(selectedClientSender);
+        if (normalizedNumber == null) {
+            normalizedNumber = selectedClientSender.replaceAll("\\s+", "");
+        }
+        String fileNumber = normalizedNumber;
+        new AlertDialog.Builder(this)
+                .setTitle("Exporter les transactions")
+                .setItems(new String[]{"Excel (.xlsx)", "PDF"}, (dialog, which) ->
+                        generateTransactionExport(which == 0, clientTransactions,
+                                "Tous", "Tous", fileNumber))
+                .setNegativeButton("Annuler", null)
+                .show();
+    }
+
     /** Uses exactly the list selected by Messages; filtering is deliberately not duplicated here. */
     private List<SmsDateFilter.DisplayMessage> filteredMessagesForExport() {
         String query = messageSearchInput == null ? "" : messageSearchInput.getText().toString();
@@ -1450,27 +1480,37 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void generateTransactionExport(boolean excel) {
-        List<SmsDateFilter.DisplayMessage> visible = filteredMessagesForExport();
-        if (visible.isEmpty()) {
+        generateTransactionExport(excel, filteredMessagesForExport(), exportPeriodLabel(),
+                selectedMessageType == SmsDateFilter.TransactionType.ALL ? "Tous"
+                        : selectedMessageType.parsedType, null);
+    }
+
+    /** Shared transaction export pipeline; callers only provide their selected source rows. */
+    private void generateTransactionExport(boolean excel,
+            List<SmsDateFilter.DisplayMessage> source, String period, String type,
+            String fileNumber) {
+        if (source.isEmpty()) {
             Toast.makeText(this, "Aucune transaction à exporter.", Toast.LENGTH_LONG).show();
             return;
         }
         List<ExportTransaction> rows = new ArrayList<>();
-        for (SmsDateFilter.DisplayMessage displayed : visible) {
+        for (SmsDateFilter.DisplayMessage displayed : source) {
             MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
                     displayed.message.messageBody, displayed.message.receivedDate);
             if (parsed != null) rows.add(new ExportTransaction(displayed.originalNumber,
                     parsed.transactionAt, parsed.type, parsed.clientNumber, parsed.clientName,
                     parsed.amount, parsed.reference, parsed.bonus, parsed.fee, parsed.balance));
         }
-        String period = exportPeriodLabel();
-        String type = selectedMessageType == SmsDateFilter.TransactionType.ALL ? "Tous"
-                : selectedMessageType.parsedType;
+        if (rows.isEmpty()) {
+            Toast.makeText(this, "Aucune transaction à exporter.", Toast.LENGTH_LONG).show();
+            return;
+        }
         long exportedAt = System.currentTimeMillis();
         String extension = excel ? ".xlsx" : ".pdf";
         String mime = excel ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 : "application/pdf";
-        String name = "Suivi_SMS_" + new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
+        String name = "Suivi_SMS_" + (fileNumber == null ? "" : fileNumber + "_")
+                + new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
                 .format(new Date(exportedAt)) + extension;
         Toast.makeText(this, "Création du fichier...", Toast.LENGTH_SHORT).show();
         new Thread(() -> {

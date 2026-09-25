@@ -365,6 +365,15 @@
                         android:ellipsize="end" android:maxLines="1"
                         android:textColor="@color/sms_text_primary" android:textSize="22sp"
                         android:textStyle="bold" />
+                    <ImageButton
+                        android:id="@+id/clientDetailOverflowButton"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Options du client"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_more_vert_24"
+                        android:tint="@color/sms_text_primary" />
                 </LinearLayout>
                 <HorizontalScrollView
                     android:layout_width="match_parent"
