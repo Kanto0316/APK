@@ -20,7 +20,7 @@
 
     <application
         android:theme="@style/AppTheme"
-        android:label="Application Test"
+        android:label="@string/app_name"
         android:allowBackup="false"
         android:fullBackupContent="false">
         <provider

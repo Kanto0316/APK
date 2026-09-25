@@ -1,11 +1,11 @@
 plugins { id 'com.android.application' }
 
 android {
-    namespace 'com.example.testapp'
+    namespace 'com.netk.mvolatrack'
     compileSdk 35
 
     defaultConfig {
-        applicationId 'com.example.testapp'
+        applicationId 'com.netk.mvolatrack'
         minSdk 23
         targetSdk 35
         versionCode 1

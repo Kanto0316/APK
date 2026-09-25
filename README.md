@@ -1,4 +1,4 @@
-# SMS Tracker
+# MVolaCash
 
 Application Android locale qui capture les nouveaux SMS reçus et les conserve dans une base Room privée et indépendante de la boîte SMS du téléphone.
 
@@ -33,13 +33,13 @@ avec `goAsync()` jusqu’à la fin de l’insertion Room. Après un redémarrage
 `BootReceiver` réactive explicitement ce composant ; aucun service n’est nécessaire. Android ne livre toutefois aucune diffusion
 à une application arrêtée de force par l’utilisateur tant qu’elle n’a pas été relancée.
 
-La capture est clairement signalée comme inactive si `RECEIVE_SMS` n’est pas accordée. Suivi SMS
+La capture est clairement signalée comme inactive si `RECEIVE_SMS` n’est pas accordée. MVolaCash
 ne lit jamais l’historique du fournisseur `Telephony.Sms` : seuls les nouveaux messages livrés au
 receiver (ou ceux provenant d’une sauvegarde explicitement restaurée) figurent dans Room.
 
 ### Scénarios de validation de la capture
 
-Pour chaque étape, envoyer un **nouveau** SMS, puis ouvrir Suivi SMS et vérifier qu’il apparaît une
+Pour chaque étape, envoyer un **nouveau** SMS, puis ouvrir MVolaCash et vérifier qu’il apparaît une
 seule fois dans la liste :
 
 1. application ouverte au premier plan ;
