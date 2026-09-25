@@ -118,6 +118,9 @@
         <item name="android:textSize">12sp</item>
         <item name="android:textStyle">bold</item>
     </style>
+    <style name="TodayPeriodLabel" parent="BonusPeriodLabel">
+        <item name="android:textColor">@color/sms_accent</item>
+    </style>
     <style name="StatisticsSecondaryValue">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
