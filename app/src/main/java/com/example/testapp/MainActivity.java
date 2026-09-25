@@ -305,6 +305,7 @@ public class MainActivity extends AppCompatActivity {
         statisticsNavigationItem = findViewById(R.id.bottomStatistics);
         depositCard = findViewById(R.id.cardDeposit);
         depositCard.setOnClickListener(view -> showRecipientDialog("", ""));
+        findViewById(R.id.cardOffer).setOnClickListener(view -> showOfferRecipientDialog(""));
         creditCard = findViewById(R.id.cardCredit);
         creditCard.setOnClickListener(view -> showCreditRecipientDialog("", ""));
         statisticsSubtitle = findViewById(R.id.statisticsSubtitle);
@@ -723,6 +724,59 @@ public class MainActivity extends AppCompatActivity {
                 }));
         dialog.show();
         focusAndShowNumericKeyboard(dialog, input);
+    }
+
+    private void showOfferRecipientDialog(String recipientValue) {
+        EditText input = depositInput(InputType.TYPE_CLASS_PHONE,
+                "Numéro de téléphone", DepositUssd.formatRecipientInput(recipientValue));
+        addDepositFormatter(input, DepositUssd::formatRecipientInput);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Entrer numéro destinataire")
+                .setView(input)
+                .setNegativeButton("ANNULER", null)
+                .setPositiveButton("SUIVANT", null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    String recipient = DepositUssd.normalizeRecipientNumber(
+                            input.getText().toString());
+                    if (recipient == null) {
+                        input.setError("Numéro malgache invalide");
+                        return;
+                    }
+                    dialog.dismiss();
+                    showOfferConfirmation(recipient);
+                }));
+        dialog.show();
+        focusAndShowNumericKeyboard(dialog, input);
+    }
+
+    private void showOfferConfirmation(String recipientNumber) {
+        TextView number = new TextView(this);
+        number.setText(DepositUssd.formatRecipientNumber(recipientNumber));
+        number.setTextSize(18);
+        number.setTextColor(ContextCompat.getColor(this, android.R.color.black));
+        int padding = (int) (24 * getResources().getDisplayMetrics().density);
+        number.setPadding(padding, padding / 2, padding, 0);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Vérifier le numéro")
+                .setView(number)
+                .setNegativeButton("ANNULER", null)
+                .setPositiveButton("CONTINUER", (ignored, which) ->
+                        launchOfferDialer(OfferUssd.buildUssdCode(recipientNumber)))
+                .show();
+    }
+
+    private void launchOfferDialer(String ussdCode) {
+        Intent dialIntent = new Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", ussdCode, null));
+        try {
+            startActivity(dialIntent);
+        } catch (android.content.ActivityNotFoundException error) {
+            Toast.makeText(this, "Impossible d'ouvrir le composeur téléphonique.",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private void showCreditAmountDialog(String recipientNumber, String amountValue) {
