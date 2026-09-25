@@ -443,8 +443,9 @@
                 <LinearLayout
                     android:id="@+id/cardDeposit"
                     style="@style/CommercialServiceCard"
+                    android:background="@drawable/bg_service_card_deposit"
                     android:contentDescription="Dépôt, Effectuer un dépôt">
-                    <ImageView style="@style/CommercialServiceIcon" android:src="@drawable/ic_account_balance_wallet_24" />
+                    <ImageView style="@style/CommercialServiceIcon" android:background="@drawable/bg_service_icon_deposit" android:src="@drawable/ic_account_balance_wallet_24" android:tint="@color/service_deposit_icon" />
                     <LinearLayout style="@style/CommercialServiceTextContainer">
                         <TextView style="@style/CommercialServiceTitle" android:text="Dépôt" />
                         <TextView style="@style/CommercialServiceSubtitle" android:text="Effectuer un dépôt" />
@@ -454,8 +455,9 @@
                 <LinearLayout
                     android:id="@+id/cardOffer"
                     style="@style/CommercialServiceCard"
+                    android:background="@drawable/bg_service_card_offer"
                     android:contentDescription="Offre, Acheter une offre">
-                    <ImageView style="@style/CommercialServiceIcon" android:src="@drawable/ic_local_offer_24" />
+                    <ImageView style="@style/CommercialServiceIcon" android:background="@drawable/bg_service_icon_offer" android:src="@drawable/ic_local_offer_24" android:tint="@color/service_offer_icon" />
                     <LinearLayout style="@style/CommercialServiceTextContainer">
                         <TextView style="@style/CommercialServiceTitle" android:text="Offre" />
                         <TextView style="@style/CommercialServiceSubtitle" android:text="Acheter une offre" />
@@ -465,8 +467,9 @@
                 <LinearLayout
                     android:id="@+id/cardCredit"
                     style="@style/CommercialServiceCard"
+                    android:background="@drawable/bg_service_card_credit"
                     android:contentDescription="Crédit, Acheter du crédit">
-                    <ImageView style="@style/CommercialServiceIcon" android:src="@drawable/ic_phone_android_24" />
+                    <ImageView style="@style/CommercialServiceIcon" android:background="@drawable/bg_service_icon_credit" android:src="@drawable/ic_phone_android_24" android:tint="@color/service_credit_icon" />
                     <LinearLayout style="@style/CommercialServiceTextContainer">
                         <TextView style="@style/CommercialServiceTitle" android:text="Crédit" />
                         <TextView style="@style/CommercialServiceSubtitle" android:text="Acheter du crédit" />

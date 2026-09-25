@@ -26,4 +26,23 @@
     <color name="statistics_grid">#DDE4EA</color>
     <color name="statistics_today">#FF9800</color>
     <color name="white">#FFFFFF</color>
+
+    <!-- Home service cards -->
+    <color name="service_text_primary">#18212B</color>
+    <color name="service_text_secondary">#6F7C89</color>
+    <color name="service_deposit_background">#EAF3FF</color>
+    <color name="service_deposit_background_pressed">#DCEBFC</color>
+    <color name="service_deposit_icon_background">#D9EAFF</color>
+    <color name="service_deposit_icon">#1F6FC2</color>
+    <color name="service_deposit_border">#BFD9F5</color>
+    <color name="service_offer_background">#FFF5E6</color>
+    <color name="service_offer_background_pressed">#FDEBCF</color>
+    <color name="service_offer_icon_background">#FFE8C2</color>
+    <color name="service_offer_icon">#E8871A</color>
+    <color name="service_offer_border">#F5D5A3</color>
+    <color name="service_credit_background">#EAF8F0</color>
+    <color name="service_credit_background_pressed">#DCF1E5</color>
+    <color name="service_credit_icon_background">#D5F0E1</color>
+    <color name="service_credit_icon">#258A57</color>
+    <color name="service_credit_border">#B8DFC9</color>
 </resources>
