@@ -212,7 +212,7 @@
                 android:textSize="14sp"
                 android:visibility="gone" />
 
-            <com.example.testapp.ZoomableTableScrollView
+            <com.netk.mvolatrack.ZoomableTableScrollView
                 android:id="@+id/transactionTableScroll"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
@@ -278,7 +278,7 @@
                         android:paddingBottom="8dp"
                         android:scrollbars="vertical" />
                 </LinearLayout>
-            </com.example.testapp.ZoomableTableScrollView>
+            </com.netk.mvolatrack.ZoomableTableScrollView>
         </LinearLayout>
 
         <FrameLayout
@@ -661,7 +661,7 @@
                         <FrameLayout
                             android:layout_width="match_parent"
                             android:layout_height="232dp">
-                            <com.example.testapp.StatisticsChartView
+                            <com.netk.mvolatrack.StatisticsChartView
                                 android:id="@+id/userChart"
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
@@ -745,7 +745,7 @@
                         <FrameLayout
                             android:layout_width="match_parent"
                             android:layout_height="232dp">
-                            <com.example.testapp.StatisticsChartView
+                            <com.netk.mvolatrack.StatisticsChartView
                                 android:id="@+id/bonusChart"
                                 android:layout_width="match_parent"
                                 android:layout_height="match_parent"
@@ -775,7 +775,7 @@
         android:clipChildren="false"
         android:clipToPadding="false">
 
-        <com.example.testapp.NotchedBottomBarView
+        <com.netk.mvolatrack.NotchedBottomBarView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:importantForAccessibility="no" />
