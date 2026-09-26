@@ -91,11 +91,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_STATISTICS_YEAR = "statistics_year";
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
     private static final String STATE_STATISTICS_TAB = "statistics_tab";
-    private static final String STATE_MESSAGE_FILTER = "message_filter";
-    private static final String STATE_MESSAGE_TYPE_FILTER = "message_type_filter";
-    private static final String STATE_MESSAGE_QUERY = "message_query";
     private static final String STATE_TABLE_ZOOM = "table_zoom";
-    private static final String STATE_CUSTOM_FILTER_DATE = "custom_filter_date";
     private static final String STATE_CLIENT_SENDER = "client_sender";
     private static final String STATE_CLIENT_QUERY = "client_query";
     private static final String STATE_CLIENT_FILTER = "client_filter";
@@ -116,6 +112,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String LAST_DEPOSIT_RECIPIENT = "last_deposit_recipient";
     private static final String DISPLAY_PREFERENCES = "display_preferences";
     private static final String BALANCE_HIDDEN = "balance_hidden";
+    private static final String MESSAGE_FILTER_PREFERENCES = "message_filter_preferences";
+    private static final String MESSAGES_FILTER_PERIOD = "messages_filter_period";
+    private static final String MESSAGES_FILTER_TYPE = "messages_filter_type";
+    private static final String MESSAGES_FILTER_CUSTOM_DATE = "messages_filter_custom_date";
     private TextView permissionText;
     private TextView backgroundExecutionText;
     private TextView emptyText;
@@ -1094,6 +1094,12 @@ public class MainActivity extends AppCompatActivity {
         clientNavigationItem.setSelected(clientSelected);
         historyNavigationItem.setSelected(historySelected);
         statisticsNavigationItem.setSelected(statisticsSelected);
+        if (messagesSelected) {
+            restoreMessageFilters();
+            if (messageSearchInput != null) messageSearchInput.setText("");
+            updateFilterChips();
+            if (adapter != null) renderState();
+        }
         if (statisticsSelected) renderStatistics();
         if (clientSelected) renderClients();
         if (historySelected) renderHistory();
@@ -1230,20 +1236,12 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_STATISTICS_YEAR, statisticsMonth.get(Calendar.YEAR));
         outState.putInt(STATE_STATISTICS_MONTH, statisticsMonth.get(Calendar.MONTH));
         outState.putInt(STATE_STATISTICS_TAB, selectedStatisticsTab);
-        outState.putString(STATE_MESSAGE_FILTER, selectedMessageFilter.name());
-        outState.putString(STATE_MESSAGE_TYPE_FILTER, selectedMessageType.name());
         outState.putFloat(STATE_TABLE_ZOOM, tableZoom);
-        if (messageSearchInput != null) {
-            outState.putString(STATE_MESSAGE_QUERY, messageSearchInput.getText().toString());
-        }
         if (selectedClientSender != null) outState.putString(STATE_CLIENT_SENDER, selectedClientSender);
         if (clientSearchInput != null) {
             outState.putString(STATE_CLIENT_QUERY, clientSearchInput.getText().toString());
         }
         outState.putString(STATE_CLIENT_FILTER, selectedClientFilter.name());
-        if (customFilterDate != null) {
-            outState.putLong(STATE_CUSTOM_FILTER_DATE, customFilterDate);
-        }
         super.onSaveInstanceState(outState);
     }
 
@@ -1256,26 +1254,7 @@ public class MainActivity extends AppCompatActivity {
         typeFilterChips = new TextView[]{findViewById(R.id.typeFilterAll),
                 findViewById(R.id.typeFilterDeposit), findViewById(R.id.typeFilterWithdrawal),
                 findViewById(R.id.typeFilterCredit)};
-        if (savedInstanceState != null) {
-            String savedFilter = savedInstanceState.getString(STATE_MESSAGE_FILTER);
-            try {
-                if (savedFilter != null) selectedMessageFilter = SmsDateFilter.Period.valueOf(savedFilter);
-            } catch (IllegalArgumentException ignored) {
-                selectedMessageFilter = SmsDateFilter.Period.ALL;
-            }
-            String savedType = savedInstanceState.getString(STATE_MESSAGE_TYPE_FILTER);
-            try {
-                if (savedType != null) {
-                    selectedMessageType = SmsDateFilter.TransactionType.valueOf(savedType);
-                }
-            } catch (IllegalArgumentException ignored) {
-                selectedMessageType = SmsDateFilter.TransactionType.ALL;
-            }
-            if (savedInstanceState.containsKey(STATE_CUSTOM_FILTER_DATE)) {
-                customFilterDate = savedInstanceState.getLong(STATE_CUSTOM_FILTER_DATE);
-            }
-            messageSearchInput.setText(savedInstanceState.getString(STATE_MESSAGE_QUERY, ""));
-        }
+        restoreMessageFilters();
         filterChips[0].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.ALL));
         filterChips[1].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.TODAY));
         filterChips[2].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.YESTERDAY));
@@ -1307,12 +1286,16 @@ public class MainActivity extends AppCompatActivity {
     private void selectMessageFilter(SmsDateFilter.Period period) {
         selectedMessageFilter = period;
         if (period != SmsDateFilter.Period.CUSTOM_DATE) customFilterDate = null;
+        persistMessagePeriodFilter();
         updateFilterChips();
         renderState();
     }
 
     private void selectMessageType(SmsDateFilter.TransactionType type) {
         selectedMessageType = type;
+        getSharedPreferences(MESSAGE_FILTER_PREFERENCES, MODE_PRIVATE).edit()
+                .putString(MESSAGES_FILTER_TYPE, type.name())
+                .apply();
         updateFilterChips();
         renderState();
     }
@@ -1326,10 +1309,43 @@ public class MainActivity extends AppCompatActivity {
             selected.set(year, month, day);
             customFilterDate = selected.getTimeInMillis();
             selectedMessageFilter = SmsDateFilter.Period.CUSTOM_DATE;
+            persistMessagePeriodFilter();
             updateFilterChips();
             renderState();
         }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH),
                 initial.get(Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private void persistMessagePeriodFilter() {
+        SharedPreferences.Editor editor = getSharedPreferences(
+                MESSAGE_FILTER_PREFERENCES, MODE_PRIVATE).edit()
+                .putString(MESSAGES_FILTER_PERIOD, selectedMessageFilter.name());
+        if (customFilterDate == null) editor.remove(MESSAGES_FILTER_CUSTOM_DATE);
+        else editor.putLong(MESSAGES_FILTER_CUSTOM_DATE, customFilterDate);
+        editor.apply();
+    }
+
+    private void restoreMessageFilters() {
+        SharedPreferences preferences = getSharedPreferences(
+                MESSAGE_FILTER_PREFERENCES, MODE_PRIVATE);
+        try {
+            selectedMessageFilter = SmsDateFilter.Period.valueOf(preferences.getString(
+                    MESSAGES_FILTER_PERIOD, SmsDateFilter.Period.ALL.name()));
+        } catch (IllegalArgumentException | NullPointerException ignored) {
+            selectedMessageFilter = SmsDateFilter.Period.ALL;
+        }
+        try {
+            selectedMessageType = SmsDateFilter.TransactionType.valueOf(preferences.getString(
+                    MESSAGES_FILTER_TYPE, SmsDateFilter.TransactionType.ALL.name()));
+        } catch (IllegalArgumentException | NullPointerException ignored) {
+            selectedMessageType = SmsDateFilter.TransactionType.ALL;
+        }
+        customFilterDate = preferences.contains(MESSAGES_FILTER_CUSTOM_DATE)
+                ? preferences.getLong(MESSAGES_FILTER_CUSTOM_DATE, 0L) : null;
+        if (selectedMessageFilter == SmsDateFilter.Period.CUSTOM_DATE
+                && customFilterDate == null) {
+            selectedMessageFilter = SmsDateFilter.Period.ALL;
+        }
     }
 
     private void updateFilterChips() {
