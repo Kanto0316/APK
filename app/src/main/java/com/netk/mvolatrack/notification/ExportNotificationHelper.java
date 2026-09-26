@@ -34,11 +34,11 @@ public final class ExportNotificationHelper {
             return;
         }
 
-        Intent view = new Intent(Intent.ACTION_VIEW)
-                .setDataAndType(uri, mimeType)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                .setClipData(ClipData.newRawUri(fileName, uri));
-        Intent chooser = Intent.createChooser(view, "Ouvrir l’export")
+        Intent openIntent = new Intent(Intent.ACTION_VIEW);
+        openIntent.setDataAndType(uri, mimeType);
+        openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        openIntent.setClipData(ClipData.newRawUri(fileName, uri));
+        Intent chooser = Intent.createChooser(openIntent, "Ouvrir l’export")
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         int id = notificationId(uri);
         PendingIntent openFile = PendingIntent.getActivity(applicationContext, id, chooser,
