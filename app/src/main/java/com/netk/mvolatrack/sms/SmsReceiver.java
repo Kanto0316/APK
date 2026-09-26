@@ -63,6 +63,15 @@ public class SmsReceiver extends BroadcastReceiver {
             String sender = first.getDisplayOriginatingAddress();
             long receivedAt = first.getTimestampMillis();
             String body = completeBody.toString();
+            // The originating address supplied by Android is the trust boundary. Reject before
+            // parsing and, critically, before creating or inserting any database entity.
+            if (!AuthorizedSmsSenders.isAuthorized(sender)) {
+                Log.w(TAG, "SMS rejeté : expéditeur non autorisé=" + sender);
+                com.netk.mvolatrack.overlay.TransactionOverlayCoordinator.get(appContext)
+                        .onUnauthorizedSender(sender);
+                pendingResult.finish();
+                return;
+            }
             // Parse exactly once at the reception boundary. The same immutable result is passed
             // to the presentation coordinator after Room has accepted the SMS.
             MvolaMessageParser.ParsedTransaction parsedTransaction =

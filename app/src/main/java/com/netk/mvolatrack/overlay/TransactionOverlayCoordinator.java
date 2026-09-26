@@ -14,11 +14,13 @@ import com.netk.mvolatrack.repository.SmsRepository;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
 
 import java.lang.ref.WeakReference;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Global owner of notification, modal state and the transaction FIFO. */
 public final class TransactionOverlayCoordinator {
     private static final String STATES = "transaction_presentation_states";
     private static volatile TransactionOverlayCoordinator instance;
+    private static final AtomicLong WARNING_IDS = new AtomicLong(-1L);
 
     private final Context context;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -75,11 +77,22 @@ public final class TransactionOverlayCoordinator {
         });
     }
 
+    /** Presents a warning without persisting either the SMS or presentation state. */
+    public void onUnauthorizedSender(String sender) {
+        mainHandler.post(() -> {
+            long id = WARNING_IDS.getAndDecrement();
+            new NotificationHelper(context).showSpamWarning(sender);
+            queue.offer(Item.spamWarning(id, sender), id);
+            presentCurrent();
+        });
+    }
+
     /** Resolves a notification's database ID instead of trusting display fields in its Intent. */
     public void openFromNotification(long smsId) {
         if (smsId <= 0 || isAcknowledged(smsId)) return;
         new SmsRepository(context).loadMessage(smsId, message -> {
             if (message == null) return;
+            if (!com.netk.mvolatrack.sms.AuthorizedSmsSenders.isAuthorized(message.sender)) return;
             MvolaMessageParser.ParsedTransaction parsed =
                     MvolaMessageParser.parse(message.messageBody, message.receivedDate);
             if (parsed != null) mainHandler.post(() -> {
@@ -100,7 +113,11 @@ public final class TransactionOverlayCoordinator {
         AppCompatActivity activity = visibleActivity.get();
         if (activity != null && !activity.isFinishing() && !activity.isDestroyed()) {
             systemOverlay.remove();
-            dialog.show(activity, item.sender, item.transaction, () -> acknowledge(item.id));
+            if (item.spamWarning) {
+                dialog.showSpamWarning(activity, item.sender, () -> acknowledge(item.id));
+            } else {
+                dialog.show(activity, item.sender, item.transaction, () -> acknowledge(item.id));
+            }
             renderedId = item.id;
             return;
         }
@@ -109,12 +126,16 @@ public final class TransactionOverlayCoordinator {
                 || Settings.canDrawOverlays(context);
         // Also attempt while keyguard is active. Android/OEM window policy remains authoritative;
         // the already-posted notification is the fallback if addView is rejected or hidden.
-        if (canOverlay && systemOverlay.show(item.sender, item.transaction,
-                () -> acknowledge(item.id))) renderedId = item.id;
+        boolean shown = item.spamWarning
+                ? canOverlay && systemOverlay.showSpamWarning(item.sender,
+                        () -> acknowledge(item.id))
+                : canOverlay && systemOverlay.show(item.sender, item.transaction,
+                        () -> acknowledge(item.id));
+        if (shown) renderedId = item.id;
     }
 
     private void acknowledge(long id) {
-        states.edit().putBoolean("acknowledged_" + id, true).apply();
+        if (id > 0) states.edit().putBoolean("acknowledged_" + id, true).apply();
         dialog.dismissSilently();
         systemOverlay.remove();
         renderedId = 0;
@@ -130,8 +151,17 @@ public final class TransactionOverlayCoordinator {
         final long id;
         final String sender;
         final MvolaMessageParser.ParsedTransaction transaction;
+        final boolean spamWarning;
         Item(long id, String sender, MvolaMessageParser.ParsedTransaction transaction) {
+            this(id, sender, transaction, false);
+        }
+        private Item(long id, String sender, MvolaMessageParser.ParsedTransaction transaction,
+                     boolean spamWarning) {
             this.id = id; this.sender = sender; this.transaction = transaction;
+            this.spamWarning = spamWarning;
+        }
+        static Item spamWarning(long id, String sender) {
+            return new Item(id, sender, null, true);
         }
         @Override public long id() { return id; }
     }
