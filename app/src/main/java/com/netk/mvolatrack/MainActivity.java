@@ -192,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
     private EditText clientSearchInput;
     private TextView[] clientFilterChips;
     private ClientMessageGrouper.Filter selectedClientFilter = ClientMessageGrouper.Filter.ALL;
-    private int selectedSection = SECTION_MESSAGES;
+    private int selectedSection = SECTION_HOME;
     private SmsDateFilter.Period selectedMessageFilter = SmsDateFilter.Period.ALL;
     private SmsDateFilter.TransactionType selectedMessageType = SmsDateFilter.TransactionType.ALL;
     private Long customFilterDate;
@@ -386,8 +386,8 @@ public class MainActivity extends AppCompatActivity {
             selectStatisticsTab(STATISTICS_TAB_BONUS);
             showSection(SECTION_STATISTICS);
         });
-        showSection(savedInstanceState == null ? SECTION_MESSAGES
-                : savedInstanceState.getInt(STATE_SELECTED_SECTION, SECTION_MESSAGES));
+        showSection(savedInstanceState == null ? SECTION_HOME
+                : savedInstanceState.getInt(STATE_SELECTED_SECTION, SECTION_HOME));
         RecyclerView list = findViewById(R.id.transactionsList);
         if (savedInstanceState != null) {
             tableZoom = clampTableZoom(savedInstanceState.getFloat(STATE_TABLE_ZOOM, 1f));
