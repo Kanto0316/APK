@@ -8,6 +8,8 @@ import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.provider.Settings;
+import android.provider.OpenableColumns;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Build;
 import android.text.InputType;
@@ -53,6 +55,7 @@ import com.netk.mvolatrack.background.BackgroundExecutionManager;
 import com.netk.mvolatrack.history.HistoryTransaction;
 import com.netk.mvolatrack.overlay.TransactionOverlayCoordinator;
 import com.netk.mvolatrack.notification.NotificationHelper;
+import com.netk.mvolatrack.notification.ExportNotificationHelper;
 import com.netk.mvolatrack.export.ExportTransaction;
 import com.netk.mvolatrack.export.PdfExporter;
 import com.netk.mvolatrack.export.XlsxExporter;
@@ -1485,8 +1488,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void showClientTransactionExportDialog() {
         if (selectedClientSender == null) return;
-        List<SmsDateFilter.DisplayMessage> clientTransactions =
-                clientMessagesWithOriginalNumbers(selectedClientSender);
+        // This snapshot is the adapter's exact data source, including its current ordering.
+        List<SmsDateFilter.DisplayMessage> clientTransactions = clientMessageAdapter.snapshot();
         String normalizedNumber = ClientNumberNormalizer.normalize(selectedClientSender);
         if (normalizedNumber == null) {
             normalizedNumber = selectedClientSender.replaceAll("\\s+", "");
@@ -1592,13 +1595,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void copyExportTo(Uri destination, File source) {
+        String mime = pendingExportMime;
         new Thread(() -> {
             try (InputStream input = new FileInputStream(source);
                  OutputStream output = getContentResolver().openOutputStream(destination)) {
                 if (output == null) throw new IOException("Destination indisponible");
                 byte[] buffer = new byte[8192]; int count;
                 while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
-                runOnUiThread(() -> Toast.makeText(this, "Export terminé", Toast.LENGTH_SHORT).show());
+                String fileName = displayName(destination, source.getName());
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Export terminé", Toast.LENGTH_SHORT).show();
+                    ExportNotificationHelper.showExportCompletedNotification(this, fileName,
+                            destination, mime);
+                });
             } catch (IOException error) { showTransferError("Enregistrement impossible", error); }
         }, "transaction-export-save").start();
     }
@@ -1644,12 +1653,32 @@ public class MainActivity extends AppCompatActivity {
                 }
                 JSONObject root = new JSONObject().put("messages", entries);
                 writer.write(root.toString(2));
-                runOnUiThread(() -> Toast.makeText(this,
-                        snapshot.size() + " messages exportés", Toast.LENGTH_LONG).show());
+                writer.flush();
+                String fileName = displayName(destination, "MVolaCash.json");
+                runOnUiThread(() -> {
+                    Toast.makeText(this, snapshot.size() + " messages exportés",
+                            Toast.LENGTH_LONG).show();
+                    ExportNotificationHelper.showExportCompletedNotification(this, fileName,
+                            destination, "application/json");
+                });
             } catch (IOException | JSONException error) {
                 showTransferError("Export impossible", error);
             }
         }, "sms-json-export").start();
+    }
+
+    /** Returns the provider's real saved name (which the user may change in the SAF picker). */
+    private String displayName(Uri uri, String fallback) {
+        try (Cursor cursor = getContentResolver().query(uri,
+                new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                String name = cursor.getString(0);
+                if (name != null && !name.trim().isEmpty()) return name;
+            }
+        } catch (RuntimeException ignored) {
+            // A provider is allowed not to expose metadata; retain the actual requested name.
+        }
+        return fallback;
     }
 
     private void importMessages(Uri source) {
@@ -2025,6 +2054,10 @@ public class MainActivity extends AppCompatActivity {
         void submitList(List<SmsDateFilter.DisplayMessage> messages) {
             items = new ArrayList<>(messages);
             notifyDataSetChanged();
+        }
+
+        List<SmsDateFilter.DisplayMessage> snapshot() {
+            return new ArrayList<>(items);
         }
 
         @Override public ClientMessageViewHolder onCreateViewHolder(android.view.ViewGroup parent,
