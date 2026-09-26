@@ -19,8 +19,8 @@ import com.netk.mvolatrack.R;
 
 /** Centralizes the completion notification for every file exported through SAF. */
 public final class ExportNotificationHelper {
-    private static final String CHANNEL_ID = "completed_exports";
-    private static final String CHANNEL_NAME = "Téléchargements terminés";
+    private static final String CHANNEL_ID = "export_completed_high";
+    private static final String CHANNEL_NAME = "Exports terminés";
 
     private ExportNotificationHelper() {}
 
@@ -52,14 +52,14 @@ public final class ExportNotificationHelper {
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(fileName))
                 .setContentIntent(openFile)
                 .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+                .setPriority(NotificationCompat.PRIORITY_HIGH);
         NotificationManagerCompat.from(applicationContext).notify(id, notification.build());
     }
 
     private static void createChannel(Context context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT);
+                NotificationManager.IMPORTANCE_HIGH);
         channel.setDescription("Fichiers exportés par MVolaCash");
         context.getSystemService(NotificationManager.class).createNotificationChannel(channel);
     }
