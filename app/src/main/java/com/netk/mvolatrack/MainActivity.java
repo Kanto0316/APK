@@ -5,6 +5,7 @@ import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageInfo;
 import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.provider.Settings;
@@ -40,6 +41,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -47,6 +49,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.netk.mvolatrack.database.SmsMessage;
 import com.netk.mvolatrack.database.AppDatabase;
@@ -64,6 +67,8 @@ import com.netk.mvolatrack.sms.ClientNumberNormalizer;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
 
 import androidx.appcompat.app.AlertDialog;
+
+import com.google.android.material.navigation.NavigationView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -215,6 +220,7 @@ public class MainActivity extends AppCompatActivity {
     private String pendingUssdCode;
     private File pendingExportFile;
     private String pendingExportMime;
+    private DrawerLayout drawerLayout;
 
     @Override
     protected void onStart() {
@@ -308,7 +314,7 @@ public class MainActivity extends AppCompatActivity {
         loadingIndicator = findViewById(R.id.loadingIndicator);
         configureMessageFilters(savedInstanceState);
         backupManager = new SmsBackupManager(this);
-        findViewById(R.id.overflowButton).setOnClickListener(this::showOverflowMenu);
+        configureNavigationDrawer();
         messagesSection = findViewById(R.id.messagesSection);
         homeSection = findViewById(R.id.homeSection);
         historySection = findViewById(R.id.historySection);
@@ -1250,7 +1256,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (selectedSection == SECTION_CLIENT && selectedClientSender != null) {
+        if (drawerLayout != null && drawerLayout.isDrawerOpen(android.view.Gravity.START)) {
+            drawerLayout.closeDrawer(android.view.Gravity.START);
+        } else if (selectedSection == SECTION_CLIENT && selectedClientSender != null) {
             showClientList();
         } else {
             super.onBackPressed();
@@ -1488,26 +1496,122 @@ public class MainActivity extends AppCompatActivity {
         renderStatistics();
     }
 
-    private void showOverflowMenu(View anchor) {
-        PopupMenu menu = new PopupMenu(this, anchor);
-        menu.getMenu().add("Exporter").setOnMenuItemClickListener(item -> {
-            showTransactionExportDialog();
+    private void configureNavigationDrawer() {
+        drawerLayout = findViewById(R.id.drawerLayout);
+        NavigationView navigationView = findViewById(R.id.navigationView);
+        int maximumWidth = Math.round(360 * getResources().getDisplayMetrics().density);
+        int preferredWidth = Math.round(getResources().getDisplayMetrics().widthPixels * 0.84f);
+        ViewGroup.LayoutParams layoutParams = navigationView.getLayoutParams();
+        layoutParams.width = Math.min(preferredWidth, maximumWidth);
+        navigationView.setLayoutParams(layoutParams);
+        drawerLayout.setScrimColor(0x66000000);
+
+        View header = navigationView.getHeaderView(0);
+        ((TextView) header.findViewById(R.id.drawerVersion))
+                .setText("Version " + applicationVersionName());
+        findViewById(R.id.drawerButton).setOnClickListener(view ->
+                drawerLayout.openDrawer(android.view.Gravity.START));
+        navigationView.setNavigationItemSelectedListener(item -> {
+            drawerLayout.closeDrawer(android.view.Gravity.START);
+            int id = item.getItemId();
+            if (id == R.id.nav_settings) showPlaceholderPage("Paramètres",
+                    "Les réglages de MVolaCash seront disponibles ici.");
+            else if (id == R.id.nav_security) showPlaceholderPage("Sécurité",
+                    "Les options de sécurité seront disponibles ici.");
+            else if (id == R.id.nav_export_pdf) generateTransactionExport(false);
+            else if (id == R.id.nav_export_excel) generateTransactionExport(true);
+            else if (id == R.id.nav_export_json) launchExport();
+            else if (id == R.id.nav_import_json) launchImport();
+            else if (id == R.id.nav_permissions) showPermissionStatusPage();
+            else if (id == R.id.nav_help) showHelpPage();
+            else if (id == R.id.nav_about) showAboutDialog();
             return true;
         });
-        menu.getMenu().add("Importer les messages").setOnMenuItemClickListener(item -> {
-            launchImport();
-            return true;
-        });
-        menu.getMenu().add("Sauvegarder les messages (JSON)").setOnMenuItemClickListener(item -> {
-            launchExport();
-            return true;
-        });
-        menu.getMenu().add("Affichage au-dessus des applications")
-                .setOnMenuItemClickListener(item -> {
-                    showOverlayPermissionDialog();
-                    return true;
-                });
-        menu.show();
+    }
+
+    private String applicationVersionName() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            return info.versionName == null ? "—" : info.versionName;
+        } catch (PackageManager.NameNotFoundException ignored) {
+            return "—";
+        }
+    }
+
+    private void showPlaceholderPage(String title, String message) {
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("Fermer", null)
+                .show();
+    }
+
+    private void showHelpPage() {
+        new AlertDialog.Builder(this)
+                .setTitle("Aide")
+                .setMessage("Messages\nConsultation et filtrage des transactions\n\n"
+                        + "Clients\nTransactions regroupées par numéro\n\n"
+                        + "Historique\nHistorique chronologique\n\n"
+                        + "Statistiques\nBonus et utilisateurs\n\n"
+                        + "Solde\nEye ON/OFF permet de masquer le montant\n\n"
+                        + "Export\nPDF et Excel\n\n"
+                        + "Sauvegarde\nExport/import JSON des messages")
+                .setPositiveButton("OK", null)
+                .show();
+    }
+
+    private void showAboutDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("MVolaCash")
+                .setMessage("Gestion et suivi des transactions\n\nVersion : "
+                        + applicationVersionName() + "\n\nPackage :\n" + getPackageName())
+                .setPositiveButton("OK", null)
+                .show();
+    }
+
+    private void showPermissionStatusPage() {
+        boolean smsAllowed = ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
+                == PackageManager.PERMISSION_GRANTED;
+        boolean phoneAllowed = ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
+                == PackageManager.PERMISSION_GRANTED;
+        boolean notificationsAllowed = NotificationManagerCompat.from(this)
+                .areNotificationsEnabled();
+        boolean overlayAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || Settings.canDrawOverlays(this);
+        String[] entries = new String[]{
+                permissionLabel("SMS", smsAllowed),
+                permissionLabel("Téléphone (USSD)", phoneAllowed),
+                permissionLabel("Notifications", notificationsAllowed),
+                permissionLabel("Affichage superposé", overlayAllowed)
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("État des permissions")
+                .setItems(entries, (dialog, which) -> {
+                    if (which == 3) showOverlayPermissionDialog();
+                    else openApplicationPermissionSettings(which == 2);
+                })
+                .setNegativeButton("Fermer", null)
+                .show();
+    }
+
+    private String permissionLabel(String name, boolean allowed) {
+        return name + "\n" + (allowed ? "✓ Autorisé" : "! Non autorisé");
+    }
+
+    private void openApplicationPermissionSettings(boolean notifications) {
+        Intent intent;
+        if (notifications && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+        } else {
+            intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName()));
+        }
+        try {
+            startActivity(intent);
+        } catch (android.content.ActivityNotFoundException exception) {
+            startActivity(new Intent(Settings.ACTION_SETTINGS));
+        }
     }
 
     private void showClientDetailOverflowMenu(View anchor) {
