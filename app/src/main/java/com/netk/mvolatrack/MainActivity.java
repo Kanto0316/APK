@@ -53,6 +53,7 @@ import com.netk.mvolatrack.database.AppDatabase;
 import com.netk.mvolatrack.backup.SmsBackupManager;
 import com.netk.mvolatrack.background.BackgroundExecutionManager;
 import com.netk.mvolatrack.history.HistoryTransaction;
+import com.netk.mvolatrack.history.TodayHistorySummary;
 import com.netk.mvolatrack.overlay.TransactionOverlayCoordinator;
 import com.netk.mvolatrack.notification.NotificationHelper;
 import com.netk.mvolatrack.notification.ExportNotificationHelper;
@@ -145,6 +146,8 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView historyList;
     private View historyEmptyState;
     private HistoryAdapter historyAdapter;
+    private TextView historyTodayIncomingAmount;
+    private TextView historyTodayOutgoingAmount;
     private View statisticsSection;
     private View clientSection;
     private View clientListContent;
@@ -430,6 +433,8 @@ public class MainActivity extends AppCompatActivity {
         clientMessages.setAdapter(clientMessageAdapter);
         historyList = findViewById(R.id.historyList);
         historyEmptyState = findViewById(R.id.historyEmptyState);
+        historyTodayIncomingAmount = findViewById(R.id.historyTodayIncomingAmount);
+        historyTodayOutgoingAmount = findViewById(R.id.historyTodayOutgoingAmount);
         historyAdapter = new HistoryAdapter();
         historyList.setLayoutManager(new LinearLayoutManager(this));
         historyList.setAdapter(historyAdapter);
@@ -469,6 +474,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void renderBalanceTitle() {
         balanceTitle.setText(balanceHidden ? "****" : visibleBalanceTitle);
+        renderHistorySummaryAmounts();
         balanceVisibilityButton.setImageResource(balanceHidden
                 ? R.drawable.ic_visibility_off_24 : R.drawable.ic_visibility_24);
         balanceVisibilityButton.setContentDescription(getString(balanceHidden
@@ -1109,9 +1115,30 @@ public class MainActivity extends AppCompatActivity {
         if (historyAdapter == null) return;
         List<HistoryTransaction> transactions = HistoryTransaction.fromMessages(messages);
         historyAdapter.submitList(transactions);
+        TodayHistorySummary summary = TodayHistorySummary.calculate(transactions,
+                System.currentTimeMillis(), java.util.TimeZone.getDefault());
+        historyTodayIncomingAmount.setTag(summary.incoming);
+        historyTodayOutgoingAmount.setTag(summary.outgoing);
+        renderHistorySummaryAmounts();
         boolean empty = transactions.isEmpty();
         historyList.setVisibility(empty ? View.GONE : View.VISIBLE);
         historyEmptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
+    }
+
+    private void renderHistorySummaryAmounts() {
+        if (historyTodayIncomingAmount == null || historyTodayOutgoingAmount == null) return;
+        if (balanceHidden) {
+            historyTodayIncomingAmount.setText("****");
+            historyTodayOutgoingAmount.setText("****");
+            return;
+        }
+        historyTodayIncomingAmount.setText(formatAriary(summaryAmount(historyTodayIncomingAmount)));
+        historyTodayOutgoingAmount.setText(formatAriary(summaryAmount(historyTodayOutgoingAmount)));
+    }
+
+    private static long summaryAmount(TextView view) {
+        Object value = view.getTag();
+        return value instanceof Long ? (Long) value : 0L;
     }
 
     private void renderClients() {
