@@ -381,7 +381,9 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.clientDetailOverflowButton).setOnClickListener(
                 this::showClientDetailOverflowMenu);
         homeButton.setOnClickListener(view -> showSection(SECTION_HOME));
-        historyNavigationItem.setOnClickListener(view -> showSection(SECTION_HISTORY));
+        View.OnClickListener showHistory = view -> showSection(SECTION_HISTORY);
+        historyNavigationItem.setOnClickListener(showHistory);
+        findViewById(R.id.balanceBlock).setOnClickListener(showHistory);
         statisticsNavigationItem.setOnClickListener(view -> {
             selectStatisticsTab(STATISTICS_TAB_BONUS);
             showSection(SECTION_STATISTICS);
