@@ -16,6 +16,22 @@ import com.netk.mvolatrack.sms.MvolaMessageParser;
 public final class TransactionDialog {
     private Dialog dialog;
 
+    public void showSpamWarning(AppCompatActivity activity, String sender,
+                                Runnable onAcknowledged) {
+        dismissSilently();
+        if (activity.isFinishing() || activity.isDestroyed()) return;
+        View content = LayoutInflater.from(activity).inflate(R.layout.spam_warning_overlay, null);
+        dialog = new Dialog(activity);
+        dialog.setContentView(content);
+        dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
+        SpamWarningBinder.bind(content, sender, view -> {
+            dismissSilently();
+            onAcknowledged.run();
+        });
+        configureAndShow(activity);
+    }
+
     public void show(AppCompatActivity activity, String sender,
                      MvolaMessageParser.ParsedTransaction transaction, Runnable onAcknowledged) {
         dismissSilently();
@@ -29,6 +45,10 @@ public final class TransactionDialog {
             dismissSilently();
             onAcknowledged.run();
         });
+        configureAndShow(activity);
+    }
+
+    private void configureAndShow(AppCompatActivity activity) {
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));

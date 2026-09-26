@@ -70,6 +70,27 @@ public final class NotificationHelper {
         NotificationManagerCompat.from(context).notify(requestCode, builder.build());
     }
 
+    /** Warning-only fallback for rejected SMS; it deliberately carries no transaction data. */
+    public void showSpamWarning(String sender) {
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context,
+                Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return;
+        String actualSender = sender == null || sender.trim().isEmpty()
+                ? "Expéditeur inconnu" : sender;
+        String text = "Expéditeur non reconnu : " + actualSender
+                + ". Ce message n'a pas été enregistré comme transaction MVola.";
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                .setContentTitle("Attention spam")
+                .setContentText(text)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
+                .setAutoCancel(true)
+                .setColor(0xFFD84315)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setPriority(NotificationCompat.PRIORITY_HIGH);
+        NotificationManagerCompat.from(context).notify(
+                (int) (System.currentTimeMillis() ^ 0x5350414d), builder.build());
+    }
+
     /** Stable and distinct for practical Room IDs; PendingIntent also has a unique data URI. */
     static int notificationId(long transactionId) {
         return (int) (transactionId ^ (transactionId >>> 32));

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:background="@drawable/bg_spam_warning_overlay" android:elevation="12dp"
+    android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center_vertical" android:orientation="horizontal">
+        <ImageView android:layout_width="32dp" android:layout_height="32dp"
+            android:contentDescription="Avertissement" android:src="@android:drawable/ic_dialog_alert"
+            android:tint="#D84315" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="12dp" android:text="Attention spam"
+            android:textColor="#B71C1C" android:textSize="20sp" android:textStyle="bold" />
+    </LinearLayout>
+    <TextView android:id="@+id/spamWarningMessage" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:layout_marginTop="18dp"
+        android:textColor="@color/sms_text_body" android:textSize="16sp" />
+    <Button android:id="@+id/spamWarningOk" android:layout_width="wrap_content"
+        android:layout_height="48dp" android:layout_gravity="end" android:layout_marginTop="18dp"
+        android:backgroundTint="#D84315" android:minWidth="80dp" android:text="OK"
+        android:textColor="@color/white" android:textStyle="bold" />
+</LinearLayout>

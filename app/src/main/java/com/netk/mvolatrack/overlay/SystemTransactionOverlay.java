@@ -31,6 +31,21 @@ final class SystemTransactionOverlay {
             remove();
             onAcknowledged.run();
         });
+        return attach(view);
+    }
+
+    synchronized boolean showSpamWarning(String sender, Runnable onAcknowledged) {
+        remove();
+        if (windowManager == null) return false;
+        View view = LayoutInflater.from(context).inflate(R.layout.spam_warning_overlay, null);
+        SpamWarningBinder.bind(view, sender, ignored -> {
+            remove();
+            onAcknowledged.run();
+        });
+        return attach(view);
+    }
+
+    private boolean attach(View view) {
         int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
                 : WindowManager.LayoutParams.TYPE_PHONE;
