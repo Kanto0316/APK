@@ -26,6 +26,12 @@
     <color name="statistics_grid">#DDE4EA</color>
     <color name="statistics_today">#FF9800</color>
     <color name="white">#FFFFFF</color>
+    <color name="history_incoming">#217A47</color>
+    <color name="history_incoming_background">#F0FAF4</color>
+    <color name="history_incoming_border">#CDE9D8</color>
+    <color name="history_outgoing">#B64B32</color>
+    <color name="history_outgoing_background">#FFF5F1</color>
+    <color name="history_outgoing_border">#F1D5CA</color>
 
     <!-- Home service cards -->
     <color name="service_text_primary">#18212B</color>
