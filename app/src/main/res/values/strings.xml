@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">MVolaCash</string>
+    <string name="hide_balance">Masquer le solde</string>
+    <string name="show_balance">Afficher le solde</string>
 </resources>

@@ -114,11 +114,16 @@ public class MainActivity extends AppCompatActivity {
     private static final String BACKGROUND_PROMPT_SHOWN = "initial_prompt_shown";
     private static final String DEPOSIT_PREFERENCES = "deposit_preferences";
     private static final String LAST_DEPOSIT_RECIPIENT = "last_deposit_recipient";
+    private static final String DISPLAY_PREFERENCES = "display_preferences";
+    private static final String BALANCE_HIDDEN = "balance_hidden";
     private TextView permissionText;
     private TextView backgroundExecutionText;
     private TextView emptyText;
     private TextView transactionCountText;
     private TextView balanceTitle;
+    private ImageButton balanceVisibilityButton;
+    private String visibleBalanceTitle = "0 Ar";
+    private boolean balanceHidden;
     private View mainHeader;
     private View mainHeaderDivider;
     private ProgressBar loadingIndicator;
@@ -290,6 +295,11 @@ public class MainActivity extends AppCompatActivity {
         emptyText = findViewById(R.id.emptyText);
         transactionCountText = findViewById(R.id.transactionCountText);
         balanceTitle = findViewById(R.id.balanceTitle);
+        balanceVisibilityButton = findViewById(R.id.balanceVisibilityButton);
+        balanceHidden = getSharedPreferences(DISPLAY_PREFERENCES, MODE_PRIVATE)
+                .getBoolean(BALANCE_HIDDEN, false);
+        balanceVisibilityButton.setOnClickListener(view -> toggleBalanceVisibility());
+        renderBalanceTitle();
         mainHeader = findViewById(R.id.mainHeader);
         mainHeaderDivider = findViewById(R.id.mainHeaderDivider);
         loadingIndicator = findViewById(R.id.loadingIndicator);
@@ -425,7 +435,10 @@ public class MainActivity extends AppCompatActivity {
         historyList.setAdapter(historyAdapter);
 
         viewModel = new ViewModelProvider(this).get(SmsViewModel.class);
-        viewModel.getGlobalBalanceTitle().observe(this, balanceTitle::setText);
+        viewModel.getGlobalBalanceTitle().observe(this, title -> {
+            visibleBalanceTitle = title == null ? "0 Ar" : title;
+            renderBalanceTitle();
+        });
         viewModel.getMessages().observe(this, storedMessages -> {
             messages = storedMessages == null ? new ArrayList<>() : storedMessages;
             roomLoaded = true;
@@ -444,6 +457,22 @@ public class MainActivity extends AppCompatActivity {
                     .putBoolean(BACKGROUND_PROMPT_SHOWN, true).apply();
             showBackgroundPermissionDialog(true);
         }
+    }
+
+    private void toggleBalanceVisibility() {
+        balanceHidden = !balanceHidden;
+        getSharedPreferences(DISPLAY_PREFERENCES, MODE_PRIVATE).edit()
+                .putBoolean(BALANCE_HIDDEN, balanceHidden)
+                .apply();
+        renderBalanceTitle();
+    }
+
+    private void renderBalanceTitle() {
+        balanceTitle.setText(balanceHidden ? "****" : visibleBalanceTitle);
+        balanceVisibilityButton.setImageResource(balanceHidden
+                ? R.drawable.ic_visibility_off_24 : R.drawable.ic_visibility_24);
+        balanceVisibilityButton.setContentDescription(getString(balanceHidden
+                ? R.string.show_balance : R.string.hide_balance));
     }
 
     private EditText depositInput(int inputType, String hint, String value) {

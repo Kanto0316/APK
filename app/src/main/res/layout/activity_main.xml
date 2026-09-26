@@ -33,13 +33,31 @@
                 android:gravity="start"
                 android:orientation="vertical">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Solde disponible"
-                    android:textColor="@color/sms_text_secondary"
-                    android:textSize="12sp"
-                    android:textStyle="normal" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Solde disponible"
+                        android:textColor="@color/sms_text_secondary"
+                        android:textSize="12sp"
+                        android:textStyle="normal" />
+
+                    <ImageButton
+                        android:id="@+id/balanceVisibilityButton"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginStart="3dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/hide_balance"
+                        android:padding="3dp"
+                        android:src="@drawable/ic_visibility_24"
+                        android:tint="@color/sms_text_secondary" />
+                </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="wrap_content"
