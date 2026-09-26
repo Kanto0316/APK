@@ -23,6 +23,7 @@ import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -633,6 +634,9 @@ public class MainActivity extends AppCompatActivity {
                     depositPreferences.edit()
                             .putString(LAST_DEPOSIT_RECIPIENT, recipientNumber)
                             .apply();
+                    if (workflow == RecipientWorkflow.OFFER) {
+                        hideKeyboard(input);
+                    }
                     dialog.dismiss();
                     if (workflow == RecipientWorkflow.DEPOSIT) {
                         showAmountDialog(recipientNumber, amountValue);
@@ -697,7 +701,7 @@ public class MainActivity extends AppCompatActivity {
         summary.setPadding(margin, margin / 2, margin, 0);
         addConfirmationField(summary, "Numéro destinataire",
                 DepositUssd.formatRecipientNumber(recipientNumber), false, false);
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Vérifier le numéro")
                 .setView(summary)
                 .setNeutralButton("MODIFIER", (ignored, which) -> showRecipientDialog(
@@ -705,7 +709,12 @@ public class MainActivity extends AppCompatActivity {
                 .setNegativeButton("ANNULER", null)
                 .setPositiveButton("ENVOYER", (ignored, which) ->
                         requestUssdCall(OfferUssd.buildUssdCode(recipientNumber)))
-                .show();
+                .create();
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setSoftInputMode(
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        }
     }
 
     private void showCreditAmountDialog(String recipientNumber, String amountValue) {
@@ -744,6 +753,7 @@ public class MainActivity extends AppCompatActivity {
                         input.setError("Montant compris entre 100 et 500 000 Ar");
                         return;
                     }
+                    hideKeyboard(input);
                     dialog.dismiss();
                     showCreditConfirmation(recipientNumber, amount);
                 }));
@@ -772,6 +782,10 @@ public class MainActivity extends AppCompatActivity {
                         requestUssdCall(CreditUssd.buildUssdCode(recipientNumber, amount)))
                 .create();
         dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setSoftInputMode(
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        }
     }
 
     /** Focuses a dialog input only after its window is attached and visible. */
@@ -784,6 +798,16 @@ public class MainActivity extends AppCompatActivity {
                         WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
             }
         });
+    }
+
+    /** Clears input focus and explicitly closes the IME before showing a confirmation. */
+    private void hideKeyboard(EditText input) {
+        input.clearFocus();
+        InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(
+                INPUT_METHOD_SERVICE);
+        if (inputMethodManager != null) {
+            inputMethodManager.hideSoftInputFromWindow(input.getWindowToken(), 0);
+        }
     }
 
     private void showWithdrawalFeeDialog(String recipientNumber, long originalAmount) {
@@ -837,7 +861,7 @@ public class MainActivity extends AppCompatActivity {
                 char choice = text.charAt(0);
                 if (choice == '1' || choice == '2') {
                     handleWithdrawalFeeChoice(recipientNumber, originalAmount, choice == '1',
-                            dialog, errorText, transitionStarted);
+                            choiceInput, dialog, errorText, transitionStarted);
                 }
             }
         });
@@ -846,7 +870,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleWithdrawalFeeChoice(String recipientNumber, long originalAmount,
-                                           boolean includeFee, AlertDialog dialog,
+                                           boolean includeFee, EditText choiceInput,
+                                           AlertDialog dialog,
                                            TextView errorText, boolean[] transitionStarted) {
         if (transitionStarted[0]) return;
 
@@ -859,6 +884,7 @@ public class MainActivity extends AppCompatActivity {
 
         transitionStarted[0] = true;
         long finalAmount = DepositUssd.calculateFinalAmount(originalAmount, includeFee);
+        hideKeyboard(choiceInput);
         dialog.dismiss();
         showDepositConfirmation(recipientNumber, originalAmount, includeFee,
                 withdrawalFee, finalAmount);
@@ -912,6 +938,10 @@ public class MainActivity extends AppCompatActivity {
                     requestDepositCall(recipientNumber, String.valueOf(finalAmount));
                 }));
         dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setSoftInputMode(
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        }
     }
 
     private void addConfirmationField(LinearLayout summary, String labelText, String valueText,
