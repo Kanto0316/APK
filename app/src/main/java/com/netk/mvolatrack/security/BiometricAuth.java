@@ -9,8 +9,12 @@ import java.util.concurrent.Executor;
 final class BiometricAuth {
     private static final int AUTHENTICATORS = BiometricManager.Authenticators.BIOMETRIC_STRONG;
     static boolean isAvailable(FragmentActivity activity) {
-        return BiometricManager.from(activity).canAuthenticate(AUTHENTICATORS)
-                == BiometricManager.BIOMETRIC_SUCCESS;
+        try {
+            return BiometricManager.from(activity).canAuthenticate(AUTHENTICATORS)
+                    == BiometricManager.BIOMETRIC_SUCCESS;
+        } catch (RuntimeException exception) {
+            return false;
+        }
     }
     static void authenticate(FragmentActivity activity, Runnable success) {
         Executor executor = androidx.core.content.ContextCompat.getMainExecutor(activity);

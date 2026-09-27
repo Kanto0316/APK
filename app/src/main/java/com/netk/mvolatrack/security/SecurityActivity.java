@@ -6,21 +6,20 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.android.material.materialswitch.MaterialSwitch;
+import androidx.appcompat.widget.SwitchCompat;
 import com.netk.mvolatrack.R;
 import java.util.Arrays;
 
 public final class SecurityActivity extends AppCompatActivity {
     private SecurityStore store;
-    private MaterialSwitch lockSwitch;
-    private MaterialSwitch biometricSwitch;
+    private SwitchCompat lockSwitch;
+    private SwitchCompat biometricSwitch;
     private TextView changePin;
     private TextView autoLock;
     private boolean rendering;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        AppLockManager.showLockIfRequired(this);
         setContentView(R.layout.activity_security);
         store = new SecurityStore(this);
         lockSwitch = findViewById(R.id.appLockSwitch);
@@ -43,8 +42,6 @@ public final class SecurityActivity extends AppCompatActivity {
         autoLock.setOnClickListener(v -> chooseTimeout());
         render();
     }
-
-    @Override protected void onResume() { super.onResume(); AppLockManager.showLockIfRequired(this); }
 
     private void enableLock() {
         if (store.hasPin()) {
