@@ -750,8 +750,10 @@ public class MainActivity extends AppCompatActivity {
         summary.setPadding(margin, margin / 2, margin, 0);
         addConfirmationField(summary, "Numéro destinataire",
                 DepositUssd.formatRecipientNumber(recipientNumber), false, false);
+        addConfirmationField(summary, "Nom",
+                ClientNameLookup.findClientNameByPhone(messages, recipientNumber), true, false);
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Vérifier le numéro")
+                .setTitle("Vérifier l'offre")
                 .setView(summary)
                 .setNeutralButton("MODIFIER", (ignored, which) -> showRecipientDialog(
                         recipientNumber, "", RecipientWorkflow.OFFER))
@@ -817,6 +819,8 @@ public class MainActivity extends AppCompatActivity {
         summary.setPadding(margin, margin / 2, margin, 0);
         addConfirmationField(summary, "Numéro destinataire",
                 DepositUssd.formatRecipientNumber(recipientNumber), false, false);
+        addConfirmationField(summary, "Nom",
+                ClientNameLookup.findClientNameByPhone(messages, recipientNumber), true, false);
         addConfirmationField(summary, "Montant du crédit",
                 DepositUssd.formatAmount(String.valueOf(amount)), true, false);
 
@@ -961,6 +965,8 @@ public class MainActivity extends AppCompatActivity {
         summary.setPadding(margin, margin / 2, margin, 0);
         addConfirmationField(summary, "Numéro destinataire",
                 DepositUssd.formatRecipientNumber(recipientNumber), false, false);
+        addConfirmationField(summary, "Nom",
+                ClientNameLookup.findClientNameByPhone(messages, recipientNumber), true, false);
         addConfirmationField(summary, "Montant",
                 DepositUssd.formatAmount(String.valueOf(originalAmount)), true, false);
         addConfirmationField(summary, "Frais de retrait", includeWithdrawalFee
