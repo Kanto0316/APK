@@ -1558,7 +1558,8 @@ public class MainActivity extends AppCompatActivity {
                         + "Statistiques\nBonus et utilisateurs\n\n"
                         + "Solde\nEye ON/OFF permet de masquer le montant\n\n"
                         + "Export\nPDF et Excel\n\n"
-                        + "Sauvegarde\nExport/import JSON des messages")
+                        + "Sauvegarde des messages\nPermet de conserver une copie de vos messages.\n\n"
+                        + "Restauration des messages\nPermet de récupérer une sauvegarde précédente.")
                 .setPositiveButton("OK", null)
                 .show();
     }
@@ -1567,7 +1568,7 @@ public class MainActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("MVolaCash")
                 .setMessage("Gestion et suivi des transactions\n\nVersion : "
-                        + applicationVersionName() + "\n\nPackage :\n" + getPackageName())
+                        + applicationVersionName())
                 .setPositiveButton("OK", null)
                 .show();
     }
@@ -1875,7 +1876,7 @@ public class MainActivity extends AppCompatActivity {
                                 + (duplicates > 0 ? " • " + duplicates + " doublons ignorés" : ""),
                         Toast.LENGTH_LONG).show());
             } catch (IOException | JSONException | ParseException error) {
-                showTransferError("Import impossible : fichier JSON invalide", error);
+                showTransferError("Restauration impossible : fichier de sauvegarde invalide", error);
             }
         }, "sms-json-import").start();
     }
