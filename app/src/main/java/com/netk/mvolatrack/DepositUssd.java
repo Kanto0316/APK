@@ -4,6 +4,7 @@ import java.math.BigInteger;
 
 /** Pure validation and formatting helpers for the transient deposit workflow. */
 final class DepositUssd {
+    static final long MIN_INPUT_AMOUNT = 100L;
     static final long MAX_INPUT_AMOUNT = 2_000_000L;
 
     private DepositUssd() {}
@@ -36,6 +37,7 @@ final class DepositUssd {
 
     /** Returns the withdrawal fee for the original amount, or {@code null} outside the tariff. */
     static Long calculateWithdrawalFee(long originalAmount) {
+        if (originalAmount >= MIN_INPUT_AMOUNT && originalAmount <= 1_000) return 100L;
         if (originalAmount >= 1_001 && originalAmount <= 5_000) return 150L;
         if (originalAmount <= 10_000 && originalAmount >= 5_001) return 275L;
         if (originalAmount <= 20_000 && originalAmount >= 10_001) return 550L;
@@ -104,7 +106,7 @@ final class DepositUssd {
     }
 
     static boolean isAllowedInputAmount(long amount) {
-        return amount <= MAX_INPUT_AMOUNT;
+        return amount >= MIN_INPUT_AMOUNT && amount <= MAX_INPUT_AMOUNT;
     }
 
     private static String groupDigits(String digits, int[] groups) {
