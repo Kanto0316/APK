@@ -9,6 +9,10 @@ import androidx.lifecycle.LifecycleOwner;
 
 public final class AppLockManager implements DefaultLifecycleObserver {
     private static boolean unlocked;
+    // MainActivity and SecurityActivity can both reach onCreate/onResume before the
+    // first LockActivity is displayed. Keep the launch decision here so those
+    // callbacks cannot stack several lock screens.
+    private static boolean lockActivityRequested;
     private static long backgroundAt = -1L;
     private final SecurityStore store;
     public AppLockManager(Context context) { store = new SecurityStore(context); }
@@ -22,14 +26,22 @@ public final class AppLockManager implements DefaultLifecycleObserver {
             unlocked = false;
         backgroundAt = -1L;
     }
-    public static void showLockIfRequired(Activity activity) {
+    public static synchronized void showLockIfRequired(Activity activity) {
         SecurityStore store = new SecurityStore(activity);
-        if (store.isLockEnabled() && !unlocked && !(activity instanceof LockActivity)) {
-            Intent intent = new Intent(activity, LockActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
-            activity.startActivity(intent);
+        if (!store.isLockEnabled()) {
+            lockActivityRequested = false;
+            return;
         }
+        if (unlocked || lockActivityRequested || activity instanceof LockActivity) return;
+
+        lockActivityRequested = true;
+        Intent intent = new Intent(activity, LockActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        activity.startActivity(intent);
     }
-    public static void markUnlocked() { unlocked = true; }
-    public static void markLocked() { unlocked = false; }
+    public static synchronized void markUnlocked() {
+        unlocked = true;
+        lockActivityRequested = false;
+    }
+    public static synchronized void markLocked() { unlocked = false; }
 }
