@@ -10,8 +10,8 @@
         <menu>
             <item android:id="@+id/nav_export_pdf" android:icon="@drawable/ic_picture_as_pdf_24" android:title="Exporter en PDF" />
             <item android:id="@+id/nav_export_excel" android:icon="@drawable/ic_table_24" android:title="Exporter en Excel" />
-            <item android:id="@+id/nav_export_json" android:icon="@drawable/ic_file_upload_24" android:title="Exporter les messages JSON" />
-            <item android:id="@+id/nav_import_json" android:icon="@drawable/ic_file_download_24" android:title="Importer les messages JSON" />
+            <item android:id="@+id/nav_export_json" android:icon="@drawable/ic_file_upload_24" android:title="Sauvegarder les messages" />
+            <item android:id="@+id/nav_import_json" android:icon="@drawable/ic_file_download_24" android:title="Restaurer les messages" />
         </menu>
     </item>
     <item android:title="APPLICATION">
