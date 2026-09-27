@@ -65,6 +65,41 @@ public class SmsStatisticsTest {
         assertEquals(16, SmsStatistics.groupByDate(messages, UTC).get(0).count);
     }
 
+    @Test public void hourlyActivityHasExactlyTwentyFourBucketsForSelectedLocalDay() {
+        List<SmsMessage> messages = Arrays.asList(
+                smsAt(2026, 9, 27, 0, 1),
+                smsAt(2026, 9, 27, 8, 10), smsAt(2026, 9, 27, 8, 35),
+                smsAt(2026, 9, 27, 8, 59), smsAt(2026, 9, 27, 9, 2),
+                smsAt(2026, 9, 27, 14, 15), smsAt(2026, 9, 27, 14, 30),
+                smsAt(2026, 9, 27, 14, 50), smsAt(2026, 9, 27, 23, 59),
+                smsAt(2026, 9, 26, 8, 10),
+                SmsMessage.create("MVola", "message non reconnu", 1L, true));
+
+        int[] counts = SmsStatistics.hourlyActivity(messages,
+                utcDate(2026, Calendar.SEPTEMBER, 27, 12), UTC);
+
+        assertEquals(24, counts.length);
+        assertEquals(1, counts[0]);
+        assertEquals(3, counts[8]);
+        assertEquals(1, counts[9]);
+        assertEquals(3, counts[14]);
+        assertEquals(1, counts[23]);
+        int total = 0;
+        for (int count : counts) total += count;
+        assertEquals(9, total);
+    }
+
+    @Test public void hourlyActivityChangesDayAndReturnsZerosWithoutActivity() {
+        List<SmsMessage> messages = Arrays.asList(smsAt(2026, 9, 27, 8, 10));
+        int[] previousDay = SmsStatistics.hourlyActivity(messages,
+                utcDate(2026, Calendar.SEPTEMBER, 26, 12), UTC);
+        int total = 0;
+        for (int count : previousDay) total += count;
+        assertEquals(0, total);
+        assertEquals(1, SmsStatistics.hourlyActivity(messages,
+                utcDate(2026, Calendar.SEPTEMBER, 27, 12), UTC)[8]);
+    }
+
     @Test public void chartScaleUsesReadableStepsWithoutFixedMaximum() {
         assertEquals(2, StatisticsChartView.readableMaximum(2));
         assertEquals(100, StatisticsChartView.readableMaximum(100));
@@ -406,6 +441,17 @@ public class SmsStatisticsTest {
         String body = "1 000 Ar recu de Client 0343242318 le "
                 + String.format(java.util.Locale.ROOT, "%02d/%02d/%02d a %02d:00. ",
                 day, month, year % 100, hour % 24)
+                + "Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.";
+        return SmsMessage.create("MVola", body, calendar.getTimeInMillis(), true);
+    }
+
+    private static SmsMessage smsAt(int year, int month, int day, int hour, int minute) {
+        Calendar calendar = Calendar.getInstance(UTC);
+        calendar.clear();
+        calendar.set(year, month - 1, day, hour, minute);
+        String body = "1 000 Ar recu de Client 0343242318 le "
+                + String.format(java.util.Locale.ROOT, "%02d/%02d/%02d a %02d:%02d. ",
+                day, month, year % 100, hour, minute)
                 + "Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.";
         return SmsMessage.create("MVola", body, calendar.getTimeInMillis(), true);
     }

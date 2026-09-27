@@ -121,6 +121,27 @@ final class SmsStatistics {
         return total;
     }
 
+    /** Counts valid parsed transactions in each local hour of the selected business day. */
+    static int[] hourlyActivity(List<SmsMessage> messages, long selectedDay,
+                                TimeZone timeZone) {
+        int[] counts = new int[24];
+        if (messages == null) return counts;
+
+        Calendar selected = Calendar.getInstance(timeZone);
+        selected.setTimeInMillis(selectedDay);
+        int year = selected.get(Calendar.YEAR);
+        int dayOfYear = selected.get(Calendar.DAY_OF_YEAR);
+        Calendar transactionDate = Calendar.getInstance(timeZone);
+        for (ParsedBusinessTransaction parsed : getParsedTransactions(messages)) {
+            transactionDate.setTimeInMillis(parsed.timestamp);
+            if (transactionDate.get(Calendar.YEAR) == year
+                    && transactionDate.get(Calendar.DAY_OF_YEAR) == dayOfYear) {
+                counts[transactionDate.get(Calendar.HOUR_OF_DAY)]++;
+            }
+        }
+        return counts;
+    }
+
     private static void startOfDay(Calendar calendar) {
         calendar.set(Calendar.HOUR_OF_DAY, 0);
         calendar.set(Calendar.MINUTE, 0);
