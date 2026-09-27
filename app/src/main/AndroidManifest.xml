@@ -19,6 +19,7 @@
     </queries>
 
     <application
+        android:name=".MvolaApplication"
         android:theme="@style/AppTheme"
         android:label="@string/app_name"
         android:allowBackup="false"
@@ -38,6 +39,9 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity android:name=".security.SecurityActivity" android:exported="false" />
+        <activity android:name=".security.LockActivity" android:exported="false"
+            android:excludeFromRecents="true" />
 
         <receiver
             android:name=".sms.SmsReceiver"
