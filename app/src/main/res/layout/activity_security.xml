@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@color/sms_screen_background">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="72dp"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:paddingHorizontal="12dp" android:background="@color/sms_surface">
+            <ImageButton android:id="@+id/securityBack" android:layout_width="48dp"
+                android:layout_height="48dp" android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_arrow_back_24" android:contentDescription="Retour" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="SÉCURITÉ" android:textSize="20sp" android:textStyle="bold"
+                android:textColor="@color/sms_text_primary" />
+        </LinearLayout>
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/appLockSwitch" android:layout_width="match_parent"
+            android:layout_height="72dp" android:paddingHorizontal="24dp"
+            android:text="Verrouillage de l’application" android:textSize="16sp" />
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/sms_divider" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:paddingStart="24dp" android:paddingTop="24dp" android:paddingBottom="8dp"
+            android:text="Méthode de déverrouillage" android:textColor="@color/sms_text_secondary" />
+        <TextView android:id="@+id/unlockMethod" android:layout_width="match_parent"
+            android:layout_height="64dp" android:gravity="center_vertical" android:paddingHorizontal="24dp"
+            android:text="PIN + Biométrie                                      ›" android:textSize="16sp"
+            android:textColor="@color/sms_text_primary" />
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/biometricSwitch" android:layout_width="match_parent"
+            android:layout_height="64dp" android:paddingHorizontal="24dp"
+            android:text="Déverrouillage biométrique" android:textSize="16sp" />
+        <TextView android:id="@+id/changePin" android:layout_width="match_parent"
+            android:layout_height="64dp" android:gravity="center_vertical" android:paddingHorizontal="24dp"
+            android:text="Modifier le code PIN                                      ›"
+            android:textSize="16sp" android:textColor="@color/sms_text_primary" />
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/sms_divider" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:paddingStart="24dp" android:paddingTop="24dp" android:paddingBottom="8dp"
+            android:text="Verrouillage automatique" android:textColor="@color/sms_text_secondary" />
+        <TextView android:id="@+id/autoLock" android:layout_width="match_parent"
+            android:layout_height="72dp" android:gravity="center_vertical" android:paddingHorizontal="24dp"
+            android:textSize="16sp" android:textColor="@color/sms_text_primary" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center" android:padding="32dp"
+    android:background="@color/sms_screen_background">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="MVolaCash" android:textSize="30sp" android:textStyle="bold"
+        android:textColor="@color/sms_text_primary" android:layout_marginBottom="36dp" />
+    <ImageView android:layout_width="72dp" android:layout_height="72dp"
+        android:src="@drawable/ic_lock_24" android:padding="18dp"
+        android:contentDescription="Cadenas" android:layout_marginBottom="20dp" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Application verrouillée" android:textSize="21sp" android:textStyle="bold"
+        android:textColor="@color/sms_text_primary" android:layout_marginBottom="18dp" />
+    <EditText android:id="@+id/lockPin" android:layout_width="220dp" android:layout_height="wrap_content"
+        android:hint="Code PIN" android:gravity="center" android:maxLength="6"
+        android:inputType="numberPassword" android:importantForAutofill="no"
+        android:textSize="24sp" />
+    <TextView android:id="@+id/lockError" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:textColor="#B3261E" android:minHeight="32dp" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/unlockButton"
+        android:layout_width="220dp" android:layout_height="wrap_content" android:text="Déverrouiller" />
+    <com.google.android.material.button.MaterialButton android:id="@+id/biometricButton"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Utiliser la biométrie" />
+</LinearLayout>

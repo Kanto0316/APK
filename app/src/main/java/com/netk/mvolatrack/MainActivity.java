@@ -65,6 +65,8 @@ import com.netk.mvolatrack.export.PdfExporter;
 import com.netk.mvolatrack.export.XlsxExporter;
 import com.netk.mvolatrack.sms.ClientNumberNormalizer;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
+import com.netk.mvolatrack.security.AppLockManager;
+import com.netk.mvolatrack.security.SecurityActivity;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -292,6 +294,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AppLockManager.showLockIfRequired(this);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
         applySystemBarInsets(findViewById(R.id.mainRoot));
@@ -1516,8 +1519,8 @@ public class MainActivity extends AppCompatActivity {
             int id = item.getItemId();
             if (id == R.id.nav_settings) showPlaceholderPage("Paramètres",
                     "Les réglages de MVolaCash seront disponibles ici.");
-            else if (id == R.id.nav_security) showPlaceholderPage("Sécurité",
-                    "Les options de sécurité seront disponibles ici.");
+            else if (id == R.id.nav_security)
+                startActivity(new Intent(this, SecurityActivity.class));
             else if (id == R.id.nav_export_pdf) generateTransactionExport(false);
             else if (id == R.id.nav_export_excel) generateTransactionExport(true);
             else if (id == R.id.nav_export_json) launchExport();
@@ -1918,6 +1921,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        AppLockManager.showLockIfRequired(this);
         refreshPermissionState();
         if (depositCallLaunched) {
             depositCallLaunched = false;
