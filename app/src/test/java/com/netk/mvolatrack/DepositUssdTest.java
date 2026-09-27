@@ -74,7 +74,11 @@ public class DepositUssdTest {
     }
 
     @Test public void calculatesWithdrawalFeesAtEveryTariffBoundary() {
-        assertNull(DepositUssd.calculateWithdrawalFee(1000));
+        assertNull(DepositUssd.calculateWithdrawalFee(99));
+        assertEquals(Long.valueOf(100), DepositUssd.calculateWithdrawalFee(100));
+        assertEquals(Long.valueOf(100), DepositUssd.calculateWithdrawalFee(500));
+        assertEquals(Long.valueOf(100), DepositUssd.calculateWithdrawalFee(999));
+        assertEquals(Long.valueOf(100), DepositUssd.calculateWithdrawalFee(1000));
         assertEquals(Long.valueOf(150), DepositUssd.calculateWithdrawalFee(1001));
         assertEquals(Long.valueOf(150), DepositUssd.calculateWithdrawalFee(5000));
         assertEquals(Long.valueOf(275), DepositUssd.calculateWithdrawalFee(5001));
@@ -97,6 +101,13 @@ public class DepositUssdTest {
         assertEquals(Long.valueOf(14700), DepositUssd.calculateWithdrawalFee(1999999));
         assertEquals(Long.valueOf(14700), DepositUssd.calculateWithdrawalFee(2000000));
         assertNull(DepositUssd.calculateWithdrawalFee(2000001));
+    }
+
+    @Test public void allowsOnlyDepositAmountsWithinTheTariff() {
+        assertEquals(false, DepositUssd.isAllowedInputAmount(99));
+        assertEquals(true, DepositUssd.isAllowedInputAmount(100));
+        assertEquals(true, DepositUssd.isAllowedInputAmount(2_000_000));
+        assertEquals(false, DepositUssd.isAllowedInputAmount(2_000_001));
     }
 
     @Test public void boundsAmountEditingAndPreservesTheLastValidValue() {

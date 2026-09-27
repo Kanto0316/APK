@@ -733,7 +733,7 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
                     if (!DepositUssd.isAllowedInputAmount(originalAmount)) {
-                        input.setError("Montant maximum : 2 000 000 Ar");
+                        input.setError("Montant compris entre 100 et 2 000 000 Ar");
                         return;
                     }
                     dialog.dismiss();
@@ -967,12 +967,10 @@ public class MainActivity extends AppCompatActivity {
                 DepositUssd.formatRecipientNumber(recipientNumber), false, false);
         addConfirmationField(summary, "Nom",
                 ClientNameLookup.findClientNameByPhone(messages, recipientNumber), true, false);
-        addConfirmationField(summary, "Montant",
+        addConfirmationField(summary, "Montant du dépôt",
                 DepositUssd.formatAmount(String.valueOf(originalAmount)), true, false);
-        addConfirmationField(summary, "Frais de retrait", includeWithdrawalFee
-                ? DepositUssd.formatAmount(String.valueOf(withdrawalFee)) : "Non", true, false);
-        addConfirmationField(summary, "TOTAL À ENVOYER",
-                DepositUssd.formatAmount(String.valueOf(finalAmount)), true, true);
+        addConfirmationField(summary, "Frais", DepositUssd.formatAmount(String.valueOf(
+                includeWithdrawalFee ? withdrawalFee : 0L)), true, false);
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Vérifier le dépôt")
