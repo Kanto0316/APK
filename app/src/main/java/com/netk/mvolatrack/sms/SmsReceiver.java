@@ -67,8 +67,6 @@ public class SmsReceiver extends BroadcastReceiver {
             // parsing and, critically, before creating or inserting any database entity.
             if (!AuthorizedSmsSenders.isAuthorized(sender)) {
                 Log.w(TAG, "SMS rejeté : expéditeur non autorisé=" + sender);
-                com.netk.mvolatrack.overlay.TransactionOverlayCoordinator.get(appContext)
-                        .onUnauthorizedSender(sender);
                 pendingResult.finish();
                 return;
             }
