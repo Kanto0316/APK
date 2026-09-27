@@ -22,6 +22,25 @@
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
+    <!-- Material widgets on the security screens require a Material-based theme. -->
+    <style name="SecurityTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="colorPrimary">@color/sms_accent</item>
+        <item name="colorPrimaryVariant">@color/sms_accent</item>
+        <item name="colorSecondary">@color/sms_accent</item>
+        <item name="colorSurface">@color/sms_surface</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorOnSurface">@color/sms_text_primary</item>
+        <item name="android:colorAccent">@color/sms_accent</item>
+        <item name="android:textColorPrimary">@color/sms_text_primary</item>
+        <item name="android:textColorSecondary">@color/sms_text_secondary</item>
+        <item name="android:navigationBarColor">@color/sms_bottom_bar</item>
+        <item name="android:statusBarColor">@color/sms_surface</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
     <style name="SmsBottomNavigationItem">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">match_parent</item>
