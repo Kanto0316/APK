@@ -99,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_STATISTICS_YEAR = "statistics_year";
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
     private static final String STATE_STATISTICS_TAB = "statistics_tab";
+    private static final String STATE_HOURLY_DAY = "hourly_day";
     private static final String STATE_TABLE_ZOOM = "table_zoom";
     private static final String STATE_CLIENT_SENDER = "client_sender";
     private static final String STATE_CLIENT_QUERY = "client_query";
@@ -179,6 +180,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView emptyBonusChartText;
     private StatisticsChartView userChart;
     private TextView emptyUserChartText;
+    private HourlyActivityChartView hourlyActivityChart;
+    private TextView hourlyDateText;
+    private TextView hourlyNextDay;
+    private Calendar selectedHourlyDay;
     private int selectedStatisticsTab = STATISTICS_TAB_BONUS;
     private long todayUsers = 0;
     private long yesterdayUsers = 0;
@@ -349,12 +354,16 @@ public class MainActivity extends AppCompatActivity {
         emptyBonusChartText = findViewById(R.id.emptyBonusChartText);
         userChart = findViewById(R.id.userChart);
         emptyUserChartText = findViewById(R.id.emptyUserChartText);
+        hourlyActivityChart = findViewById(R.id.hourlyActivityChart);
+        hourlyDateText = findViewById(R.id.hourlyDateText);
+        hourlyNextDay = findViewById(R.id.hourlyNextDay);
         userStatisticsContent = findViewById(R.id.userStatisticsContent);
         bonusStatisticsContent = findViewById(R.id.bonusStatisticsContent);
         statisticsUserTab = findViewById(R.id.statisticsUserTab);
         statisticsBonusTab = findViewById(R.id.statisticsBonusTab);
         statisticsMonth = Calendar.getInstance();
         statisticsMonth.set(Calendar.DAY_OF_MONTH, 1);
+        selectedHourlyDay = Calendar.getInstance();
         if (savedInstanceState != null) {
             statisticsMonth.set(Calendar.YEAR, savedInstanceState.getInt(STATE_STATISTICS_YEAR,
                     statisticsMonth.get(Calendar.YEAR)));
@@ -364,11 +373,17 @@ public class MainActivity extends AppCompatActivity {
                     STATE_STATISTICS_TAB, STATISTICS_TAB_BONUS);
             selectedStatisticsTab = restoredTab == STATISTICS_TAB_USER
                     ? STATISTICS_TAB_USER : STATISTICS_TAB_BONUS;
+            selectedHourlyDay.setTimeInMillis(savedInstanceState.getLong(STATE_HOURLY_DAY,
+                    selectedHourlyDay.getTimeInMillis()));
+            Calendar today = Calendar.getInstance();
+            if (isBeforeLocalDay(today, selectedHourlyDay)) selectedHourlyDay = today;
         }
         findViewById(R.id.statisticsPreviousMonth).setOnClickListener(view -> changeMonth(-1));
         findViewById(R.id.statisticsNextMonth).setOnClickListener(view -> changeMonth(1));
         findViewById(R.id.bonusPreviousMonth).setOnClickListener(view -> changeMonth(-1));
         findViewById(R.id.bonusNextMonth).setOnClickListener(view -> changeMonth(1));
+        findViewById(R.id.hourlyPreviousDay).setOnClickListener(view -> changeHourlyDay(-1));
+        hourlyNextDay.setOnClickListener(view -> changeHourlyDay(1));
         statisticsBonusTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_BONUS));
         statisticsUserTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_USER));
         selectStatisticsTab(selectedStatisticsTab);
@@ -1278,6 +1293,7 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(STATE_STATISTICS_YEAR, statisticsMonth.get(Calendar.YEAR));
         outState.putInt(STATE_STATISTICS_MONTH, statisticsMonth.get(Calendar.MONTH));
         outState.putInt(STATE_STATISTICS_TAB, selectedStatisticsTab);
+        outState.putLong(STATE_HOURLY_DAY, selectedHourlyDay.getTimeInMillis());
         outState.putFloat(STATE_TABLE_ZOOM, tableZoom);
         if (selectedClientSender != null) outState.putString(STATE_CLIENT_SENDER, selectedClientSender);
         if (clientSearchInput != null) {
@@ -1470,6 +1486,31 @@ public class MainActivity extends AppCompatActivity {
         boolean hasUsers = !monthlyUserBars.isEmpty();
         userChart.setVisibility(hasUsers ? View.VISIBLE : View.GONE);
         emptyUserChartText.setVisibility(hasUsers ? View.GONE : View.VISIBLE);
+        renderHourlyActivity();
+    }
+
+    private void renderHourlyActivity() {
+        hourlyDateText.setText(new SimpleDateFormat("dd/MM/yyyy", Locale.FRENCH)
+                .format(selectedHourlyDay.getTime()));
+        hourlyActivityChart.setData(SmsStatistics.hourlyActivity(messages,
+                selectedHourlyDay.getTimeInMillis(), java.util.TimeZone.getDefault()));
+        Calendar today = Calendar.getInstance();
+        boolean canGoForward = isBeforeLocalDay(selectedHourlyDay, today);
+        hourlyNextDay.setEnabled(canGoForward);
+        hourlyNextDay.setAlpha(canGoForward ? 1f : 0.35f);
+    }
+
+    private void changeHourlyDay(int offset) {
+        if (offset > 0 && !isBeforeLocalDay(selectedHourlyDay, Calendar.getInstance())) return;
+        selectedHourlyDay.add(Calendar.DAY_OF_MONTH, offset);
+        renderHourlyActivity();
+    }
+
+    private static boolean isBeforeLocalDay(Calendar first, Calendar second) {
+        if (first.get(Calendar.YEAR) != second.get(Calendar.YEAR)) {
+            return first.get(Calendar.YEAR) < second.get(Calendar.YEAR);
+        }
+        return first.get(Calendar.DAY_OF_YEAR) < second.get(Calendar.DAY_OF_YEAR);
     }
 
     private void renderBonusValues() {
