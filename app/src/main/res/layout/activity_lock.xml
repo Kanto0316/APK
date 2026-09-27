@@ -18,10 +18,10 @@
         android:textSize="24sp" />
     <TextView android:id="@+id/lockError" android:layout_width="wrap_content"
         android:layout_height="wrap_content" android:textColor="#B3261E" android:minHeight="32dp" />
-    <com.google.android.material.button.MaterialButton android:id="@+id/unlockButton"
+    <androidx.appcompat.widget.AppCompatButton android:id="@+id/unlockButton"
         android:layout_width="220dp" android:layout_height="wrap_content" android:text="Déverrouiller" />
-    <com.google.android.material.button.MaterialButton android:id="@+id/biometricButton"
-        style="@style/Widget.MaterialComponents.Button.TextButton"
+    <androidx.appcompat.widget.AppCompatButton android:id="@+id/biometricButton"
+        style="?attr/borderlessButtonStyle"
         android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:text="Utiliser la biométrie" />
 </LinearLayout>
