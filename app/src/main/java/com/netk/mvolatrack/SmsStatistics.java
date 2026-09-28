@@ -121,10 +121,14 @@ final class SmsStatistics {
         return total;
     }
 
-    /** Counts valid parsed transactions in each local hour of the selected business day. */
-    static int[] hourlyActivity(List<SmsMessage> messages, long selectedDay,
-                                TimeZone timeZone) {
-        int[] counts = new int[24];
+    /** Counts valid parsed transactions in each interval of the selected business day. */
+    static int[] intervalActivity(List<SmsMessage> messages, long selectedDay,
+                                  TimeZone timeZone, int intervalMinutes) {
+        if (intervalMinutes != 15 && intervalMinutes != 30 && intervalMinutes != 60) {
+            throw new IllegalArgumentException("Interval must be 15, 30 or 60 minutes");
+        }
+        int intervalsPerHour = 60 / intervalMinutes;
+        int[] counts = new int[24 * intervalsPerHour];
         if (messages == null) return counts;
 
         Calendar selected = Calendar.getInstance(timeZone);
@@ -136,10 +140,17 @@ final class SmsStatistics {
             transactionDate.setTimeInMillis(parsed.timestamp);
             if (transactionDate.get(Calendar.YEAR) == year
                     && transactionDate.get(Calendar.DAY_OF_YEAR) == dayOfYear) {
-                counts[transactionDate.get(Calendar.HOUR_OF_DAY)]++;
+                int index = transactionDate.get(Calendar.HOUR_OF_DAY) * intervalsPerHour
+                        + transactionDate.get(Calendar.MINUTE) / intervalMinutes;
+                counts[index]++;
             }
         }
         return counts;
+    }
+
+    static int[] hourlyActivity(List<SmsMessage> messages, long selectedDay,
+                                TimeZone timeZone) {
+        return intervalActivity(messages, selectedDay, timeZone, 60);
     }
 
     private static void startOfDay(Calendar calendar) {

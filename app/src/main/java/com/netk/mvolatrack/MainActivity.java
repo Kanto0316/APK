@@ -117,6 +117,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_RESTORE_PENDING = "restore_pending";
     private static final String BACKGROUND_PREFERENCES = "background_execution";
     private static final String BACKGROUND_PROMPT_SHOWN = "initial_prompt_shown";
+    private static final String STATISTICS_PREFERENCES = "statistics_preferences";
+    private static final String ACTIVITY_INTERVAL_MINUTES = "activity_interval_minutes";
     private static final String DEPOSIT_PREFERENCES = "deposit_preferences";
     private static final String LAST_DEPOSIT_RECIPIENT = "last_deposit_recipient";
     private static final String DISPLAY_PREFERENCES = "display_preferences";
@@ -183,7 +185,10 @@ public class MainActivity extends AppCompatActivity {
     private HourlyActivityChartView hourlyActivityChart;
     private TextView hourlyDateText;
     private TextView hourlyNextDay;
+    private TextView hourlyActivityTitle;
+    private TextView[] activityIntervalChips;
     private Calendar selectedHourlyDay;
+    private int activityIntervalMinutes = 60;
     private int selectedStatisticsTab = STATISTICS_TAB_BONUS;
     private long todayUsers = 0;
     private long yesterdayUsers = 0;
@@ -357,6 +362,12 @@ public class MainActivity extends AppCompatActivity {
         hourlyActivityChart = findViewById(R.id.hourlyActivityChart);
         hourlyDateText = findViewById(R.id.hourlyDateText);
         hourlyNextDay = findViewById(R.id.hourlyNextDay);
+        hourlyActivityTitle = findViewById(R.id.hourlyActivityTitle);
+        activityIntervalChips = new TextView[]{findViewById(R.id.activityInterval15),
+                findViewById(R.id.activityInterval30), findViewById(R.id.activityInterval60)};
+        int savedInterval = getSharedPreferences(STATISTICS_PREFERENCES, MODE_PRIVATE)
+                .getInt(ACTIVITY_INTERVAL_MINUTES, 60);
+        activityIntervalMinutes = savedInterval == 15 || savedInterval == 30 ? savedInterval : 60;
         userStatisticsContent = findViewById(R.id.userStatisticsContent);
         bonusStatisticsContent = findViewById(R.id.bonusStatisticsContent);
         statisticsUserTab = findViewById(R.id.statisticsUserTab);
@@ -384,6 +395,9 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.bonusNextMonth).setOnClickListener(view -> changeMonth(1));
         findViewById(R.id.hourlyPreviousDay).setOnClickListener(view -> changeHourlyDay(-1));
         hourlyNextDay.setOnClickListener(view -> changeHourlyDay(1));
+        activityIntervalChips[0].setOnClickListener(view -> selectActivityInterval(15));
+        activityIntervalChips[1].setOnClickListener(view -> selectActivityInterval(30));
+        activityIntervalChips[2].setOnClickListener(view -> selectActivityInterval(60));
         statisticsBonusTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_BONUS));
         statisticsUserTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_USER));
         selectStatisticsTab(selectedStatisticsTab);
@@ -1492,12 +1506,27 @@ public class MainActivity extends AppCompatActivity {
     private void renderHourlyActivity() {
         hourlyDateText.setText(new SimpleDateFormat("dd/MM/yyyy", Locale.FRENCH)
                 .format(selectedHourlyDay.getTime()));
-        hourlyActivityChart.setData(SmsStatistics.hourlyActivity(messages,
-                selectedHourlyDay.getTimeInMillis(), java.util.TimeZone.getDefault()));
+        hourlyActivityTitle.setText(activityIntervalMinutes == 60
+                ? "Activité par heure" : "Activité par intervalle");
+        int[] intervals = {15, 30, 60};
+        for (int index = 0; index < activityIntervalChips.length; index++) {
+            activityIntervalChips[index].setSelected(activityIntervalMinutes == intervals[index]);
+        }
+        hourlyActivityChart.setData(SmsStatistics.intervalActivity(messages,
+                selectedHourlyDay.getTimeInMillis(), java.util.TimeZone.getDefault(),
+                activityIntervalMinutes), activityIntervalMinutes);
         Calendar today = Calendar.getInstance();
         boolean canGoForward = isBeforeLocalDay(selectedHourlyDay, today);
         hourlyNextDay.setEnabled(canGoForward);
         hourlyNextDay.setAlpha(canGoForward ? 1f : 0.35f);
+    }
+
+    private void selectActivityInterval(int minutes) {
+        if (activityIntervalMinutes == minutes) return;
+        activityIntervalMinutes = minutes;
+        getSharedPreferences(STATISTICS_PREFERENCES, MODE_PRIVATE).edit()
+                .putInt(ACTIVITY_INTERVAL_MINUTES, minutes).apply();
+        renderHourlyActivity();
     }
 
     private void changeHourlyDay(int offset) {

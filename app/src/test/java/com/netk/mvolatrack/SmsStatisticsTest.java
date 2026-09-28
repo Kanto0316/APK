@@ -100,6 +100,42 @@ public class SmsStatisticsTest {
                 utcDate(2026, Calendar.SEPTEMBER, 27, 12), UTC)[8]);
     }
 
+    @Test public void intervalActivityClassifiesQuarterHourBoundariesAndPreservesTotals() {
+        int[] minutes = {0, 14, 15, 29, 30, 44, 45, 59};
+        List<SmsMessage> messages = new ArrayList<>();
+        for (int minute : minutes) messages.add(smsAt(2026, 9, 27, 0, minute));
+        messages.add(smsAt(2026, 9, 27, 23, 45));
+        messages.add(smsAt(2026, 9, 27, 23, 59));
+        long selectedDay = utcDate(2026, Calendar.SEPTEMBER, 27, 12);
+
+        int[] quarters = SmsStatistics.intervalActivity(messages, selectedDay, UTC, 15);
+        int[] halves = SmsStatistics.intervalActivity(messages, selectedDay, UTC, 30);
+        int[] hours = SmsStatistics.intervalActivity(messages, selectedDay, UTC, 60);
+
+        assertEquals(96, quarters.length);
+        assertEquals(2, quarters[0]);
+        assertEquals(2, quarters[1]);
+        assertEquals(2, quarters[2]);
+        assertEquals(2, quarters[3]);
+        assertEquals(2, quarters[95]);
+        assertEquals(48, halves.length);
+        assertEquals(4, halves[0]);
+        assertEquals(4, halves[1]);
+        assertEquals(2, halves[47]);
+        assertEquals(24, hours.length);
+        assertEquals(8, hours[0]);
+        assertEquals(2, hours[23]);
+        assertEquals(10, sum(quarters));
+        assertEquals(sum(quarters), sum(halves));
+        assertEquals(sum(halves), sum(hours));
+    }
+
+    private static int sum(int[] values) {
+        int total = 0;
+        for (int value : values) total += value;
+        return total;
+    }
+
     @Test public void chartScaleUsesReadableStepsWithoutFixedMaximum() {
         assertEquals(2, StatisticsChartView.readableMaximum(2));
         assertEquals(100, StatisticsChartView.readableMaximum(100));
