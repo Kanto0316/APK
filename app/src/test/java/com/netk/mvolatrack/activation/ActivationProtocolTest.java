@@ -14,6 +14,7 @@ import java.util.Base64;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 public class ActivationProtocolTest {
     private static final String ID = "23456789ABCDEFGHJKMNPQRSTUVWXYZ2";
@@ -167,6 +168,49 @@ public class ActivationProtocolTest {
                                 issuedAt, expiresAt),
                         ID, Arrays.asList(legacyAdmin.getPublic(), newAdmin.getPublic()),
                         () -> expiresAt * 1000L).result);
+    }
+
+    @Test
+    public void rollbackGuardDistinguishesClockRollbackAndKeepsLicense() throws Exception {
+        long now = 1_700_000_000_000L;
+        ActivationVerifier.Verification valid = temporaryVerification(now);
+        long lastKnownValidTime = now + ActivationStore.CLOCK_ROLLBACK_TOLERANCE_MS + 1;
+
+        ActivationVerifier.Verification rollback = ActivationStore.applyRollbackGuard(valid, now,
+                lastKnownValidTime);
+
+        assertEquals(ActivationVerifier.Result.CLOCK_ROLLBACK, rollback.result);
+        assertSame(valid.license, rollback.license);
+        assertFalse(ActivationStore.shouldAdvanceLastKnownValidTime(
+                rollback, now, lastKnownValidTime));
+    }
+
+    @Test
+    public void rollbackGuardAcceptsToleranceAndCorrectedTimeWithoutReactivation() throws Exception {
+        long now = 1_700_000_000_000L;
+        ActivationVerifier.Verification valid = temporaryVerification(now);
+
+        assertEquals(ActivationVerifier.Result.VALID,
+                ActivationStore.applyRollbackGuard(valid, now,
+                        now + ActivationStore.CLOCK_ROLLBACK_TOLERANCE_MS).result);
+        assertEquals(ActivationVerifier.Result.VALID,
+                ActivationStore.applyRollbackGuard(valid, now + 1, now).result);
+    }
+
+    @Test
+    public void missingProofHasDedicatedNoLicenseResult() throws Exception {
+        assertEquals(ActivationVerifier.Result.NO_LICENSE,
+                ActivationVerifier.inspect(null, ID, keyPair().getPublic(),
+                        System::currentTimeMillis).result);
+    }
+
+    private static ActivationVerifier.Verification temporaryVerification(long now) throws Exception {
+        KeyPair pair = keyPair();
+        long issuedAt = now / 1000L - 60;
+        long expiresAt = now / 1000L + 2_592_000L;
+        return ActivationVerifier.inspect(
+                signedV2(pair, ActivationResponse.LicenseType.MONTH, issuedAt, expiresAt),
+                ID, pair.getPublic(), () -> now);
     }
 
     private static ActivationVerifier.Verification inspectWithKeys(String proof,

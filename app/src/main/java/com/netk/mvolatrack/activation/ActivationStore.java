@@ -8,7 +8,7 @@ public final class ActivationStore {
     private static final String PREFERENCES = "activation_license";
     private static final String KEY_PROOF = "mvact1_proof";
     private static final String KEY_LAST_VALID_TIME = "last_known_valid_time";
-    private static final long CLOCK_ROLLBACK_TOLERANCE_MS = 5 * 60 * 1000L;
+    static final long CLOCK_ROLLBACK_TOLERANCE_MS = 5 * 60 * 1000L;
 
     private ActivationStore() { }
 
@@ -25,12 +25,31 @@ public final class ActivationStore {
 
         SharedPreferences preferences = preferences(context);
         long last = preferences.getLong(KEY_LAST_VALID_TIME, 0);
-        // Small NTP/mobile-network corrections are harmless. A larger backwards jump is denied.
-        if (last > 0 && now + CLOCK_ROLLBACK_TOLERANCE_MS < last) {
-            return new ActivationVerifier.Verification(ActivationVerifier.Result.INVALID, checked.license);
+        ActivationVerifier.Verification temporal = applyRollbackGuard(checked, now, last);
+        if (temporal.result == ActivationVerifier.Result.CLOCK_ROLLBACK) return temporal;
+        if (shouldAdvanceLastKnownValidTime(temporal, now, last)) {
+            preferences.edit().putLong(KEY_LAST_VALID_TIME, now).apply();
         }
-        if (now > last) preferences.edit().putLong(KEY_LAST_VALID_TIME, now).apply();
         return checked;
+    }
+
+    /** Applies the existing tolerance without mutating either the proof or the saved clock guard. */
+    static ActivationVerifier.Verification applyRollbackGuard(
+            ActivationVerifier.Verification checked, long now, long lastKnownValidTime) {
+        // Small NTP/mobile-network corrections are harmless. A larger backwards jump is denied.
+        if (checked.result == ActivationVerifier.Result.VALID && checked.license != null
+                && checked.license.isTemporary() && lastKnownValidTime > 0
+                && now + CLOCK_ROLLBACK_TOLERANCE_MS < lastKnownValidTime) {
+            return new ActivationVerifier.Verification(
+                    ActivationVerifier.Result.CLOCK_ROLLBACK, checked.license);
+        }
+        return checked;
+    }
+
+    static boolean shouldAdvanceLastKnownValidTime(ActivationVerifier.Verification checked,
+            long now, long lastKnownValidTime) {
+        return checked.result == ActivationVerifier.Result.VALID && checked.license != null
+                && checked.license.isTemporary() && now > lastKnownValidTime;
     }
 
     public static String loadProof(Context context) {

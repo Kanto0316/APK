@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,6 +23,7 @@ public final class ActivationActivity extends AppCompatActivity {
     public static final String EXTRA_MANAGE_LICENSE = "manage_license";
     private String installationId;
     private EditText activationCode;
+    private boolean showingClockRollback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,7 +36,9 @@ public final class ActivationActivity extends AppCompatActivity {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
         setContentView(R.layout.activity_activation);
         ActivationVerifier.Verification current = ActivationStore.status(this);
-        if (current.result == ActivationVerifier.Result.EXPIRED && current.license != null) {
+        if (current.result == ActivationVerifier.Result.CLOCK_ROLLBACK) {
+            showClockRollback();
+        } else if (current.result == ActivationVerifier.Result.EXPIRED && current.license != null) {
             ((TextView) findViewById(R.id.activationStateTitle)).setText("Licence expirée");
             ((TextView) findViewById(R.id.activationStateMessage)).setText(
                     "Votre licence a expiré le :\n" + LicenseDisplay.expiry(current.license)
@@ -53,6 +58,48 @@ public final class ActivationActivity extends AppCompatActivity {
                 view -> sendRequestBySms(requestCode.getText()));
         findViewById(R.id.pasteActivationCode).setOnClickListener(view -> pasteActivation());
         findViewById(R.id.activateButton).setOnClickListener(view -> activate());
+        findViewById(R.id.openDateSettings).setOnClickListener(view -> openDateSettings());
+        findViewById(R.id.retryLicenseValidation).setOnClickListener(view -> retryValidation());
+    }
+
+    private void showClockRollback() {
+        showingClockRollback = true;
+        ((TextView) findViewById(R.id.activationStateTitle)).setText("Date et heure incorrectes");
+        ((TextView) findViewById(R.id.activationStateMessage)).setText(
+                "Une modification de la date ou de l’heure\na été détectée.\n\n"
+                        + "Rétablissez la date et l’heure correctes\n"
+                        + "pour continuer à utiliser MVolaCash.");
+        findViewById(R.id.activationFields).setVisibility(View.GONE);
+        findViewById(R.id.clockRollbackActions).setVisibility(View.VISIBLE);
+    }
+
+    private void openDateSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_DATE_SETTINGS));
+        } catch (ActivityNotFoundException exception) {
+            try {
+                startActivity(new Intent(Settings.ACTION_SETTINGS));
+            } catch (ActivityNotFoundException fallbackException) {
+                Toast.makeText(this, "Impossible d’ouvrir les paramètres.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private void retryValidation() {
+        ActivationVerifier.Verification status = ActivationStore.status(this);
+        if (status.result == ActivationVerifier.Result.VALID) {
+            openApplication();
+        } else if (status.result == ActivationVerifier.Result.CLOCK_ROLLBACK) {
+            showClockRollback();
+        } else {
+            recreate();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (showingClockRollback) retryValidation();
     }
 
     private void copyRequest(CharSequence formattedCode) {

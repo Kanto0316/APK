@@ -15,7 +15,7 @@ public final class ActivationVerifier {
     };
 
     public interface TimeSource { long currentTimeMillis(); }
-    public enum Result { VALID, EXPIRED, WRONG_INSTALLATION, INVALID }
+    public enum Result { VALID, NO_LICENSE, EXPIRED, WRONG_INSTALLATION, CLOCK_ROLLBACK, INVALID }
 
     public static final class Verification {
         public final Result result;
@@ -57,6 +57,9 @@ public final class ActivationVerifier {
 
     static Verification inspect(String proof, String localInstallationId,
             Iterable<PublicKey> keys, TimeSource clock) {
+        if (proof == null || proof.trim().isEmpty()) {
+            return new Verification(Result.NO_LICENSE, null);
+        }
         try {
             ActivationResponse response = ActivationResponse.parse(proof);
             if (!hasValidSignature(response, keys)) return new Verification(Result.INVALID, null);
