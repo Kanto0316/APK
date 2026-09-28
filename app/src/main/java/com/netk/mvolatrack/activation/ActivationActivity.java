@@ -1,9 +1,11 @@
 package com.netk.mvolatrack.activation;
 
+import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -33,6 +35,8 @@ public final class ActivationActivity extends AppCompatActivity {
         requestCode.setText(ActivationRequest.format(installationId));
         activationCode = findViewById(R.id.activationCode);
         findViewById(R.id.copyRequestCode).setOnClickListener(view -> copyRequest(requestCode.getText()));
+        findViewById(R.id.sendRequestCodeBySms).setOnClickListener(
+                view -> sendRequestBySms(requestCode.getText()));
         findViewById(R.id.pasteActivationCode).setOnClickListener(view -> pasteActivation());
         findViewById(R.id.activateButton).setOnClickListener(view -> activate());
     }
@@ -41,6 +45,17 @@ public final class ActivationActivity extends AppCompatActivity {
         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         clipboard.setPrimaryClip(ClipData.newPlainText("Code de demande MVolaCash", formattedCode));
         Toast.makeText(this, "Code de demande copié", Toast.LENGTH_SHORT).show();
+    }
+
+    private void sendRequestBySms(CharSequence formattedCode) {
+        String message = "Demande d'activation MVolaCash\nCode : " + formattedCode;
+        Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:0341411058"));
+        intent.putExtra("sms_body", message);
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException exception) {
+            Toast.makeText(this, "Aucune application SMS disponible.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void pasteActivation() {
