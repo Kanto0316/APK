@@ -13,18 +13,21 @@ public final class ActivationResponse {
     private final int version;
     private final LicenseType type;
     private final String installationId;
-    private final long issuedAt;
-    private final long expiresAt;
+    /** Original V2 Unix timestamp, in epoch seconds. */
+    private final long issuedAtEpochSeconds;
+    /** Original V2 Unix timestamp, in epoch seconds; null for permanent licenses. */
+    private final Long expiresAtEpochSeconds;
     private final byte[] signature;
     private final byte[] canonicalPayload;
 
     private ActivationResponse(int version, LicenseType type, String installationId,
-            long issuedAt, long expiresAt, byte[] signature, byte[] canonicalPayload) {
+            long issuedAtEpochSeconds, Long expiresAtEpochSeconds, byte[] signature,
+            byte[] canonicalPayload) {
         this.version = version;
         this.type = type;
         this.installationId = installationId;
-        this.issuedAt = issuedAt;
-        this.expiresAt = expiresAt;
+        this.issuedAtEpochSeconds = issuedAtEpochSeconds;
+        this.expiresAtEpochSeconds = expiresAtEpochSeconds;
         this.signature = signature;
         this.canonicalPayload = canonicalPayload;
     }
@@ -58,25 +61,30 @@ public final class ActivationResponse {
         }
         String id = canonicalId(fields[3]);
         if (!canonicalV1(id).equals(canonical)) throw new IllegalArgumentException("Non-canonical payload");
-        return new ActivationResponse(1, LicenseType.PERMANENT, id, 0, 0, signature, payload);
+        return new ActivationResponse(1, LicenseType.PERMANENT, id, 0, null, signature, payload);
     }
 
     private static ActivationResponse parseV2(String[] fields, String canonical,
             byte[] signature, byte[] payload) {
         // Admin 1.1 canonical form:
-        // MVOLACASH|2|TYPE|INSTALLATION_ID|issuedAtEpochMillis|expiresAtEpochMillis
+        // MVOLACASH|2|TYPE|INSTALLATION_ID|issuedAtEpochSeconds|expiresAtEpochSeconds
+        // Permanent licenses use the literal NONE for the final field.
         if (fields.length != 6) throw new IllegalArgumentException("Unsupported V2 payload");
         LicenseType type;
         try { type = LicenseType.valueOf(fields[2]); }
         catch (IllegalArgumentException error) { throw new IllegalArgumentException("Unsupported type"); }
         String id = canonicalId(fields[3]);
         long issuedAt = parseTimestamp(fields[4]);
-        long expiresAt = parseTimestamp(fields[5]);
+        Long expiresAt;
         if (issuedAt <= 0) throw new IllegalArgumentException("Invalid issuedAt");
         if (type == LicenseType.PERMANENT) {
-            if (expiresAt != 0) throw new IllegalArgumentException("Permanent V2 must not expire");
-        } else if (expiresAt <= issuedAt) {
-            throw new IllegalArgumentException("Invalid expiry");
+            if (!"NONE".equals(fields[5])) {
+                throw new IllegalArgumentException("Permanent V2 must not expire");
+            }
+            expiresAt = null;
+        } else {
+            expiresAt = parseTimestamp(fields[5]);
+            if (expiresAt <= issuedAt) throw new IllegalArgumentException("Invalid expiry");
         }
         if (!canonicalV2(type, id, issuedAt, expiresAt).equals(canonical)) {
             throw new IllegalArgumentException("Non-canonical payload");
@@ -104,16 +112,17 @@ public final class ActivationResponse {
         return PRODUCT + "|1|PERMANENT|" + ActivationRequest.parse(installationId);
     }
     public static String canonicalV2(LicenseType type, String installationId,
-            long issuedAt, long expiresAt) {
+            long issuedAtEpochSeconds, Long expiresAtEpochSeconds) {
         return PRODUCT + "|2|" + type.name() + "|" + ActivationRequest.parse(installationId)
-                + "|" + issuedAt + "|" + expiresAt;
+                + "|" + issuedAtEpochSeconds + "|"
+                + (expiresAtEpochSeconds == null ? "NONE" : expiresAtEpochSeconds);
     }
 
     public int getVersion() { return version; }
     public LicenseType getType() { return type; }
     public String getInstallationId() { return installationId; }
-    public long getIssuedAt() { return issuedAt; }
-    public long getExpiresAt() { return expiresAt; }
+    public long getIssuedAt() { return issuedAtEpochSeconds; }
+    public Long getExpiresAt() { return expiresAtEpochSeconds; }
     public boolean isTemporary() { return type != LicenseType.PERMANENT; }
     public byte[] getSignature() { return signature.clone(); }
     public byte[] getCanonicalPayload() { return canonicalPayload.clone(); }

@@ -63,7 +63,8 @@ public final class ActivationVerifier {
             if (!response.getInstallationId().equals(ActivationRequest.parse(localInstallationId))) {
                 return new Verification(Result.WRONG_INSTALLATION, response);
             }
-            if (response.isTemporary() && clock.currentTimeMillis() >= response.getExpiresAt()) {
+            long nowEpochSeconds = clock.currentTimeMillis() / 1000L;
+            if (response.isTemporary() && nowEpochSeconds >= response.getExpiresAt()) {
                 return new Verification(Result.EXPIRED, response);
             }
             return new Verification(Result.VALID, response);

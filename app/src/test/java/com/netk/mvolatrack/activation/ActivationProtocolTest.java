@@ -13,6 +13,7 @@ import java.util.Base64;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 
 public class ActivationProtocolTest {
     private static final String ID = "23456789ABCDEFGHJKMNPQRSTUVWXYZ2";
@@ -61,30 +62,40 @@ public class ActivationProtocolTest {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("EC");
         generator.initialize(new ECGenParameterSpec("secp256r1"));
         KeyPair pair = generator.generateKeyPair();
-        long issuedAt = 1_700_000_000_000L;
-        long expiresAt = 1_700_604_800_000L;
+        long issuedAt = 1_700_000_000L;
+        long weekExpiresAt = issuedAt + 604_800L;
+        long monthExpiresAt = issuedAt + 2_592_000L;
 
-        for (ActivationResponse.LicenseType type : new ActivationResponse.LicenseType[]{
+        for (ActivationResponse.LicenseType type : new ActivationResponse.LicenseType[] {
                 ActivationResponse.LicenseType.WEEK, ActivationResponse.LicenseType.MONTH}) {
+            long expiresAt = type == ActivationResponse.LicenseType.WEEK
+                    ? weekExpiresAt : monthExpiresAt;
             String proof = signedV2(pair, type, issuedAt, expiresAt);
             assertEquals(ActivationVerifier.Result.VALID,
-                    ActivationVerifier.inspect(proof, ID, pair.getPublic(), () -> expiresAt - 1).result);
+                    ActivationVerifier.inspect(proof, ID, pair.getPublic(),
+                            () -> (expiresAt - 1) * 1000L).result);
             assertEquals(ActivationVerifier.Result.EXPIRED,
-                    ActivationVerifier.inspect(proof, ID, pair.getPublic(), () -> expiresAt).result);
+                    ActivationVerifier.inspect(proof, ID, pair.getPublic(),
+                            () -> expiresAt * 1000L).result);
             assertEquals(ActivationVerifier.Result.EXPIRED,
-                    ActivationVerifier.inspect(proof, ID, pair.getPublic(), () -> expiresAt + 1).result);
+                    ActivationVerifier.inspect(proof, ID, pair.getPublic(),
+                            () -> (expiresAt + 1) * 1000L).result);
         }
 
-        String permanent = signedV2(pair, ActivationResponse.LicenseType.PERMANENT, issuedAt, 0);
+        String permanent = signedV2(pair, ActivationResponse.LicenseType.PERMANENT, issuedAt, null);
+        assertNull(ActivationResponse.parse(permanent).getExpiresAt());
         assertEquals(ActivationVerifier.Result.VALID,
                 ActivationVerifier.inspect(permanent, ID, pair.getPublic(), () -> Long.MAX_VALUE).result);
     }
 
     @Test
     public void v2CanonicalisationHasAdminFieldOrder() {
-        assertEquals("MVOLACASH|2|WEEK|" + ID + "|1700000000000|1700604800000",
+        assertEquals("MVOLACASH|2|WEEK|" + ID + "|1700000000|1700604800",
                 ActivationResponse.canonicalV2(ActivationResponse.LicenseType.WEEK, ID,
-                        1_700_000_000_000L, 1_700_604_800_000L));
+                        1_700_000_000L, 1_700_604_800L));
+        assertEquals("MVOLACASH|2|PERMANENT|" + ID + "|1700000000|NONE",
+                ActivationResponse.canonicalV2(ActivationResponse.LicenseType.PERMANENT, ID,
+                        1_700_000_000L, null));
     }
 
     @Test
@@ -96,23 +107,28 @@ public class ActivationProtocolTest {
                 inspectWithKeys(signedV1(legacyAdmin, ID), ID, legacyAdmin, newAdmin).result);
         assertEquals(ActivationVerifier.Result.VALID,
                 inspectWithKeys(signedV1(newAdmin, ID), ID, legacyAdmin, newAdmin).result);
+        assertEquals(ActivationVerifier.Result.VALID,
+                ActivationVerifier.inspect(signedV1(newAdmin, ID), ID,
+                        Arrays.asList(legacyAdmin.getPublic(), newAdmin.getPublic()),
+                        () -> Long.MAX_VALUE).result);
     }
 
     @Test
     public void allTrustedKeysAcceptSupportedV2Licenses() throws Exception {
         KeyPair legacyAdmin = keyPair();
         KeyPair newAdmin = keyPair();
-        long issuedAt = 1_700_000_000_000L;
-        long expiresAt = 1_700_604_800_000L;
+        long issuedAt = 1_700_000_000L;
+        long expiresAt = issuedAt + 604_800L;
 
         assertEquals(ActivationVerifier.Result.VALID,
                 inspectV2WithKeys(legacyAdmin, ActivationResponse.LicenseType.WEEK,
-                        issuedAt, expiresAt, expiresAt - 1, legacyAdmin, newAdmin).result);
+                        issuedAt, expiresAt, (expiresAt - 1) * 1000L,
+                        legacyAdmin, newAdmin).result);
         for (ActivationResponse.LicenseType type : ActivationResponse.LicenseType.values()) {
-            long signedExpiry = type == ActivationResponse.LicenseType.PERMANENT ? 0 : expiresAt;
+            Long signedExpiry = type == ActivationResponse.LicenseType.PERMANENT ? null : expiresAt;
             assertEquals(ActivationVerifier.Result.VALID,
                     inspectV2WithKeys(newAdmin, type, issuedAt, signedExpiry,
-                            expiresAt - 1, legacyAdmin, newAdmin).result);
+                            (expiresAt - 1) * 1000L, legacyAdmin, newAdmin).result);
         }
     }
 
@@ -139,8 +155,8 @@ public class ActivationProtocolTest {
     public void newAdminProofStillEnforcesInstallationAndExpiration() throws Exception {
         KeyPair legacyAdmin = keyPair();
         KeyPair newAdmin = keyPair();
-        long issuedAt = 1_700_000_000_000L;
-        long expiresAt = 1_700_604_800_000L;
+        long issuedAt = 1_700_000_000L;
+        long expiresAt = issuedAt + 604_800L;
 
         assertEquals(ActivationVerifier.Result.WRONG_INSTALLATION,
                 inspectWithKeys(signedV1(newAdmin, ID),
@@ -150,7 +166,7 @@ public class ActivationProtocolTest {
                         signedV2(newAdmin, ActivationResponse.LicenseType.WEEK,
                                 issuedAt, expiresAt),
                         ID, Arrays.asList(legacyAdmin.getPublic(), newAdmin.getPublic()),
-                        () -> expiresAt).result);
+                        () -> expiresAt * 1000L).result);
     }
 
     private static ActivationVerifier.Verification inspectWithKeys(String proof,
@@ -161,7 +177,7 @@ public class ActivationProtocolTest {
     }
 
     private static ActivationVerifier.Verification inspectV2WithKeys(KeyPair signer,
-            ActivationResponse.LicenseType type, long issuedAt, long expiresAt, long now,
+            ActivationResponse.LicenseType type, long issuedAt, Long expiresAt, long now,
             KeyPair legacyAdmin, KeyPair newAdmin) throws Exception {
         return ActivationVerifier.inspect(signedV2(signer, type, issuedAt, expiresAt), ID,
                 Arrays.asList(legacyAdmin.getPublic(), newAdmin.getPublic()), () -> now);
@@ -182,7 +198,7 @@ public class ActivationProtocolTest {
     }
 
     private static String signedV2(KeyPair pair, ActivationResponse.LicenseType type,
-            long issuedAt, long expiresAt) throws Exception {
+            long issuedAt, Long expiresAt) throws Exception {
         String canonical = ActivationResponse.canonicalV2(type, ID, issuedAt, expiresAt);
         Signature signer = Signature.getInstance("SHA256withECDSA");
         signer.initSign(pair.getPrivate());
