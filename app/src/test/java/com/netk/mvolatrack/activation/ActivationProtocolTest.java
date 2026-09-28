@@ -8,6 +8,7 @@ import java.security.KeyPairGenerator;
 import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.spec.ECGenParameterSpec;
+import java.util.Arrays;
 import java.util.Base64;
 
 import static org.junit.Assert.assertEquals;
@@ -84,6 +85,100 @@ public class ActivationProtocolTest {
         assertEquals("MVOLACASH|2|WEEK|" + ID + "|1700000000000|1700604800000",
                 ActivationResponse.canonicalV2(ActivationResponse.LicenseType.WEEK, ID,
                         1_700_000_000_000L, 1_700_604_800_000L));
+    }
+
+    @Test
+    public void allTrustedKeysAcceptV1Licenses() throws Exception {
+        KeyPair legacyAdmin = keyPair();
+        KeyPair newAdmin = keyPair();
+
+        assertEquals(ActivationVerifier.Result.VALID,
+                inspectWithKeys(signedV1(legacyAdmin, ID), ID, legacyAdmin, newAdmin).result);
+        assertEquals(ActivationVerifier.Result.VALID,
+                inspectWithKeys(signedV1(newAdmin, ID), ID, legacyAdmin, newAdmin).result);
+    }
+
+    @Test
+    public void allTrustedKeysAcceptSupportedV2Licenses() throws Exception {
+        KeyPair legacyAdmin = keyPair();
+        KeyPair newAdmin = keyPair();
+        long issuedAt = 1_700_000_000_000L;
+        long expiresAt = 1_700_604_800_000L;
+
+        assertEquals(ActivationVerifier.Result.VALID,
+                inspectV2WithKeys(legacyAdmin, ActivationResponse.LicenseType.WEEK,
+                        issuedAt, expiresAt, expiresAt - 1, legacyAdmin, newAdmin).result);
+        for (ActivationResponse.LicenseType type : ActivationResponse.LicenseType.values()) {
+            long signedExpiry = type == ActivationResponse.LicenseType.PERMANENT ? 0 : expiresAt;
+            assertEquals(ActivationVerifier.Result.VALID,
+                    inspectV2WithKeys(newAdmin, type, issuedAt, signedExpiry,
+                            expiresAt - 1, legacyAdmin, newAdmin).result);
+        }
+    }
+
+    @Test
+    public void unknownKeyAndTamperedNewAdminProofAreRejected() throws Exception {
+        KeyPair legacyAdmin = keyPair();
+        KeyPair newAdmin = keyPair();
+        KeyPair unknownAdmin = keyPair();
+        String unknownProof = signedV1(unknownAdmin, ID);
+        String newProof = signedV1(newAdmin, ID);
+        int signatureStart = newProof.lastIndexOf('.') + 1;
+        char original = newProof.charAt(signatureStart);
+        char replacement = original == 'A' ? 'B' : 'A';
+        String tamperedProof = newProof.substring(0, signatureStart) + replacement
+                + newProof.substring(signatureStart + 1);
+
+        assertEquals(ActivationVerifier.Result.INVALID,
+                inspectWithKeys(unknownProof, ID, legacyAdmin, newAdmin).result);
+        assertEquals(ActivationVerifier.Result.INVALID,
+                inspectWithKeys(tamperedProof, ID, legacyAdmin, newAdmin).result);
+    }
+
+    @Test
+    public void newAdminProofStillEnforcesInstallationAndExpiration() throws Exception {
+        KeyPair legacyAdmin = keyPair();
+        KeyPair newAdmin = keyPair();
+        long issuedAt = 1_700_000_000_000L;
+        long expiresAt = 1_700_604_800_000L;
+
+        assertEquals(ActivationVerifier.Result.WRONG_INSTALLATION,
+                inspectWithKeys(signedV1(newAdmin, ID),
+                        "33456789ABCDEFGHJKMNPQRSTUVWXYZ2", legacyAdmin, newAdmin).result);
+        assertEquals(ActivationVerifier.Result.EXPIRED,
+                ActivationVerifier.inspect(
+                        signedV2(newAdmin, ActivationResponse.LicenseType.WEEK,
+                                issuedAt, expiresAt),
+                        ID, Arrays.asList(legacyAdmin.getPublic(), newAdmin.getPublic()),
+                        () -> expiresAt).result);
+    }
+
+    private static ActivationVerifier.Verification inspectWithKeys(String proof,
+            String installationId, KeyPair legacyAdmin, KeyPair newAdmin) {
+        return ActivationVerifier.inspect(proof, installationId,
+                Arrays.asList(legacyAdmin.getPublic(), newAdmin.getPublic()),
+                System::currentTimeMillis);
+    }
+
+    private static ActivationVerifier.Verification inspectV2WithKeys(KeyPair signer,
+            ActivationResponse.LicenseType type, long issuedAt, long expiresAt, long now,
+            KeyPair legacyAdmin, KeyPair newAdmin) throws Exception {
+        return ActivationVerifier.inspect(signedV2(signer, type, issuedAt, expiresAt), ID,
+                Arrays.asList(legacyAdmin.getPublic(), newAdmin.getPublic()), () -> now);
+    }
+
+    private static KeyPair keyPair() throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("EC");
+        generator.initialize(new ECGenParameterSpec("secp256r1"));
+        return generator.generateKeyPair();
+    }
+
+    private static String signedV1(KeyPair pair, String installationId) throws Exception {
+        String canonical = ActivationResponse.canonicalV1(installationId);
+        Signature signer = Signature.getInstance("SHA256withECDSA");
+        signer.initSign(pair.getPrivate());
+        signer.update(canonical.getBytes(StandardCharsets.UTF_8));
+        return "MVACT1." + url(canonical.getBytes(StandardCharsets.UTF_8)) + "." + url(signer.sign());
     }
 
     private static String signedV2(KeyPair pair, ActivationResponse.LicenseType type,
