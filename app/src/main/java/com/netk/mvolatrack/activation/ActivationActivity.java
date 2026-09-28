@@ -1,0 +1,82 @@
+package com.netk.mvolatrack.activation;
+
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowCompat;
+
+import com.netk.mvolatrack.MainActivity;
+import com.netk.mvolatrack.R;
+
+public final class ActivationActivity extends AppCompatActivity {
+    private String installationId;
+    private EditText activationCode;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (ActivationStore.hasValidActivation(this)) {
+            openApplication();
+            return;
+        }
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        setContentView(R.layout.activity_activation);
+        installationId = InstallationIdentity.getOrCreate(this);
+        TextView requestCode = findViewById(R.id.activationRequestCode);
+        requestCode.setText(ActivationRequest.format(installationId));
+        activationCode = findViewById(R.id.activationCode);
+        findViewById(R.id.copyRequestCode).setOnClickListener(view -> copyRequest(requestCode.getText()));
+        findViewById(R.id.pasteActivationCode).setOnClickListener(view -> pasteActivation());
+        findViewById(R.id.activateButton).setOnClickListener(view -> activate());
+    }
+
+    private void copyRequest(CharSequence formattedCode) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        clipboard.setPrimaryClip(ClipData.newPlainText("Code de demande MVolaCash", formattedCode));
+        Toast.makeText(this, "Code de demande copié", Toast.LENGTH_SHORT).show();
+    }
+
+    private void pasteActivation() {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (!clipboard.hasPrimaryClip() || clipboard.getPrimaryClip() == null
+                || clipboard.getPrimaryClip().getItemCount() == 0) return;
+        CharSequence text = clipboard.getPrimaryClip().getItemAt(0).coerceToText(this);
+        if (text != null) activationCode.setText(text.toString().trim());
+    }
+
+    private void activate() {
+        String proof = activationCode.getText().toString().trim();
+        ActivationVerifier.Result result = ActivationVerifier.verify(proof, installationId);
+        if (result == ActivationVerifier.Result.WRONG_INSTALLATION) {
+            Toast.makeText(this,
+                    "Ce code d'activation ne correspond pas à cette installation.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (result != ActivationVerifier.Result.VALID || !ActivationStore.saveVerifiedProof(this, proof)) {
+            Toast.makeText(this, "Code d'activation invalide.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Toast.makeText(this, "Activation réussie", Toast.LENGTH_SHORT).show();
+        openApplication();
+    }
+
+    private void openApplication() {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
+    }
+
+    @Override
+    public void onBackPressed() {
+        finishAffinity();
+    }
+}

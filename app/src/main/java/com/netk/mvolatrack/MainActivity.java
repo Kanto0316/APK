@@ -67,6 +67,8 @@ import com.netk.mvolatrack.sms.ClientNumberNormalizer;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
 import com.netk.mvolatrack.security.AppLockManager;
 import com.netk.mvolatrack.security.SecurityActivity;
+import com.netk.mvolatrack.activation.ActivationActivity;
+import com.netk.mvolatrack.activation.ActivationStore;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -304,6 +306,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (!ActivationStore.hasValidActivation(this)) {
+            startActivity(new Intent(this, ActivationActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
+            finish();
+            return;
+        }
         AppLockManager.showLockIfRequired(this);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
@@ -1639,10 +1647,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showAboutDialog() {
+        String license = ActivationStore.hasValidActivation(this) ? "\n\nLicence\nActivée" : "";
         new AlertDialog.Builder(this)
                 .setTitle("MVolaCash")
                 .setMessage("Gestion et suivi des transactions\n\nVersion : "
-                        + applicationVersionName())
+                        + applicationVersionName() + license)
                 .setPositiveButton("OK", null)
                 .show();
     }
@@ -1996,6 +2005,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (!ActivationStore.hasValidActivation(this)) {
+            startActivity(new Intent(this, ActivationActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
+            finish();
+            return;
+        }
         AppLockManager.showLockIfRequired(this);
         refreshPermissionState();
         if (depositCallLaunched) {
