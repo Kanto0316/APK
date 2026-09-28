@@ -14,7 +14,7 @@ import androidx.core.content.ContextCompat;
 import java.text.NumberFormat;
 import java.util.Locale;
 
-/** Compact, touch-selectable line chart containing all 24 hours of one day. */
+/** Compact, touch-selectable line chart containing the intervals of one day. */
 public final class HourlyActivityChartView extends View {
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -24,7 +24,8 @@ public final class HourlyActivityChartView extends View {
     private final NumberFormat numberFormat = NumberFormat.getIntegerInstance(Locale.FRENCH);
     private int[] values = new int[24];
     private int maximum = 1;
-    private int selectedHour = -1;
+    private int intervalMinutes = 60;
+    private int selectedInterval = -1;
 
     public HourlyActivityChartView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -42,12 +43,19 @@ public final class HourlyActivityChartView extends View {
         setFocusable(true);
     }
 
-    void setData(int[] hourlyValues) {
-        values = hourlyValues == null ? new int[24] : hourlyValues.clone();
-        if (values.length != 24) throw new IllegalArgumentException("24 hourly values required");
+    void setData(int[] intervalValues, int minutes) {
+        if (minutes != 15 && minutes != 30 && minutes != 60) {
+            throw new IllegalArgumentException("Interval must be 15, 30 or 60 minutes");
+        }
+        int expectedSize = 24 * 60 / minutes;
+        values = intervalValues == null ? new int[expectedSize] : intervalValues.clone();
+        if (values.length != expectedSize) {
+            throw new IllegalArgumentException(expectedSize + " interval values required");
+        }
+        intervalMinutes = minutes;
         maximum = 1;
         for (int value : values) maximum = Math.max(maximum, value);
-        selectedHour = -1;
+        selectedInterval = -1;
         setContentDescription(buildDescription());
         invalidate();
     }
@@ -68,31 +76,35 @@ public final class HourlyActivityChartView extends View {
             canvas.drawText(String.valueOf(tick), left - dp(7), y + dp(4), textPaint);
         }
         Path path = new Path();
-        for (int hour = 0; hour < 24; hour++) {
-            float x = left + width * hour / 23f;
-            float y = bottom - height * values[hour] / maximum;
-            if (hour == 0) path.moveTo(x, y); else path.lineTo(x, y);
+        for (int index = 0; index < values.length; index++) {
+            float x = pointX(left, width, index);
+            float y = bottom - height * values[index] / maximum;
+            if (index == 0) path.moveTo(x, y); else path.lineTo(x, y);
         }
         canvas.drawPath(path, linePaint);
-        for (int hour = 0; hour < 24; hour++) {
-            float x = left + width * hour / 23f;
-            float y = bottom - height * values[hour] / maximum;
-            canvas.drawCircle(x, y, hour == selectedHour ? dp(5) : dp(3), pointPaint);
+        float normalRadius = intervalMinutes == 60 ? dp(3) : dp(1.5f);
+        for (int index = 0; index < values.length; index++) {
+            float x = pointX(left, width, index);
+            float y = bottom - height * values[index] / maximum;
+            canvas.drawCircle(x, y, index == selectedInterval ? dp(5) : normalRadius, pointPaint);
         }
         textPaint.setTextAlign(Paint.Align.CENTER);
-        for (int hour = 0; hour < 24; hour++) {
-            if (hour % 3 == 0 || hour == 23) {
-                float x = left + width * hour / 23f;
-                canvas.drawText(String.format(Locale.FRENCH, "%02dh", hour), x,
+        int intervalsPerHour = 60 / intervalMinutes;
+        for (int index = 0; index < values.length; index++) {
+            int hour = index / intervalsPerHour;
+            if ((index % (3 * intervalsPerHour) == 0) || index == values.length - 1) {
+                float x = pointX(left, width, index);
+                canvas.drawText(String.format(Locale.FRENCH, "%02dh", index == values.length - 1 ? 23 : hour), x,
                         bottom + dp(20), textPaint);
             }
         }
-        if (selectedHour >= 0) {
-            String suffix = values[selectedHour] == 1 ? " transaction" : " transactions";
+        if (selectedInterval >= 0) {
+            String suffix = values[selectedInterval] == 1 ? " transaction" : " transactions";
             textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_primary));
             textPaint.setFakeBoldText(true);
-            canvas.drawText(String.format(Locale.FRENCH, "%02dh · %s%s", selectedHour,
-                    numberFormat.format(values[selectedHour]), suffix), (left + right) / 2,
+            canvas.drawText(intervalLabel(selectedInterval) + " · "
+                            + numberFormat.format(values[selectedInterval]) + suffix,
+                    (left + right) / 2,
                     getPaddingTop() + dp(15), textPaint);
             textPaint.setFakeBoldText(false);
             textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_secondary));
@@ -103,8 +115,8 @@ public final class HourlyActivityChartView extends View {
         if (event.getActionMasked() == MotionEvent.ACTION_UP) {
             float left = getPaddingLeft() + dp(34);
             float width = Math.max(1, getWidth() - getPaddingRight() - dp(10) - left);
-            selectedHour = Math.max(0, Math.min(23,
-                    Math.round((event.getX() - left) * 23f / width)));
+            selectedInterval = Math.max(0, Math.min(values.length - 1,
+                    Math.round((event.getX() - left) * (values.length - 1) / width)));
             invalidate();
             performClick();
         }
@@ -114,13 +126,26 @@ public final class HourlyActivityChartView extends View {
     @Override public boolean performClick() { super.performClick(); return true; }
 
     private String buildDescription() {
-        StringBuilder description = new StringBuilder("Activité par heure. ");
-        for (int hour = 0; hour < 24; hour++) {
-            description.append(String.format(Locale.FRENCH, "%02dh : %d transaction%s. ", hour,
-                    values[hour], values[hour] == 1 ? "" : "s"));
+        StringBuilder description = new StringBuilder(intervalMinutes == 60
+                ? "Activité par heure. " : "Activité par intervalle. ");
+        for (int index = 0; index < values.length; index++) {
+            description.append(intervalLabel(index)).append(" : ").append(values[index])
+                    .append(values[index] == 1 ? " transaction. " : " transactions. ");
         }
         return description.toString();
     }
 
+    private float pointX(float left, float width, int index) {
+        return left + width * index / Math.max(1f, values.length - 1f);
+    }
+
+    private String intervalLabel(int index) {
+        int start = index * intervalMinutes;
+        int end = start + intervalMinutes - 1;
+        return String.format(Locale.FRENCH, "%02d:%02d–%02d:%02d",
+                start / 60, start % 60, end / 60, end % 60);
+    }
+
     private float dp(int value) { return value * density; }
+    private float dp(float value) { return value * density; }
 }
