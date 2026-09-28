@@ -25,6 +25,29 @@ Sur Android 6 à 9, l’accès au dossier public de téléchargement nécessite 
 
 Le projet ne dépend d’aucun serveur ni de Firebase.
 
+## Signature de la version officielle
+
+Le contrôle d’intégrité compare, en SHA-256, le certificat qui signe l’APK installé avec la
+liste configurée au build. **Aucune empreinte release officielle n’est présente dans ce dépôt et
+aucune valeur ne doit être inventée.** Le responsable de la signature doit relever l’empreinte du
+certificat réellement utilisé (par exemple avec `apksigner verify --print-certs application.apk`),
+puis construire avec :
+
+```bash
+gradle assembleRelease \
+  -PMVOLACASH_RELEASE_CERT_SHA256=AA:BB:...:FF
+```
+
+La valeur peut aussi être fournie dans la variable d’environnement du même nom. Plusieurs
+empreintes, séparées par des virgules, sont acceptées pour une rotation contrôlée. Elles sont des
+empreintes publiques uniquement : le keystore, sa clé privée et ses mots de passe ne doivent
+jamais être ajoutés au dépôt. Une valeur absente ou mal formée fait échouer le contrôle à
+l’exécution (comportement fermé) afin qu’un APK non configuré ne puisse pas être distribué comme
+version officielle.
+
+La variante `release` est explicitement non débogable et active l’optimisation/minification R8
+ainsi que la réduction des ressources. Les appels `android.util.Log` sont retirés de cette variante.
+
 ## Réception en arrière-plan
 
 `SmsReceiver` est déclaré dans le manifeste : il reçoit `SMS_RECEIVED` sans que l’écran soit
