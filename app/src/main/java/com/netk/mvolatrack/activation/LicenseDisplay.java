@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-/** Presentation-only formatting; protocol comparisons always use epoch milliseconds. */
+/** Presentation-only formatting; V2 protocol timestamps remain in epoch seconds. */
 public final class LicenseDisplay {
     private LicenseDisplay() { }
 
@@ -20,6 +20,6 @@ public final class LicenseDisplay {
     public static String expiry(ActivationResponse license) {
         if (license == null || !license.isTemporary()) return "—";
         return new SimpleDateFormat("dd/MM/yyyy 'à' HH:mm", Locale.getDefault())
-                .format(new Date(license.getExpiresAt()));
+                .format(new Date(Math.multiplyExact(license.getExpiresAt(), 1000L)));
     }
 }
