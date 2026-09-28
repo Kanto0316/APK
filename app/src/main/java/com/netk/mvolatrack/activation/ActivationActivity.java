@@ -18,8 +18,6 @@ import androidx.core.view.WindowCompat;
 
 import com.netk.mvolatrack.MainActivity;
 import com.netk.mvolatrack.R;
-import com.netk.mvolatrack.integrity.AppIntegrityChecker;
-import com.netk.mvolatrack.integrity.IntegrityFailureUi;
 
 public final class ActivationActivity extends AppCompatActivity {
     public static final String EXTRA_MANAGE_LICENSE = "manage_license";
@@ -30,7 +28,6 @@ public final class ActivationActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (!ensureAuthentic()) return;
         if (ActivationStore.hasValidActivation(this)
                 && !getIntent().getBooleanExtra(EXTRA_MANAGE_LICENSE, false)) {
             openApplication();
@@ -89,7 +86,6 @@ public final class ActivationActivity extends AppCompatActivity {
     }
 
     private void retryValidation() {
-        if (!ensureAuthentic()) return;
         ActivationVerifier.Verification status = ActivationStore.status(this);
         if (status.result == ActivationVerifier.Result.VALID) {
             openApplication();
@@ -132,8 +128,6 @@ public final class ActivationActivity extends AppCompatActivity {
     }
 
     private void activate() {
-        // APK authenticity always takes precedence over an otherwise valid MVACT1 proof.
-        if (!ensureAuthentic()) return;
         String proof = activationCode.getText().toString().trim();
         ActivationVerifier.Result result = ActivationVerifier.verify(proof, installationId);
         if (result == ActivationVerifier.Result.WRONG_INSTALLATION) {
@@ -155,17 +149,10 @@ public final class ActivationActivity extends AppCompatActivity {
     }
 
     private void openApplication() {
-        if (!ensureAuthentic()) return;
         Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
-    }
-
-    private boolean ensureAuthentic() {
-        if (AppIntegrityChecker.check(this) == AppIntegrityChecker.Result.AUTHENTIC) return true;
-        IntegrityFailureUi.showAndClose(this);
-        return false;
     }
 
     @Override

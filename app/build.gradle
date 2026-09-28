@@ -1,9 +1,5 @@
 plugins { id 'com.android.application' }
 
-def trustedCertificateSha256 = providers.gradleProperty('MVOLACASH_RELEASE_CERT_SHA256')
-        .orElse(providers.environmentVariable('MVOLACASH_RELEASE_CERT_SHA256'))
-        .getOrElse('')
-
 android {
     namespace 'com.netk.mvolatrack'
     compileSdk 35
@@ -15,23 +11,6 @@ android {
         versionCode 2
         versionName '1.1'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-        buildConfigField 'String', 'TRUSTED_APP_CERTIFICATE_SHA256',
-                '"' + trustedCertificateSha256.replace('"', '\\"') + '"'
-    }
-
-    buildFeatures { buildConfig true }
-
-    buildTypes {
-        debug {
-            // Debug certificates are intentionally not trusted as official releases.
-            debuggable true
-        }
-        release {
-            debuggable false
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
     }
 }
 

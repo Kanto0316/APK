@@ -71,8 +71,6 @@ import com.netk.mvolatrack.activation.ActivationActivity;
 import com.netk.mvolatrack.activation.ActivationStore;
 import com.netk.mvolatrack.activation.ActivationVerifier;
 import com.netk.mvolatrack.activation.LicenseDisplay;
-import com.netk.mvolatrack.integrity.AppIntegrityChecker;
-import com.netk.mvolatrack.integrity.IntegrityFailureUi;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -155,7 +153,6 @@ public class MainActivity extends AppCompatActivity {
     private boolean startupRestoreFinished;
     private BackgroundExecutionManager backgroundExecutionManager;
     private boolean backgroundSettingsOpened;
-    private boolean integrityFailureShown;
     private boolean firstResume = true;
     private View messagesSection;
     private View homeSection;
@@ -311,7 +308,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (!ensureAuthentic()) return;
         if (!ActivationStore.hasValidActivation(this)) {
             startActivity(new Intent(this, ActivationActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -2021,7 +2017,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (!ensureAuthentic()) return;
         if (!ActivationStore.hasValidActivation(this)) {
             startActivity(new Intent(this, ActivationActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -2045,15 +2040,6 @@ public class MainActivity extends AppCompatActivity {
                     : "L’exécution en arrière-plan reste limitée. Appuyez sur le rappel pour réessayer.",
                     Toast.LENGTH_LONG).show();
         }
-    }
-
-    private boolean ensureAuthentic() {
-        if (AppIntegrityChecker.check(this) == AppIntegrityChecker.Result.AUTHENTIC) return true;
-        if (!integrityFailureShown) {
-            integrityFailureShown = true;
-            IntegrityFailureUi.showAndClose(this);
-        }
-        return false;
     }
 
     private void showBackgroundPermissionDialog(boolean firstLaunchCheck) {
