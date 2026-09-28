@@ -55,6 +55,46 @@ public class ActivationProtocolTest {
         ActivationResponse.parse("MVACT1.AA==.AA");
     }
 
+    @Test
+    public void v2UsesSignedExpiryBoundaryAndSupportsAllAdminTypes() throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("EC");
+        generator.initialize(new ECGenParameterSpec("secp256r1"));
+        KeyPair pair = generator.generateKeyPair();
+        long issuedAt = 1_700_000_000_000L;
+        long expiresAt = 1_700_604_800_000L;
+
+        for (ActivationResponse.LicenseType type : new ActivationResponse.LicenseType[]{
+                ActivationResponse.LicenseType.WEEK, ActivationResponse.LicenseType.MONTH}) {
+            String proof = signedV2(pair, type, issuedAt, expiresAt);
+            assertEquals(ActivationVerifier.Result.VALID,
+                    ActivationVerifier.inspect(proof, ID, pair.getPublic(), () -> expiresAt - 1).result);
+            assertEquals(ActivationVerifier.Result.EXPIRED,
+                    ActivationVerifier.inspect(proof, ID, pair.getPublic(), () -> expiresAt).result);
+            assertEquals(ActivationVerifier.Result.EXPIRED,
+                    ActivationVerifier.inspect(proof, ID, pair.getPublic(), () -> expiresAt + 1).result);
+        }
+
+        String permanent = signedV2(pair, ActivationResponse.LicenseType.PERMANENT, issuedAt, 0);
+        assertEquals(ActivationVerifier.Result.VALID,
+                ActivationVerifier.inspect(permanent, ID, pair.getPublic(), () -> Long.MAX_VALUE).result);
+    }
+
+    @Test
+    public void v2CanonicalisationHasAdminFieldOrder() {
+        assertEquals("MVOLACASH|2|WEEK|" + ID + "|1700000000000|1700604800000",
+                ActivationResponse.canonicalV2(ActivationResponse.LicenseType.WEEK, ID,
+                        1_700_000_000_000L, 1_700_604_800_000L));
+    }
+
+    private static String signedV2(KeyPair pair, ActivationResponse.LicenseType type,
+            long issuedAt, long expiresAt) throws Exception {
+        String canonical = ActivationResponse.canonicalV2(type, ID, issuedAt, expiresAt);
+        Signature signer = Signature.getInstance("SHA256withECDSA");
+        signer.initSign(pair.getPrivate());
+        signer.update(canonical.getBytes(StandardCharsets.UTF_8));
+        return "MVACT1." + url(canonical.getBytes(StandardCharsets.UTF_8)) + "." + url(signer.sign());
+    }
+
     private static String url(byte[] value) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(value);
     }

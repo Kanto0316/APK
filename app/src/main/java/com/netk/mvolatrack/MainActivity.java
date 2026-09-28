@@ -69,6 +69,8 @@ import com.netk.mvolatrack.security.AppLockManager;
 import com.netk.mvolatrack.security.SecurityActivity;
 import com.netk.mvolatrack.activation.ActivationActivity;
 import com.netk.mvolatrack.activation.ActivationStore;
+import com.netk.mvolatrack.activation.ActivationVerifier;
+import com.netk.mvolatrack.activation.LicenseDisplay;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -1647,11 +1649,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showAboutDialog() {
-        String license = ActivationStore.hasValidActivation(this) ? "\n\nLicence\nActivée" : "";
+        ActivationVerifier.Verification status = ActivationStore.status(this);
+        String license = "";
+        if (status.license != null) {
+            license = "\n\nLicence\n" + LicenseDisplay.type(status.license);
+            if (status.license.isTemporary()) {
+                license += "\n\nExpire le\n" + LicenseDisplay.expiry(status.license);
+            }
+        }
         new AlertDialog.Builder(this)
                 .setTitle("MVolaCash")
                 .setMessage("Gestion et suivi des transactions\n\nVersion : "
                         + applicationVersionName() + license)
+                .setNeutralButton("Gérer la licence", (dialog, which) ->
+                        startActivity(new Intent(this, ActivationActivity.class)
+                                .putExtra(ActivationActivity.EXTRA_MANAGE_LICENSE, true)))
                 .setPositiveButton("OK", null)
                 .show();
     }
