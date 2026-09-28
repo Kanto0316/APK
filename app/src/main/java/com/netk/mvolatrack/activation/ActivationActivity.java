@@ -18,18 +18,32 @@ import com.netk.mvolatrack.MainActivity;
 import com.netk.mvolatrack.R;
 
 public final class ActivationActivity extends AppCompatActivity {
+    public static final String EXTRA_MANAGE_LICENSE = "manage_license";
     private String installationId;
     private EditText activationCode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (ActivationStore.hasValidActivation(this)) {
+        if (ActivationStore.hasValidActivation(this)
+                && !getIntent().getBooleanExtra(EXTRA_MANAGE_LICENSE, false)) {
             openApplication();
             return;
         }
         WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
         setContentView(R.layout.activity_activation);
+        ActivationVerifier.Verification current = ActivationStore.status(this);
+        if (current.result == ActivationVerifier.Result.EXPIRED && current.license != null) {
+            ((TextView) findViewById(R.id.activationStateTitle)).setText("Licence expirée");
+            ((TextView) findViewById(R.id.activationStateMessage)).setText(
+                    "Votre licence a expiré le :\n" + LicenseDisplay.expiry(current.license)
+                            + "\n\nPour continuer à utiliser MVolaCash,\n"
+                            + "une nouvelle activation est nécessaire.");
+        } else if (getIntent().getBooleanExtra(EXTRA_MANAGE_LICENSE, false)) {
+            ((TextView) findViewById(R.id.activationStateTitle)).setText("Gérer la licence");
+            ((TextView) findViewById(R.id.activationStateMessage)).setText(
+                    "Entrez une nouvelle activation pour remplacer la licence actuelle.");
+        }
         installationId = InstallationIdentity.getOrCreate(this);
         TextView requestCode = findViewById(R.id.activationRequestCode);
         requestCode.setText(ActivationRequest.format(installationId));
@@ -75,6 +89,10 @@ public final class ActivationActivity extends AppCompatActivity {
                     Toast.LENGTH_LONG).show();
             return;
         }
+        if (result == ActivationVerifier.Result.EXPIRED) {
+            Toast.makeText(this, "Cette licence est déjà expirée.", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (result != ActivationVerifier.Result.VALID || !ActivationStore.saveVerifiedProof(this, proof)) {
             Toast.makeText(this, "Code d'activation invalide.", Toast.LENGTH_LONG).show();
             return;
@@ -92,6 +110,7 @@ public final class ActivationActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        finishAffinity();
+        if (getIntent().getBooleanExtra(EXTRA_MANAGE_LICENSE, false)) finish();
+        else finishAffinity();
     }
 }
