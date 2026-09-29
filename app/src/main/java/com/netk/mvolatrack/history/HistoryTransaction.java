@@ -9,6 +9,8 @@ import com.netk.mvolatrack.verification.TransactionDirection;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /** Display projection of a transaction parsed from the application's persisted SMS source. */
 public final class HistoryTransaction {
@@ -20,10 +22,12 @@ public final class HistoryTransaction {
     public final Long balance;
     public final String reference;
     public final long timestamp;
+    /** Stable identity of the persisted SMS that produced this projection. */
+    public final String sourceUniqueKey;
     public final TransactionBalanceVerification verification;
 
     private HistoryTransaction(String type, String clientNumber, long amount, Long bonus, Long fee,
-                               Long balance, String reference, long timestamp,
+                               Long balance, String reference, long timestamp, String sourceUniqueKey,
                                TransactionBalanceVerification verification) {
         this.type = type;
         this.clientNumber = clientNumber;
@@ -33,6 +37,7 @@ public final class HistoryTransaction {
         this.balance = balance;
         this.reference = reference;
         this.timestamp = timestamp;
+        this.sourceUniqueKey = sourceUniqueKey;
         this.verification = verification;
     }
 
@@ -62,11 +67,26 @@ public final class HistoryTransaction {
             TransactionBalanceVerification verification = verify(parsed, previous, timestamp);
             result.add(new HistoryTransaction(parsed.type, parsed.clientNumber, parsed.amount,
                     parsed.bonus, parsed.fee, parsed.balance, parsed.reference, timestamp,
+                    message.uniqueKey,
                     verification));
             previousMessage = message;
         }
         result.sort(Comparator.comparingLong((HistoryTransaction item) -> item.timestamp)
                 .reversed());
+        return result;
+    }
+
+    /**
+     * Computes the chronological verification once from the complete persisted SMS list and
+     * indexes it by the SMS identity. Consumers can then filter/reorder rows without changing the
+     * evidence or accidentally matching duplicate/missing transaction references.
+     */
+    public static Map<String, TransactionBalanceVerification> verificationsByMessageKey(
+            List<SmsMessage> messages) {
+        Map<String, TransactionBalanceVerification> result = new LinkedHashMap<>();
+        for (HistoryTransaction transaction : fromMessages(messages)) {
+            result.put(transaction.sourceUniqueKey, transaction.verification);
+        }
         return result;
     }
 

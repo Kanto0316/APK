@@ -58,6 +58,8 @@ import com.netk.mvolatrack.background.BackgroundExecutionManager;
 import com.netk.mvolatrack.history.HistoryTransaction;
 import com.netk.mvolatrack.history.TodayHistorySummary;
 import com.netk.mvolatrack.verification.BalanceVerificationDialog;
+import com.netk.mvolatrack.verification.TransactionBalanceVerification;
+import com.netk.mvolatrack.verification.VerificationStatus;
 import com.netk.mvolatrack.overlay.TransactionOverlayCoordinator;
 import com.netk.mvolatrack.notification.NotificationHelper;
 import com.netk.mvolatrack.notification.ExportNotificationHelper;
@@ -88,6 +90,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.File;
+import java.util.Collections;
+import java.util.Map;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.text.SimpleDateFormat;
@@ -151,6 +155,8 @@ public class MainActivity extends AppCompatActivity {
     private SmsViewModel viewModel;
     private SmsBackupManager backupManager;
     private List<SmsMessage> messages = new ArrayList<>();
+    private Map<String, TransactionBalanceVerification> messageVerifications =
+            Collections.emptyMap();
     private boolean roomLoaded;
     private boolean startupRestoreFinished;
     private BackgroundExecutionManager backgroundExecutionManager;
@@ -505,6 +511,7 @@ public class MainActivity extends AppCompatActivity {
         });
         viewModel.getMessages().observe(this, storedMessages -> {
             messages = storedMessages == null ? new ArrayList<>() : storedMessages;
+            messageVerifications = HistoryTransaction.verificationsByMessageKey(messages);
             roomLoaded = true;
             renderState();
             renderClients();
@@ -1931,6 +1938,7 @@ public class MainActivity extends AppCompatActivity {
     private void refreshMessages(boolean announce) {
         viewModel.refresh(latest -> runOnUiThread(() -> {
             messages = latest == null ? new ArrayList<>() : latest;
+            messageVerifications = HistoryTransaction.verificationsByMessageKey(messages);
             roomLoaded = true;
             renderState();
             if (announce) {
@@ -2245,7 +2253,7 @@ public class MainActivity extends AppCompatActivity {
                 System.currentTimeMillis(), java.util.TimeZone.getDefault(),
                 messageSearchInput == null ? "" : messageSearchInput.getText().toString(),
                 selectedMessageType);
-        adapter.submitList(displayed);
+        adapter.submitList(displayed, messageVerifications);
         int displayedCount = displayed.size();
         transactionCountText.setText(displayedCount
                 + (displayedCount > 1 ? " transactions" : " transaction"));
@@ -2439,7 +2447,8 @@ public class MainActivity extends AppCompatActivity {
                 R.dimen.sms_column_type_width, R.dimen.sms_column_sender_width,
                 R.dimen.sms_column_name_width, R.dimen.sms_column_money_width,
                 R.dimen.sms_column_reference_width, R.dimen.sms_column_money_width,
-                R.dimen.sms_column_money_width, R.dimen.sms_column_money_width};
+                R.dimen.sms_column_money_width, R.dimen.sms_column_money_width,
+                R.dimen.sms_column_status_width};
         for (int index = 0; index < smsTableHeader.getChildCount(); index++) {
             View column = smsTableHeader.getChildAt(index);
             column.getLayoutParams().width = scaledDimension(widths[index], tableZoom);
@@ -2461,6 +2470,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static class SmsAdapter extends RecyclerView.Adapter<SmsViewHolder> {
         private List<SmsDateFilter.DisplayMessage> items = new ArrayList<>();
+        private Map<String, TransactionBalanceVerification> verifications =
+                Collections.emptyMap();
         private float zoom;
 
         SmsAdapter(float zoom) {
@@ -2472,8 +2483,10 @@ public class MainActivity extends AppCompatActivity {
             notifyItemRangeChanged(0, getItemCount(), "zoom");
         }
 
-        void submitList(List<SmsDateFilter.DisplayMessage> messages) {
+        void submitList(List<SmsDateFilter.DisplayMessage> messages,
+                        Map<String, TransactionBalanceVerification> verifications) {
             items = new ArrayList<>(messages);
+            this.verifications = verifications == null ? Collections.emptyMap() : verifications;
             notifyDataSetChanged();
         }
 
@@ -2486,7 +2499,9 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(SmsViewHolder holder, int position) {
-            SmsTableRow row = SmsTableRow.from(items.get(position));
+            SmsDateFilter.DisplayMessage displayed = items.get(position);
+            SmsTableRow row = SmsTableRow.from(displayed,
+                    verifications.get(displayed.message.uniqueKey));
             holder.number.setText(String.valueOf(row.number));
             holder.dateTime.setText(row.dateTime);
             bindTypeBadge(holder.type, row.type);
@@ -2497,6 +2512,15 @@ public class MainActivity extends AppCompatActivity {
             holder.bonus.setText(SmsTableRow.display(row.bonus));
             holder.fees.setText(SmsTableRow.displayFee(row.frais));
             holder.balance.setText(SmsTableRow.display(row.solde));
+            boolean verified = row.verification != null
+                    && row.verification.statut == VerificationStatus.BONUS_VERIFIE;
+            holder.status.setText(verified ? R.string.sms_status_verified
+                    : R.string.sms_status_not_verified);
+            holder.status.setTextColor(ContextCompat.getColor(holder.itemView.getContext(),
+                    verified ? R.color.verification_success : R.color.verification_error));
+            holder.status.setOnClickListener(row.verification == null ? null
+                    : view -> BalanceVerificationDialog.show(view.getContext(), row.verification));
+            holder.status.setClickable(row.verification != null);
             holder.applyZoom(zoom);
         }
 
@@ -2536,6 +2560,7 @@ public class MainActivity extends AppCompatActivity {
         final TextView bonus;
         final TextView fees;
         final TextView balance;
+        final TextView status;
 
         SmsViewHolder(View itemView) {
             super(itemView);
@@ -2549,6 +2574,7 @@ public class MainActivity extends AppCompatActivity {
             bonus = itemView.findViewById(R.id.itemBonus);
             fees = itemView.findViewById(R.id.itemFees);
             balance = itemView.findViewById(R.id.itemBalance);
+            status = itemView.findViewById(R.id.itemStatus);
         }
 
         void applyZoom(float zoom) {
@@ -2558,9 +2584,9 @@ public class MainActivity extends AppCompatActivity {
                     R.dimen.sms_column_sender_width, R.dimen.sms_column_name_width,
                     R.dimen.sms_column_money_width, R.dimen.sms_column_reference_width,
                     R.dimen.sms_column_money_width, R.dimen.sms_column_money_width,
-                    R.dimen.sms_column_money_width};
+                    R.dimen.sms_column_money_width, R.dimen.sms_column_status_width};
             TextView[] columns = {number, dateTime, type, sender, name, amount, reference,
-                    bonus, fees, balance};
+                    bonus, fees, balance, status};
             for (int index = 0; index < columns.length; index++) {
                 View widthTarget = index == 2 ? (View) columns[index].getParent() : columns[index];
                 widthTarget.getLayoutParams().width = Math.round(

@@ -88,6 +88,9 @@
     <style name="SmsTableHeader.Reference" parent="SmsTableHeader">
         <item name="android:layout_width">@dimen/sms_column_reference_width</item><item name="android:gravity">center</item>
     </style>
+    <style name="SmsTableHeader.Status" parent="SmsTableHeader">
+        <item name="android:layout_width">@dimen/sms_column_status_width</item><item name="android:gravity">center</item>
+    </style>
 
     <style name="SmsFilterChip">
         <item name="android:layout_width">wrap_content</item>

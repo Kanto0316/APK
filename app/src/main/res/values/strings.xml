@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="sms_status_header">Statut</string>
+    <string name="sms_status_verified">✅ Vérifié</string>
+    <string name="sms_status_not_verified">❌ Non</string>
     <string name="latest_transactions">Dernières transactions</string>
     <string name="view_all_transactions">Voir tout ›</string>
     <string name="app_name">MVolaCash</string>
