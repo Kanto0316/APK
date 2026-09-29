@@ -616,6 +616,42 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <LinearLayout
+                android:id="@+id/recentTransactionsHeader"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginEnd="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/latest_transactions"
+                    android:textColor="@color/sms_text_primary"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/viewAllTransactions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:minWidth="88dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:text="@string/view_all_transactions"
+                    android:textColor="@color/sms_accent"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
@@ -627,7 +663,7 @@
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
                 android:paddingStart="20dp"
-                android:paddingTop="2dp"
+                android:paddingTop="4dp"
                 android:paddingEnd="20dp"
                 android:paddingBottom="20dp"
                 android:scrollbars="vertical"
