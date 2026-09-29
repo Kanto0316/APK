@@ -59,7 +59,7 @@ import com.netk.mvolatrack.history.HistoryTransaction;
 import com.netk.mvolatrack.history.TodayHistorySummary;
 import com.netk.mvolatrack.verification.BalanceVerificationDialog;
 import com.netk.mvolatrack.verification.TransactionBalanceVerification;
-import com.netk.mvolatrack.verification.VerificationStatus;
+import com.netk.mvolatrack.verification.VerificationStatusCell;
 import com.netk.mvolatrack.overlay.TransactionOverlayCoordinator;
 import com.netk.mvolatrack.notification.NotificationHelper;
 import com.netk.mvolatrack.notification.ExportNotificationHelper;
@@ -2438,7 +2438,7 @@ public class MainActivity extends AppCompatActivity {
             holder.bonus.setText(SmsTableRow.display(row.bonus));
             holder.fees.setText(SmsTableRow.displayFee(row.frais));
             holder.balance.setText(SmsTableRow.display(row.solde));
-            bindVerificationStatus(holder.status, row.verification);
+            VerificationStatusCell.bind(holder.status, row.verification);
             holder.applyZoom(zoom);
         }
 
@@ -2455,7 +2455,7 @@ public class MainActivity extends AppCompatActivity {
         final TextView bonus;
         final TextView fees;
         final TextView balance;
-        final TextView status;
+        final View status;
         ClientMessageViewHolder(View itemView) {
             super(itemView);
             number = itemView.findViewById(R.id.clientMessageNumber);
@@ -2472,13 +2472,13 @@ public class MainActivity extends AppCompatActivity {
 
         void applyZoom(float zoom) {
             applyRowZoom(itemView, new TextView[]{number, dateTime, type, name, amount,
-                    reference, bonus, fees, balance, status},
+                    reference, bonus, fees, balance},
                     new int[]{R.dimen.sms_column_number_width,
                             R.dimen.sms_column_datetime_width, R.dimen.sms_column_type_width,
                             R.dimen.sms_column_name_width, R.dimen.sms_column_money_width,
                             R.dimen.sms_column_reference_width, R.dimen.sms_column_money_width,
-                            R.dimen.sms_column_money_width, R.dimen.sms_column_money_width,
-                            R.dimen.sms_column_status_width}, zoom);
+                            R.dimen.sms_column_money_width, R.dimen.sms_column_money_width}, zoom);
+            applyStatusZoom(status, zoom);
         }
     }
 
@@ -2591,23 +2591,11 @@ public class MainActivity extends AppCompatActivity {
             holder.bonus.setText(SmsTableRow.display(row.bonus));
             holder.fees.setText(SmsTableRow.displayFee(row.frais));
             holder.balance.setText(SmsTableRow.display(row.solde));
-            bindVerificationStatus(holder.status, row.verification);
+            VerificationStatusCell.bind(holder.status, row.verification);
             holder.applyZoom(zoom);
         }
 
         @Override public int getItemCount() { return items.size(); }
-    }
-
-    private static void bindVerificationStatus(TextView status,
-            TransactionBalanceVerification verification) {
-        boolean verified = verification != null
-                && verification.statut == VerificationStatus.BONUS_VERIFIE;
-        status.setText(verified ? R.string.sms_status_verified : R.string.sms_status_not_verified);
-        status.setTextColor(ContextCompat.getColor(status.getContext(),
-                verified ? R.color.verification_success : R.color.verification_error));
-        status.setOnClickListener(verification == null ? null
-                : view -> BalanceVerificationDialog.show(view.getContext(), verification));
-        status.setClickable(verification != null);
     }
 
     private static void applyRowZoom(View itemView, TextView[] columns, int[] dimensions,
@@ -2639,6 +2627,27 @@ public class MainActivity extends AppCompatActivity {
         type.setPadding(badgePadding, type.getPaddingTop(), badgePadding,
                 type.getPaddingBottom());
         itemView.requestLayout();
+    }
+
+    private static void applyStatusZoom(View status, float zoom) {
+        android.content.res.Resources resources = status.getResources();
+        status.getLayoutParams().width = Math.round(
+                resources.getDimension(R.dimen.sms_column_status_width) * zoom);
+        // Keep the touch target accessible even when the table content is zoomed out.
+        status.getLayoutParams().height = Math.max(Math.round(48f
+                * resources.getDisplayMetrics().density), Math.round(48f
+                * resources.getDisplayMetrics().density * zoom));
+        androidx.appcompat.widget.AppCompatImageView icon = status.findViewById(R.id.statusIcon);
+        int iconSize = Math.round(resources.getDimension(R.dimen.sms_status_icon_size) * zoom);
+        icon.getLayoutParams().width = iconSize;
+        icon.getLayoutParams().height = iconSize;
+        TextView text = status.findViewById(R.id.statusText);
+        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f * zoom);
+        android.view.ViewGroup.MarginLayoutParams textParams =
+                (android.view.ViewGroup.MarginLayoutParams) text.getLayoutParams();
+        textParams.setMarginStart(Math.round(
+                resources.getDimension(R.dimen.sms_status_icon_spacing) * zoom));
+        status.requestLayout();
     }
 
     /** Styles only the compact type value; the table row itself always keeps its white surface. */
@@ -2674,7 +2683,7 @@ public class MainActivity extends AppCompatActivity {
         final TextView bonus;
         final TextView fees;
         final TextView balance;
-        final TextView status;
+        final View status;
 
         SmsViewHolder(View itemView) {
             super(itemView);
@@ -2697,10 +2706,11 @@ public class MainActivity extends AppCompatActivity {
                     R.dimen.sms_column_sender_width, R.dimen.sms_column_name_width,
                     R.dimen.sms_column_money_width, R.dimen.sms_column_reference_width,
                     R.dimen.sms_column_money_width, R.dimen.sms_column_money_width,
-                    R.dimen.sms_column_money_width, R.dimen.sms_column_status_width};
+                    R.dimen.sms_column_money_width};
             TextView[] columns = {number, dateTime, type, sender, name, amount, reference,
-                    bonus, fees, balance, status};
+                    bonus, fees, balance};
             applyRowZoom(itemView, columns, dimensions, zoom);
+            applyStatusZoom(status, zoom);
         }
     }
 }

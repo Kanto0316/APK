@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Shared by the table header and every SMS row to keep all columns aligned. -->
-    <dimen name="sms_table_width">1242dp</dimen>
+    <dimen name="sms_table_width">1282dp</dimen>
     <dimen name="sms_column_number_width">40dp</dimen>
     <dimen name="sms_column_datetime_width">144dp</dimen>
     <dimen name="sms_column_type_width">100dp</dimen>
@@ -9,7 +9,9 @@
     <dimen name="sms_column_name_width">140dp</dimen>
     <dimen name="sms_column_money_width">110dp</dimen>
     <dimen name="sms_column_reference_width">110dp</dimen>
-    <dimen name="sms_column_status_width">120dp</dimen>
+    <dimen name="sms_column_status_width">160dp</dimen>
+    <dimen name="sms_status_icon_size">20dp</dimen>
+    <dimen name="sms_status_icon_spacing">8dp</dimen>
     <!-- Same table as Messages, without the sender column (the number is in the title). -->
-    <dimen name="client_table_width">1102dp</dimen>
+    <dimen name="client_table_width">1142dp</dimen>
 </resources>
