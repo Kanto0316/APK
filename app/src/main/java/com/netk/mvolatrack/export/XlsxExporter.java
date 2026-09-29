@@ -5,6 +5,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.zip.ZipEntry;
@@ -18,6 +19,8 @@ public final class XlsxExporter {
 
     public static void write(OutputStream output, List<ExportTransaction> rows, String period,
                              String type, long exportedAt) throws IOException {
+        if (output == null) throw new IOException("Flux Excel indisponible");
+        List<ExportTransaction> safeRows = rows == null ? Collections.emptyList() : rows;
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
             entry(zip, "[Content_Types].xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                     + "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
@@ -33,7 +36,7 @@ public final class XlsxExporter {
             entry(zip, "xl/_rels/workbook.xml.rels", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                     + "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/><Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/></Relationships>");
             entry(zip, "xl/styles.xml", styles());
-            entry(zip, "xl/worksheets/sheet1.xml", sheet(rows, period, type, exportedAt));
+            entry(zip, "xl/worksheets/sheet1.xml", sheet(safeRows, period, type, exportedAt));
         }
     }
 
@@ -63,6 +66,7 @@ public final class XlsxExporter {
         xml.append("</row>");
         int rowNumber = 8;
         for (ExportTransaction row : rows) {
+            if (row == null) continue;
             xml.append("<row r=\"").append(rowNumber).append("\">");
             numberCell(xml, cell(0, rowNumber), row.number, 0);
             numberCell(xml, cell(1, rowNumber), excelDate(row.dateTime), 2);

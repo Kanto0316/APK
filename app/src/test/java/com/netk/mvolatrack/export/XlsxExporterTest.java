@@ -50,8 +50,25 @@ public class XlsxExporterTest {
 
         String sheet = zipEntry(output.toByteArray(), "xl/worksheets/sheet1.xml");
         assertTrue(sheet.contains("<row r=\"507\">"));
-        assertFalse(sheet.contains("r=\"H8\""));
-        assertFalse(sheet.contains("r=\"I8\""));
+        assertTrue(sheet.contains("<c r=\"H8\" s=\"0\"><v>0.0</v></c>"));
+        assertTrue(sheet.contains("<c r=\"I8\" s=\"0\"><v>0.0</v></c>"));
+    }
+
+    @Test
+    public void nullListProducesAnEmptyWorkbookAndNullFieldsAreSanitized() throws Exception {
+        ByteArrayOutputStream emptyOutput = new ByteArrayOutputStream();
+        XlsxExporter.write(emptyOutput, null, null, null, 0);
+        String emptySheet = zipEntry(emptyOutput.toByteArray(), "xl/worksheets/sheet1.xml");
+        assertTrue(emptySheet.contains("Nombre de transactions : 0"));
+
+        List<ExportTransaction> rows = new ArrayList<>();
+        rows.add(new ExportTransaction(-1, -1, null, null, null, 0,
+                null, null, null, null, null));
+        ByteArrayOutputStream safeOutput = new ByteArrayOutputStream();
+        XlsxExporter.write(safeOutput, rows, null, null, 0);
+        String safeSheet = zipEntry(safeOutput.toByteArray(), "xl/worksheets/sheet1.xml");
+        assertFalse(safeSheet.contains(">null<"));
+        assertTrue(safeSheet.contains("<c r=\"A8\" s=\"0\"><v>0.0</v></c>"));
     }
 
     private static String zipEntry(byte[] bytes, String expected) throws Exception {

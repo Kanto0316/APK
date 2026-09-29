@@ -38,4 +38,18 @@ public class PdfExporterTest {
             assertTrue(renderer.getPageCount() > 1);
         }
     }
+
+    @Test
+    public void nullTransactionListProducesAValidEmptyPdf() throws Exception {
+        File file = new File(ApplicationProvider.getApplicationContext().getCacheDir(),
+                "empty.pdf");
+        try (FileOutputStream output = new FileOutputStream(file)) {
+            PdfExporter.write(output, null, null, null, 0);
+        }
+        try (ParcelFileDescriptor descriptor = ParcelFileDescriptor.open(file,
+                ParcelFileDescriptor.MODE_READ_ONLY);
+             PdfRenderer renderer = new PdfRenderer(descriptor)) {
+            assertTrue(renderer.getPageCount() == 1);
+        }
+    }
 }

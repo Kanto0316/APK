@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -29,27 +30,31 @@ public final class PdfExporter {
 
     public static void write(OutputStream output, List<ExportTransaction> rows, String period,
                              String type, long exportedAt) throws IOException {
+        if (output == null) throw new IOException("Flux PDF indisponible");
+        List<ExportTransaction> safeRows = rows == null ? Collections.emptyList() : rows;
         PdfDocument document = new PdfDocument();
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         int index = 0;
         int pageNumber = 1;
         try {
-            while (index < rows.size()) {
+            // Also create a valid one-page report for callers racing with an empty data refresh.
+            do {
                 PdfDocument.Page page = document.startPage(new PdfDocument.PageInfo.Builder(
                         PAGE_WIDTH, PAGE_HEIGHT, pageNumber).create());
                 Canvas canvas = page.getCanvas();
-                float y = drawPageHeader(canvas, paint, period, type, rows.size(), exportedAt,
+                float y = drawPageHeader(canvas, paint, period, type, safeRows.size(), exportedAt,
                         pageNumber);
                 drawTableHeader(canvas, paint, y);
                 y += ROW_HEIGHT;
-                while (index < rows.size() && y + ROW_HEIGHT <= PAGE_HEIGHT - 22) {
-                    drawRow(canvas, paint, y, rows.get(index));
+                while (index < safeRows.size() && y + ROW_HEIGHT <= PAGE_HEIGHT - 22) {
+                    ExportTransaction row = safeRows.get(index);
+                    if (row != null) drawRow(canvas, paint, y, row);
                     y += ROW_HEIGHT;
                     index++;
                 }
                 document.finishPage(page);
                 pageNumber++;
-            }
+            } while (index < safeRows.size());
             document.writeTo(output);
         } finally {
             document.close();
