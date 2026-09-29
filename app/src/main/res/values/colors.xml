@@ -32,6 +32,10 @@
     <color name="history_outgoing">#B64B32</color>
     <color name="history_outgoing_background">#FFF5F1</color>
     <color name="history_outgoing_border">#F1D5CA</color>
+    <color name="verification_success">#217A47</color>
+    <color name="verification_error">#A93226</color>
+    <color name="verification_warning">#B76509</color>
+    <color name="verification_unknown">#687684</color>
 
     <!-- Home service cards -->
     <color name="service_text_primary">#18212B</color>

@@ -57,6 +57,7 @@ import com.netk.mvolatrack.backup.SmsBackupManager;
 import com.netk.mvolatrack.background.BackgroundExecutionManager;
 import com.netk.mvolatrack.history.HistoryTransaction;
 import com.netk.mvolatrack.history.TodayHistorySummary;
+import com.netk.mvolatrack.verification.BalanceVerificationDialog;
 import com.netk.mvolatrack.overlay.TransactionOverlayCoordinator;
 import com.netk.mvolatrack.notification.NotificationHelper;
 import com.netk.mvolatrack.notification.ExportNotificationHelper;
@@ -2291,12 +2292,19 @@ public class MainActivity extends AppCompatActivity {
             holder.reference.setText(HistoryDisplayFormatter.reference(item.reference));
             holder.amount.setText(HistoryDisplayFormatter.amount(item));
             holder.bonus.setText(HistoryDisplayFormatter.bonus(item.bonus));
+            holder.verification.setText(BalanceVerificationDialog.shortLabel(item.verification));
+            holder.verification.setTextColor(androidx.core.content.ContextCompat.getColor(
+                    holder.itemView.getContext(),
+                    BalanceVerificationDialog.color(item.verification.statut)));
             holder.icon.setImageResource(HistoryDisplayFormatter.direction(item)
                     == HistoryDisplayFormatter.Direction.NORTH_EAST
                     ? R.drawable.ic_north_east_24 : R.drawable.ic_south_east_24);
             holder.itemView.setContentDescription(item.type + ", " + holder.number.getText()
                     + ", " + holder.amount.getText() + ", " + holder.reference.getText()
-                    + ", bonus " + holder.bonus.getText());
+                    + ", bonus " + holder.bonus.getText() + ", "
+                    + holder.verification.getText());
+            holder.itemView.setOnClickListener(view -> BalanceVerificationDialog.show(
+                    view.getContext(), item.verification));
         }
 
         @Override public int getItemCount() { return items.size(); }
@@ -2308,6 +2316,7 @@ public class MainActivity extends AppCompatActivity {
         final TextView reference;
         final TextView amount;
         final TextView bonus;
+        final TextView verification;
         final ImageView icon;
 
         HistoryViewHolder(View itemView) {
@@ -2317,6 +2326,7 @@ public class MainActivity extends AppCompatActivity {
             reference = itemView.findViewById(R.id.historyTransactionReference);
             amount = itemView.findViewById(R.id.historyTransactionAmount);
             bonus = itemView.findViewById(R.id.historyTransactionBonus);
+            verification = itemView.findViewById(R.id.historyVerificationStatus);
             icon = itemView.findViewById(R.id.historyTransactionIcon);
         }
     }
