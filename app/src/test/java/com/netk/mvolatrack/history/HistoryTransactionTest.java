@@ -59,4 +59,20 @@ public class HistoryTransactionTest {
         assertEquals("7586367275", transaction.reference);
         assertEquals(987654L, transaction.timestamp);
     }
+
+    @Test public void latestLimitsTheSortedHistoryWithoutChangingItsOrder() {
+        List<HistoryTransaction> transactions = HistoryTransaction.fromMessages(Arrays.asList(
+                SmsMessage.create("MVola", "1 000 Ar recu de A 0341411050 le 20/09/26 a 08:19. Ref:1.", 1L, true),
+                SmsMessage.create("MVola", "2 000 Ar recu de B 0341411051 le 21/09/26 a 08:19. Ref:2.", 2L, true),
+                SmsMessage.create("MVola", "3 000 Ar recu de C 0341411052 le 22/09/26 a 08:19. Ref:3.", 3L, true),
+                SmsMessage.create("MVola", "4 000 Ar recu de D 0341411053 le 23/09/26 a 08:19. Ref:4.", 4L, true)));
+
+        List<HistoryTransaction> latest = HistoryTransaction.latest(transactions, 3);
+
+        assertEquals(3, latest.size());
+        assertEquals("4", latest.get(0).reference);
+        assertEquals("3", latest.get(1).reference);
+        assertEquals("2", latest.get(2).reference);
+        assertEquals(4, transactions.size());
+    }
 }

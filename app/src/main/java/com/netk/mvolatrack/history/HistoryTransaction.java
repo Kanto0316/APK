@@ -46,4 +46,13 @@ public final class HistoryTransaction {
                 .reversed());
         return result;
     }
+
+    /** Returns at most {@code count} items without changing the already sorted source list. */
+    public static List<HistoryTransaction> latest(List<HistoryTransaction> transactions,
+                                                   int count) {
+        if (transactions == null || transactions.isEmpty() || count <= 0) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(transactions.subList(0, Math.min(count, transactions.size())));
+    }
 }

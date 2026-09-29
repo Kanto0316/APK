@@ -108,6 +108,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_CLIENT_SENDER = "client_sender";
     private static final String STATE_CLIENT_QUERY = "client_query";
     private static final String STATE_CLIENT_FILTER = "client_filter";
+    private static final String STATE_SHOW_ALL_HISTORY = "show_all_history";
     private static final int SECTION_MESSAGES = 0;
     private static final int SECTION_HOME = 1;
     private static final int SECTION_STATISTICS = 2;
@@ -162,6 +163,8 @@ public class MainActivity extends AppCompatActivity {
     private HistoryAdapter historyAdapter;
     private TextView historyTodayIncomingAmount;
     private TextView historyTodayOutgoingAmount;
+    private TextView viewAllTransactions;
+    private boolean showAllHistory;
     private View statisticsSection;
     private View clientSection;
     private View clientListContent;
@@ -483,9 +486,16 @@ public class MainActivity extends AppCompatActivity {
         historyEmptyState = findViewById(R.id.historyEmptyState);
         historyTodayIncomingAmount = findViewById(R.id.historyTodayIncomingAmount);
         historyTodayOutgoingAmount = findViewById(R.id.historyTodayOutgoingAmount);
+        viewAllTransactions = findViewById(R.id.viewAllTransactions);
+        showAllHistory = savedInstanceState != null
+                && savedInstanceState.getBoolean(STATE_SHOW_ALL_HISTORY, false);
         historyAdapter = new HistoryAdapter();
         historyList.setLayoutManager(new LinearLayoutManager(this));
         historyList.setAdapter(historyAdapter);
+        viewAllTransactions.setOnClickListener(view -> {
+            showAllHistory = true;
+            renderHistory();
+        });
 
         viewModel = new ViewModelProvider(this).get(SmsViewModel.class);
         viewModel.getGlobalBalanceTitle().observe(this, title -> {
@@ -1166,7 +1176,9 @@ public class MainActivity extends AppCompatActivity {
     private void renderHistory() {
         if (historyAdapter == null) return;
         List<HistoryTransaction> transactions = HistoryTransaction.fromMessages(messages);
-        historyAdapter.submitList(transactions);
+        historyAdapter.submitList(showAllHistory
+                ? transactions : HistoryTransaction.latest(transactions, 3));
+        viewAllTransactions.setVisibility(showAllHistory ? View.GONE : View.VISIBLE);
         TodayHistorySummary summary = TodayHistorySummary.calculate(transactions,
                 System.currentTimeMillis(), java.util.TimeZone.getDefault());
         historyTodayIncomingAmount.setTag(summary.incoming);
@@ -1324,6 +1336,7 @@ public class MainActivity extends AppCompatActivity {
             outState.putString(STATE_CLIENT_QUERY, clientSearchInput.getText().toString());
         }
         outState.putString(STATE_CLIENT_FILTER, selectedClientFilter.name());
+        outState.putBoolean(STATE_SHOW_ALL_HISTORY, showAllHistory);
         super.onSaveInstanceState(outState);
     }
 
