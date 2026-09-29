@@ -23,6 +23,10 @@
                 android:paddingStart="7dp" android:paddingEnd="7dp"
                 android:textColor="@color/sms_text_secondary" android:textSize="12sp" />
         </FrameLayout>
+        <TextView android:id="@+id/clientMessageName"
+            android:layout_width="@dimen/sms_column_name_width" android:layout_height="wrap_content"
+            android:ellipsize="end" android:gravity="center" android:maxLines="1"
+            android:textColor="@color/sms_text_primary" android:textSize="13sp" />
         <TextView android:id="@+id/clientMessageAmount"
             android:layout_width="@dimen/sms_column_money_width" android:layout_height="wrap_content"
             android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_primary"
@@ -31,6 +35,22 @@
             android:layout_width="@dimen/sms_column_reference_width" android:layout_height="wrap_content"
             android:ellipsize="end" android:gravity="center" android:maxLines="1"
             android:textColor="@color/sms_text_primary" android:textSize="13sp" />
+        <TextView android:id="@+id/clientMessageBonus"
+            android:layout_width="@dimen/sms_column_money_width" android:layout_height="wrap_content"
+            android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_primary"
+            android:textSize="13sp" />
+        <TextView android:id="@+id/clientMessageFees"
+            android:layout_width="@dimen/sms_column_money_width" android:layout_height="wrap_content"
+            android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_primary"
+            android:textSize="13sp" />
+        <TextView android:id="@+id/clientMessageBalance"
+            android:layout_width="@dimen/sms_column_money_width" android:layout_height="wrap_content"
+            android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_primary"
+            android:textSize="13sp" />
+        <TextView android:id="@+id/clientMessageStatus"
+            android:layout_width="@dimen/sms_column_status_width" android:layout_height="wrap_content"
+            android:clickable="true" android:focusable="true" android:gravity="center"
+            android:maxLines="1" android:textColor="@color/verification_error" android:textSize="13sp" />
     </LinearLayout>
     <View android:layout_width="match_parent" android:layout_height="1dp"
         android:background="@color/sms_divider" />

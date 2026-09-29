@@ -387,7 +387,8 @@
                         android:src="@drawable/ic_more_vert_24"
                         android:tint="@color/sms_text_primary" />
                 </LinearLayout>
-                <HorizontalScrollView
+                <com.netk.mvolatrack.ZoomableTableScrollView
+                    android:id="@+id/clientTableScroll"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
@@ -395,11 +396,13 @@
                     android:scrollbars="horizontal">
 
                     <LinearLayout
+                        android:id="@+id/clientTransactionTable"
                         android:layout_width="@dimen/client_table_width"
                         android:layout_height="match_parent"
                         android:orientation="vertical">
 
                         <LinearLayout
+                            android:id="@+id/clientTableHeader"
                             android:layout_width="match_parent"
                             android:layout_height="40dp"
                             android:background="@color/sms_table_header"
@@ -411,8 +414,13 @@
                             <TextView style="@style/SmsTableHeader.Number" android:text="#" />
                             <TextView style="@style/SmsTableHeader.DateTime" android:text="Date et heure" />
                             <TextView style="@style/SmsTableHeader.Type" android:text="Type" />
+                            <TextView style="@style/SmsTableHeader.Name" android:text="Nom" />
                             <TextView style="@style/SmsTableHeader.Money" android:text="Montant" />
-                            <TextView style="@style/SmsTableHeader.Reference" android:text="Réf" />
+                            <TextView style="@style/SmsTableHeader.Reference" android:text="Référence" />
+                            <TextView style="@style/SmsTableHeader.Money" android:text="Bonus" />
+                            <TextView style="@style/SmsTableHeader.Money" android:text="Frais" />
+                            <TextView style="@style/SmsTableHeader.Money" android:text="Solde" />
+                            <TextView style="@style/SmsTableHeader.Status" android:text="@string/sms_status_header" />
                         </LinearLayout>
 
                         <androidx.recyclerview.widget.RecyclerView
@@ -424,7 +432,7 @@
                             android:paddingBottom="8dp"
                             android:scrollbars="vertical" />
                     </LinearLayout>
-                </HorizontalScrollView>
+                </com.netk.mvolatrack.ZoomableTableScrollView>
             </LinearLayout>
         </FrameLayout>
 

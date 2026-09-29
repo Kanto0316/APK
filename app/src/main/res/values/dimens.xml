@@ -10,6 +10,6 @@
     <dimen name="sms_column_money_width">110dp</dimen>
     <dimen name="sms_column_reference_width">110dp</dimen>
     <dimen name="sms_column_status_width">120dp</dimen>
-    <!-- Client detail uses only the five requested columns. -->
-    <dimen name="client_table_width">512dp</dimen>
+    <!-- Same table as Messages, without the sender column (the number is in the title). -->
+    <dimen name="client_table_width">1102dp</dimen>
 </resources>
