@@ -71,6 +71,32 @@ public class XlsxExporterTest {
         assertTrue(safeSheet.contains("<c r=\"A8\" s=\"0\"><v>0.0</v></c>"));
     }
 
+    @Test
+    public void exportsTwentyRowsWithBonusAndSanitizesInvalidXmlAndLongText() throws Exception {
+        List<ExportTransaction> rows = new ArrayList<>();
+        StringBuilder longReference = new StringBuilder();
+        for (int index = 0; index < 40000; index++) longReference.append('R');
+        longReference.insert(10, '\u0001');
+        for (int index = 0; index < 20; index++) {
+            rows.add(new ExportTransaction(index + 1, 1790258400000L, "Dépôt & crédit",
+                    "0340000000", "Client", 1000, index == 0
+                    ? longReference.toString() : "REF<" + index, 50L, null, null,
+                    index == 19 ? "Non vérifiable" : "Conforme"));
+        }
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        XlsxExporter.write(output, rows, "Toutes", "Tous", 1790260200000L);
+
+        String sheet = zipEntry(output.toByteArray(), "xl/worksheets/sheet1.xml");
+        assertTrue(sheet.contains("<row r=\"27\">"));
+        assertTrue(sheet.contains("<c r=\"G8\" s=\"0\"><v>50.0</v></c>"));
+        assertTrue(sheet.contains("Non vérifiable"));
+        assertTrue(sheet.contains("Dépôt &amp; crédit"));
+        assertTrue(sheet.contains("REF&lt;1"));
+        assertFalse(sheet.contains("\u0001"));
+        assertTrue(sheet.length() < 50000);
+    }
+
     private static String zipEntry(byte[] bytes, String expected) throws Exception {
         try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(bytes))) {
             ZipEntry entry;
