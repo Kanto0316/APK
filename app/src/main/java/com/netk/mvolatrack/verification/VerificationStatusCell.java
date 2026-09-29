@@ -20,9 +20,12 @@ public final class VerificationStatusCell {
         int color = ContextCompat.getColor(cell.getContext(), presentation.color);
 
         // Always reset every recycled property, including the absent-result state.
+        cell.setVisibility(View.VISIBLE);
+        icon.setVisibility(View.VISIBLE);
         icon.setImageResource(presentation.icon);
         ImageViewCompat.setImageTintList(icon, android.content.res.ColorStateList.valueOf(color));
         icon.setContentDescription(null);
+        text.setVisibility(View.VISIBLE);
         text.setText(presentation.label);
         text.setTextColor(color);
         cell.setContentDescription(cell.getContext().getString(

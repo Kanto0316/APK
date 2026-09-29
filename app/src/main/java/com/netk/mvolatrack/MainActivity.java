@@ -2970,6 +2970,10 @@ public class MainActivity extends AppCompatActivity {
         status.getLayoutParams().height = Math.max(Math.round(48f
                 * resources.getDisplayMetrics().density), Math.round(48f
                 * resources.getDisplayMetrics().density * zoom));
+        int horizontalPadding = Math.round(resources.getDimension(
+                R.dimen.sms_status_cell_horizontal_padding) * zoom);
+        status.setPaddingRelative(horizontalPadding, status.getPaddingTop(),
+                horizontalPadding, status.getPaddingBottom());
         androidx.appcompat.widget.AppCompatImageView icon = status.findViewById(R.id.statusIcon);
         int iconSize = Math.round(resources.getDimension(R.dimen.sms_status_icon_size) * zoom);
         icon.getLayoutParams().width = iconSize;
