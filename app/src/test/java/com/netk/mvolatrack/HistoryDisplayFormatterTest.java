@@ -8,6 +8,8 @@ import com.netk.mvolatrack.history.HistoryTransaction;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 public class HistoryDisplayFormatterTest {
     @Test public void formatsRequiredWithdrawalCardValues() {
@@ -28,6 +30,21 @@ public class HistoryDisplayFormatterTest {
         assertEquals("Réf -", HistoryDisplayFormatter.reference(null));
         assertEquals("-", HistoryDisplayFormatter.bonus(null));
         assertEquals("0 Ar", HistoryDisplayFormatter.bonus(0L));
+    }
+
+    @Test public void formatsOnlyTransactionTimeAndHandlesMissingTimestamp() {
+        TimeZone original = TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+            Calendar timestamp = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            timestamp.clear();
+            timestamp.set(2026, Calendar.SEPTEMBER, 21, 20, 45);
+
+            assertEquals("20:45", HistoryDisplayFormatter.time(timestamp.getTimeInMillis()));
+            assertEquals("-", HistoryDisplayFormatter.time(0));
+        } finally {
+            TimeZone.setDefault(original);
+        }
     }
 
     @Test public void formatsCreditAsOutgoingCash() {
