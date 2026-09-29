@@ -146,53 +146,37 @@
                 android:textColorHint="@color/sms_text_secondary"
                 android:textSize="14sp" />
 
-            <HorizontalScrollView
-                android:id="@+id/filterScrollView"
+            <LinearLayout
+                android:id="@+id/transactionFilters"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:background="@color/sms_surface"
-                android:fillViewport="false"
-                android:scrollbars="none">
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginEnd="12dp"
+                android:layout_marginBottom="6dp"
+                android:baselineAligned="false"
+                android:orientation="horizontal">
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="4dp">
+                <TextView
+                    android:id="@+id/periodFilterDropdown"
+                    style="@style/TransactionFilterDropdown"
+                    android:layout_width="0dp"
+                    android:layout_weight="1.55"
+                    android:contentDescription="Filtrer par période"
+                    android:text="Toutes les périodes" />
 
-                    <TextView android:id="@+id/filterAll" style="@style/SmsFilterChip" android:text="Tous" />
-                    <TextView android:id="@+id/filterToday" style="@style/SmsFilterChip" android:text="Aujourd'hui" />
-                    <TextView android:id="@+id/filterYesterday" style="@style/SmsFilterChip" android:text="Hier" />
-                    <TextView android:id="@+id/filterSevenDays" style="@style/SmsFilterChip" android:text="7 jours" />
-                    <TextView android:id="@+id/filterThirtyDays" style="@style/SmsFilterChip" android:text="30 jours" />
-                    <TextView android:id="@+id/filterDate" style="@style/SmsFilterChip" android:text="Date" />
-                </LinearLayout>
-            </HorizontalScrollView>
+                <Space
+                    android:layout_width="8dp"
+                    android:layout_height="1dp" />
 
-            <HorizontalScrollView
-                android:id="@+id/typeFilterScrollView"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:background="@color/sms_surface"
-                android:fillViewport="false"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="4dp">
-
-                    <TextView android:id="@+id/typeFilterAll" style="@style/SmsFilterChip" android:text="Tous" />
-                    <TextView android:id="@+id/typeFilterDeposit" style="@style/SmsFilterChip" android:text="Dépôt" />
-                    <TextView android:id="@+id/typeFilterWithdrawal" style="@style/SmsFilterChip" android:text="Retrait" />
-                    <TextView android:id="@+id/typeFilterCredit" style="@style/SmsFilterChip" android:text="Crédit" />
-                </LinearLayout>
-            </HorizontalScrollView>
+                <TextView
+                    android:id="@+id/typeFilterDropdown"
+                    style="@style/TransactionFilterDropdown"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:contentDescription="Filtrer par type"
+                    android:text="Tous" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/transactionCountText"

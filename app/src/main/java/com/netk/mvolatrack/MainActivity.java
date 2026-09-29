@@ -226,8 +226,8 @@ public class MainActivity extends AppCompatActivity {
     private SmsDateFilter.TransactionType selectedMessageType = SmsDateFilter.TransactionType.ALL;
     private Long customFilterDate;
     private EditText messageSearchInput;
-    private TextView[] filterChips;
-    private TextView[] typeFilterChips;
+    private TextView periodFilterDropdown;
+    private TextView typeFilterDropdown;
     private View depositCard;
     private View creditCard;
     private boolean depositRequestInProgress;
@@ -1329,28 +1329,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void configureMessageFilters(Bundle savedInstanceState) {
         messageSearchInput = findViewById(R.id.messageSearchInput);
-        filterChips = new TextView[]{findViewById(R.id.filterAll),
-                findViewById(R.id.filterToday), findViewById(R.id.filterYesterday),
-                findViewById(R.id.filterSevenDays), findViewById(R.id.filterThirtyDays),
-                findViewById(R.id.filterDate)};
-        typeFilterChips = new TextView[]{findViewById(R.id.typeFilterAll),
-                findViewById(R.id.typeFilterDeposit), findViewById(R.id.typeFilterWithdrawal),
-                findViewById(R.id.typeFilterCredit)};
+        periodFilterDropdown = findViewById(R.id.periodFilterDropdown);
+        typeFilterDropdown = findViewById(R.id.typeFilterDropdown);
         restoreMessageFilters();
-        filterChips[0].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.ALL));
-        filterChips[1].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.TODAY));
-        filterChips[2].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.YESTERDAY));
-        filterChips[3].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.SEVEN_DAYS));
-        filterChips[4].setOnClickListener(view -> selectMessageFilter(SmsDateFilter.Period.THIRTY_DAYS));
-        filterChips[5].setOnClickListener(view -> showDateFilterPicker());
-        typeFilterChips[0].setOnClickListener(view ->
-                selectMessageType(SmsDateFilter.TransactionType.ALL));
-        typeFilterChips[1].setOnClickListener(view ->
-                selectMessageType(SmsDateFilter.TransactionType.DEPOSIT));
-        typeFilterChips[2].setOnClickListener(view ->
-                selectMessageType(SmsDateFilter.TransactionType.WITHDRAWAL));
-        typeFilterChips[3].setOnClickListener(view ->
-                selectMessageType(SmsDateFilter.TransactionType.CREDIT));
+        periodFilterDropdown.setOnClickListener(this::showPeriodFilterMenu);
+        typeFilterDropdown.setOnClickListener(this::showTypeFilterMenu);
         messageSearchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence value, int start, int count,
                     int after) {}
@@ -1363,6 +1346,39 @@ public class MainActivity extends AppCompatActivity {
             @Override public void afterTextChanged(Editable value) {}
         });
         updateFilterChips();
+    }
+
+    private void showPeriodFilterMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        String[] labels = {"Toutes les périodes", "Aujourd’hui", "Hier",
+                "7 derniers jours", "30 derniers jours", "Date personnalisée"};
+        SmsDateFilter.Period[] periods = SmsDateFilter.Period.values();
+        for (int index = 0; index < labels.length; index++) {
+            menu.getMenu().add(0, index, index, labels[index])
+                    .setCheckable(true).setChecked(selectedMessageFilter == periods[index]);
+        }
+        menu.setOnMenuItemClickListener(item -> {
+            SmsDateFilter.Period period = periods[item.getItemId()];
+            if (period == SmsDateFilter.Period.CUSTOM_DATE) showDateFilterPicker();
+            else selectMessageFilter(period);
+            return true;
+        });
+        menu.show();
+    }
+
+    private void showTypeFilterMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        String[] labels = {"Tous", "Dépôt", "Retrait", "Crédit"};
+        SmsDateFilter.TransactionType[] types = SmsDateFilter.TransactionType.values();
+        for (int index = 0; index < labels.length; index++) {
+            menu.getMenu().add(0, index, index, labels[index])
+                    .setCheckable(true).setChecked(selectedMessageType == types[index]);
+        }
+        menu.setOnMenuItemClickListener(item -> {
+            selectMessageType(types[item.getItemId()]);
+            return true;
+        });
+        menu.show();
     }
 
     private void selectMessageFilter(SmsDateFilter.Period period) {
@@ -1431,17 +1447,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateFilterChips() {
-        if (filterChips == null) return;
-        SmsDateFilter.Period[] periods = SmsDateFilter.Period.values();
-        for (int index = 0; index < filterChips.length; index++) {
-            filterChips[index].setSelected(selectedMessageFilter == periods[index]);
+        if (periodFilterDropdown == null || typeFilterDropdown == null) return;
+        String[] periodLabels = {"Toutes les périodes", "Aujourd’hui", "Hier",
+                "7 derniers jours", "30 derniers jours", "Date personnalisée"};
+        String periodLabel = periodLabels[selectedMessageFilter.ordinal()];
+        if (selectedMessageFilter == SmsDateFilter.Period.CUSTOM_DATE
+                && customFilterDate != null) {
+            periodLabel = new SimpleDateFormat("dd/MM/yy", Locale.FRENCH)
+                    .format(customFilterDate);
         }
-        filterChips[5].setText(customFilterDate == null ? "Date"
-                : new SimpleDateFormat("dd/MM/yy", Locale.FRENCH).format(customFilterDate));
-        SmsDateFilter.TransactionType[] types = SmsDateFilter.TransactionType.values();
-        for (int index = 0; index < typeFilterChips.length; index++) {
-            typeFilterChips[index].setSelected(selectedMessageType == types[index]);
-        }
+        periodFilterDropdown.setText(periodLabel);
+        String[] typeLabels = {"Tous", "Dépôt", "Retrait", "Crédit"};
+        typeFilterDropdown.setText(typeLabels[selectedMessageType.ordinal()]);
     }
 
     private void renderStatistics() {

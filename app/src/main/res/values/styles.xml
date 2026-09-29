@@ -102,6 +102,23 @@
         <item name="android:textSize">13sp</item>
     </style>
 
+    <style name="TransactionFilterDropdown">
+        <item name="android:layout_height">46dp</item>
+        <item name="android:background">@drawable/bg_filter_dropdown</item>
+        <item name="android:clickable">true</item>
+        <item name="android:drawableEnd">@drawable/ic_expand_more_20</item>
+        <item name="android:drawablePadding">6dp</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:textColor">@color/sms_text_primary</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
     <style name="StatisticsTab">
         <item name="android:layout_width">0dp</item><item name="android:layout_height">match_parent</item><item name="android:layout_weight">1</item>
         <item name="android:background">@drawable/bg_filter_chip</item><item name="android:clickable">true</item><item name="android:focusable">true</item>
