@@ -12,9 +12,17 @@ public final class ExportTransaction {
     public final Long bonus;
     public final Long fee;
     public final Long balance;
+    public final String verificationStatus;
 
     public ExportTransaction(int number, long dateTime, String type, String phone, String name,
                              long amount, String reference, Long bonus, Long fee, Long balance) {
+        this(number, dateTime, type, phone, name, amount, reference, bonus, fee, balance,
+                "Non vérifiable");
+    }
+
+    public ExportTransaction(int number, long dateTime, String type, String phone, String name,
+                             long amount, String reference, Long bonus, Long fee, Long balance,
+                             String verificationStatus) {
         this.number = number;
         this.dateTime = dateTime;
         this.type = type;
@@ -25,5 +33,6 @@ public final class ExportTransaction {
         this.bonus = bonus;
         this.fee = fee;
         this.balance = balance;
+        this.verificationStatus = verificationStatus;
     }
 }

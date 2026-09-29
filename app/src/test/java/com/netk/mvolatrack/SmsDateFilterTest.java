@@ -222,6 +222,40 @@ public class SmsDateFilterTest {
         assertEquals(2, result.size());
     }
 
+    @Test
+    public void exportPeriodsUseCalendarWeekMonthAndInclusiveCustomRange() {
+        List<SmsMessage> source = Arrays.asList(
+                message(2026, 9, 29, 10), message(2026, 9, 28, 10),
+                message(2026, 9, 27, 10), message(2026, 9, 1, 10),
+                message(2026, 8, 31, 10));
+
+        assertEquals(2, SmsDateFilter.apply(source, SmsDateFilter.Period.THIS_WEEK,
+                null, null, time(2026, 9, 29, 12), ZONE, "",
+                SmsDateFilter.TransactionType.ALL).size());
+        assertEquals(4, SmsDateFilter.apply(source, SmsDateFilter.Period.THIS_MONTH,
+                null, null, time(2026, 9, 29, 12), ZONE, "",
+                SmsDateFilter.TransactionType.ALL).size());
+        assertEquals(3, SmsDateFilter.apply(source, SmsDateFilter.Period.CUSTOM_RANGE,
+                time(2026, 9, 27, 0), time(2026, 9, 29, 0),
+                time(2026, 9, 29, 12), ZONE, "",
+                SmsDateFilter.TransactionType.ALL).size());
+    }
+
+    @Test
+    public void exportCreditAndDebitGroupsReuseTransactionTypeMatching() {
+        List<SmsMessage> source = Arrays.asList(
+                typedMessage("Crédit", "-", "0386825677", 2026, 9, 29, 10),
+                typedMessage("Dépôt", "Ravaka", "0340677891", 2026, 9, 29, 9),
+                typedMessage("Retrait", "Ravaka", "0385829562", 2026, 9, 29, 8));
+
+        assertEquals(2, SmsDateFilter.apply(source, SmsDateFilter.Period.ALL,
+                null, null, time(2026, 9, 29, 12), ZONE, "",
+                SmsDateFilter.TransactionType.CREDIT_ENTRY).size());
+        assertEquals(1, SmsDateFilter.apply(source, SmsDateFilter.Period.ALL,
+                null, null, time(2026, 9, 29, 12), ZONE, "",
+                SmsDateFilter.TransactionType.DEBIT_EXIT).size());
+    }
+
     private static void assertSingleTypeResult(List<SmsMessage> source,
                                                SmsDateFilter.Period period, String query,
                                                SmsDateFilter.TransactionType type,
