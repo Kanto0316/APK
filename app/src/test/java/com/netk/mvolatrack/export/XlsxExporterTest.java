@@ -19,7 +19,8 @@ public class XlsxExporterTest {
     public void createsRealXlsxWithTextIdentifiersAndNumericAmounts() throws Exception {
         List<ExportTransaction> rows = new ArrayList<>();
         rows.add(new ExportTransaction(1, 1790258400000L, "Retrait", "0345079482",
-                "Ravaka", 16000, "12345678901234567890", null, 0L, 4250L));
+                "Ravaka", 16000, "12345678901234567890", null, 0L, 4250L,
+                "Écart de solde"));
         ByteArrayOutputStream output = new ByteArrayOutputStream();
 
         XlsxExporter.write(output, rows, "Aujourd’hui", "Retrait", 1790260200000L);
@@ -31,6 +32,9 @@ public class XlsxExporterTest {
         assertTrue(sheet.contains("t=\"inlineStr\" s=\"0\"><is><t xml:space=\"preserve\">0345079482"));
         assertTrue(sheet.contains("12345678901234567890"));
         assertTrue(sheet.contains("<c r=\"F8\" s=\"0\"><v>16000.0</v></c>"));
+        assertTrue(sheet.contains("Statut de vérification"));
+        assertTrue(sheet.contains("Écart de solde"));
+        assertTrue(sheet.contains("<autoFilter ref=\"A7:J8\"/>"));
         assertFalse(sheet.contains("message brut"));
     }
 

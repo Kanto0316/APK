@@ -13,9 +13,13 @@ import java.util.TimeZone;
 
 /** Pure display filtering for the messages table; stored messages are never mutated. */
 final class SmsDateFilter {
-    enum Period { ALL, TODAY, YESTERDAY, SEVEN_DAYS, THIRTY_DAYS, CUSTOM_DATE }
+    enum Period {
+        ALL, TODAY, YESTERDAY, SEVEN_DAYS, THIRTY_DAYS, CUSTOM_DATE,
+        THIS_WEEK, THIS_MONTH, CUSTOM_RANGE
+    }
     enum TransactionType {
-        ALL(null), DEPOSIT("Dépôt"), WITHDRAWAL("Retrait"), CREDIT("Crédit");
+        ALL(null), DEPOSIT("Dépôt"), WITHDRAWAL("Retrait"), CREDIT("Crédit"),
+        CREDIT_ENTRY(null), DEBIT_EXIT(null);
 
         final String parsedType;
 
@@ -48,34 +52,56 @@ final class SmsDateFilter {
                 TransactionType.ALL);
     }
 
+    /** Range-aware entry point used by exports; all transaction parsing and matching stays here. */
+    static List<DisplayMessage> apply(List<SmsMessage> source, Period period,
+                                      Long customStartMillis, Long customEndMillis,
+                                      long nowMillis, TimeZone timeZone, String query,
+                                      TransactionType transactionType) {
+        long[] bounds = bounds(period, customStartMillis, customEndMillis, nowMillis, timeZone);
+        return applyBounds(source, bounds[0], bounds[1], query, transactionType);
+    }
+
     static List<DisplayMessage> apply(List<SmsMessage> source, Period period,
                                       Long customDateMillis, long nowMillis, TimeZone timeZone,
                                       String query, TransactionType transactionType) {
-        if (source == null || source.isEmpty()) return Collections.emptyList();
+        long[] bounds = bounds(period, customDateMillis, customDateMillis, nowMillis, timeZone);
+        return applyBounds(source, bounds[0], bounds[1], query, transactionType);
+    }
 
-        long start = Long.MIN_VALUE;
-        long end = Long.MAX_VALUE;
+    private static long[] bounds(Period period, Long customStartMillis, Long customEndMillis,
+                                 long nowMillis, TimeZone timeZone) {
+        long start = Long.MIN_VALUE, end = Long.MAX_VALUE;
         if (period != Period.ALL) {
             Calendar selectedDay = Calendar.getInstance(timeZone);
-            selectedDay.setTimeInMillis(period == Period.CUSTOM_DATE && customDateMillis != null
-                    ? customDateMillis : nowMillis);
+            selectedDay.setTimeInMillis((period == Period.CUSTOM_DATE
+                    || period == Period.CUSTOM_RANGE) && customStartMillis != null
+                    ? customStartMillis : nowMillis);
             startOfDay(selectedDay);
             if (period == Period.YESTERDAY) selectedDay.add(Calendar.DAY_OF_MONTH, -1);
             else if (period == Period.SEVEN_DAYS) selectedDay.add(Calendar.DAY_OF_MONTH, -6);
             else if (period == Period.THIRTY_DAYS) selectedDay.add(Calendar.DAY_OF_MONTH, -29);
+            else if (period == Period.THIS_WEEK) {
+                selectedDay.setFirstDayOfWeek(Calendar.MONDAY);
+                selectedDay.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+            } else if (period == Period.THIS_MONTH) selectedDay.set(Calendar.DAY_OF_MONTH, 1);
             start = selectedDay.getTimeInMillis();
 
             Calendar tomorrow = Calendar.getInstance(timeZone);
-            tomorrow.setTimeInMillis(period == Period.CUSTOM_DATE && customDateMillis != null
-                    ? customDateMillis : nowMillis);
+            tomorrow.setTimeInMillis(period == Period.CUSTOM_RANGE && customEndMillis != null
+                    ? customEndMillis : ((period == Period.CUSTOM_DATE
+                    && customStartMillis != null) ? customStartMillis : nowMillis));
             startOfDay(tomorrow);
             if (period == Period.YESTERDAY) {
                 // The exclusive end of yesterday is the start of today.
-            } else {
-                tomorrow.add(Calendar.DAY_OF_MONTH, 1);
-            }
+            } else tomorrow.add(Calendar.DAY_OF_MONTH, 1);
             end = tomorrow.getTimeInMillis();
         }
+        return new long[]{start, end};
+    }
+
+    private static List<DisplayMessage> applyBounds(List<SmsMessage> source, long start, long end,
+            String query, TransactionType transactionType) {
+        if (source == null || source.isEmpty()) return Collections.emptyList();
 
         List<DisplayMessage> result = new ArrayList<>();
         int total = source.size();
@@ -89,8 +115,7 @@ final class SmsDateFilter {
             // A persisted SMS is not necessarily a business transaction. Keep unrecognised
             // messages in Room for future reprocessing, but never expose them in this view.
             if (parsed == null) continue;
-            boolean typeMatches = transactionType == TransactionType.ALL
-                    || transactionType.parsedType.equals(parsed.type);
+            boolean typeMatches = matchesType(transactionType, parsed.type);
             String searchableNumber = parsed.clientNumber;
             long effectiveDate = parsed.transactionAt;
             boolean numberMatches = !normalizedNumberQuery.isEmpty()
@@ -107,6 +132,15 @@ final class SmsDateFilter {
             }
         }
         return result;
+    }
+
+    private static boolean matchesType(TransactionType selected, String parsedType) {
+        if (selected == TransactionType.ALL) return true;
+        if (selected == TransactionType.CREDIT_ENTRY) {
+            return "Crédit".equals(parsedType) || "Dépôt".equals(parsedType);
+        }
+        if (selected == TransactionType.DEBIT_EXIT) return "Retrait".equals(parsedType);
+        return selected.parsedType.equals(parsedType);
     }
 
     /** Keeps digits only; phone numbers remain strings so leading zeroes are retained. */

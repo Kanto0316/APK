@@ -21,9 +21,9 @@ public final class PdfExporter {
     private static final float LEFT = 22;
     private static final float TOP = 24;
     private static final float ROW_HEIGHT = 22;
-    private static final float[] WIDTHS = {26, 76, 48, 78, 93, 68, 92, 62, 62, 67};
-    private static final String[] HEADERS = {"N°", "Date/heure", "Type", "Numéro", "Nom",
-            "Montant", "Réf", "Bonus", "Frais", "Solde"};
+    private static final float[] WIDTHS = {24, 72, 45, 72, 78, 62, 52, 52, 58, 96};
+    private static final String[] HEADERS = {"#", "Date et heure", "Type", "Numéro client",
+            "Référence", "Montant", "Bonus", "Frais", "Solde", "Statut de vérification"};
 
     private PdfExporter() {}
 
@@ -88,9 +88,9 @@ public final class PdfExporter {
         canvas.drawRect(LEFT, y, right(), y + ROW_HEIGHT, paint); paint.setStyle(Paint.Style.FILL);
         String date = new SimpleDateFormat("dd/MM/yy HH:mm", Locale.FRENCH).format(new Date(row.dateTime));
         String[] values = {String.valueOf(row.number), date, row.type,
-                ClientNumberNormalizer.format(row.phone), missing(row.name), ariary(row.amount),
-                missing(row.reference), nullableAriary(row.bonus, false), nullableAriary(row.fee, true),
-                nullableAriary(row.balance, false)};
+                ClientNumberNormalizer.format(row.phone), missing(row.reference), ariary(row.amount),
+                nullableAriary(row.bonus, false), nullableAriary(row.fee, true),
+                nullableAriary(row.balance, false), missing(row.verificationStatus)};
         paint.setColor(Color.BLACK); paint.setTypeface(android.graphics.Typeface.DEFAULT); paint.setTextSize(7.2f);
         float x = LEFT;
         for (int i = 0; i < values.length; i++) {

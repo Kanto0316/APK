@@ -12,8 +12,8 @@ import java.util.zip.ZipOutputStream;
 
 /** Minimal OOXML writer: produces a real, interoperable XLSX without a heavyweight dependency. */
 public final class XlsxExporter {
-    private static final String[] HEADERS = {"N°", "Date et heure", "Type", "Numéro", "Nom",
-            "Montant", "Réf", "Bonus", "Frais", "Solde"};
+    private static final String[] HEADERS = {"#", "Date et heure", "Type", "Numéro client",
+            "Référence", "Montant", "Bonus", "Frais", "Solde", "Statut de vérification"};
     private XlsxExporter() {}
 
     public static void write(OutputStream output, List<ExportTransaction> rows, String period,
@@ -49,7 +49,7 @@ public final class XlsxExporter {
     private static String sheet(List<ExportTransaction> rows, String period, String type,
                                 long exportedAt) {
         StringBuilder xml = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?><worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><cols>");
-        double[] widths = {7, 20, 13, 17, 24, 15, 22, 15, 15, 15};
+        double[] widths = {7, 20, 13, 18, 22, 15, 15, 15, 15, 24};
         for (int i = 0; i < widths.length; i++) xml.append("<col min=\"").append(i + 1)
                 .append("\" max=\"").append(i + 1).append("\" width=\"").append(widths[i]).append("\" customWidth=\"1\"/>");
         xml.append("</cols><sheetData>");
@@ -68,15 +68,17 @@ public final class XlsxExporter {
             numberCell(xml, cell(1, rowNumber), excelDate(row.dateTime), 2);
             textCell(xml, cell(2, rowNumber), row.type, 0);
             textCell(xml, cell(3, rowNumber), row.phone, 0);
-            textCell(xml, cell(4, rowNumber), row.name, 0);
+            textCell(xml, cell(4, rowNumber), row.reference, 0);
             numberCell(xml, cell(5, rowNumber), row.amount, 0);
-            textCell(xml, cell(6, rowNumber), row.reference, 0);
-            nullableNumber(xml, cell(7, rowNumber), row.bonus);
-            nullableNumber(xml, cell(8, rowNumber), row.fee);
-            nullableNumber(xml, cell(9, rowNumber), row.balance);
+            nullableNumber(xml, cell(6, rowNumber), row.bonus);
+            nullableNumber(xml, cell(7, rowNumber), row.fee);
+            nullableNumber(xml, cell(8, rowNumber), row.balance);
+            textCell(xml, cell(9, rowNumber), row.verificationStatus, 0);
             xml.append("</row>"); rowNumber++;
         }
-        return xml.append("</sheetData></worksheet>").toString();
+        int lastRow = Math.max(7, rowNumber - 1);
+        return xml.append("</sheetData><autoFilter ref=\"A7:J").append(lastRow)
+                .append("\"/></worksheet>").toString();
     }
 
     private static double excelDate(long millis) { return millis / 86400000d + 25569d; }

@@ -25,6 +25,7 @@ import android.graphics.Typeface;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.LayoutInflater;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -35,6 +36,8 @@ import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.LinearLayout;
+import android.widget.Button;
+import android.widget.RadioGroup;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -79,6 +82,7 @@ import com.netk.mvolatrack.activation.LicenseDisplay;
 import androidx.appcompat.app.AlertDialog;
 
 import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -1660,8 +1664,8 @@ public class MainActivity extends AppCompatActivity {
                     "Les réglages de MVolaCash seront disponibles ici.");
             else if (id == R.id.nav_security)
                 startActivity(new Intent(this, SecurityActivity.class));
-            else if (id == R.id.nav_export_pdf) generateTransactionExport(false);
-            else if (id == R.id.nav_export_excel) generateTransactionExport(true);
+            else if (id == R.id.nav_export_pdf) showExportSettingsDialog(false);
+            else if (id == R.id.nav_export_excel) showExportSettingsDialog(true);
             else if (id == R.id.nav_export_json) launchExport();
             else if (id == R.id.nav_import_json) launchImport();
             else if (id == R.id.nav_permissions) showPermissionStatusPage();
@@ -1818,6 +1822,127 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /** Configures both formats and delegates selection to the same filter used by Messages. */
+    private void showExportSettingsDialog(boolean excel) {
+        View content = LayoutInflater.from(this).inflate(R.layout.dialog_export_settings, null);
+        RadioGroup periodGroup = content.findViewById(R.id.exportPeriodGroup);
+        RadioGroup typeGroup = content.findViewById(R.id.exportTypeGroup);
+        View customDates = content.findViewById(R.id.exportCustomDates);
+        Button startButton = content.findViewById(R.id.exportStartDate);
+        Button endButton = content.findViewById(R.id.exportEndDate);
+        TextView preview = content.findViewById(R.id.exportPreview);
+        long today = System.currentTimeMillis();
+        long[] custom = {today, today};
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle("Paramètres d’export")
+                .setView(content)
+                .setNegativeButton("Annuler", null)
+                .setPositiveButton("Exporter", null)
+                .create();
+
+        Runnable refresh = () -> {
+            customDates.setVisibility(periodGroup.getCheckedRadioButtonId()
+                    == R.id.exportPeriodCustom ? View.VISIBLE : View.GONE);
+            List<SmsDateFilter.DisplayMessage> selected = exportSelection(periodGroup,
+                    typeGroup, custom[0], custom[1]);
+            preview.setText(selected.size() + (selected.size() > 1
+                    ? " transactions sélectionnées" : " transaction sélectionnée"));
+            if (dialog.isShowing()) dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                    .setEnabled(!selected.isEmpty() && custom[0] <= custom[1]);
+        };
+        periodGroup.setOnCheckedChangeListener((group, checkedId) -> refresh.run());
+        typeGroup.setOnCheckedChangeListener((group, checkedId) -> refresh.run());
+        startButton.setOnClickListener(view -> showExportDatePicker(custom[0], value -> {
+            custom[0] = value;
+            startButton.setText(formatExportDate(value));
+            refresh.run();
+        }));
+        endButton.setOnClickListener(view -> showExportDatePicker(custom[1], value -> {
+            custom[1] = value;
+            endButton.setText(formatExportDate(value));
+            refresh.run();
+        }));
+        dialog.setOnShowListener(ignored -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+                List<SmsDateFilter.DisplayMessage> selected = exportSelection(periodGroup,
+                        typeGroup, custom[0], custom[1]);
+                if (selected.isEmpty() || custom[0] > custom[1]) return;
+                SmsDateFilter.Period period = exportPeriod(periodGroup.getCheckedRadioButtonId());
+                SmsDateFilter.TransactionType type = exportType(typeGroup.getCheckedRadioButtonId());
+                String periodLabel = exportPeriodLabel(period, custom[0], custom[1]);
+                String typeLabel = type == SmsDateFilter.TransactionType.CREDIT_ENTRY
+                        ? "Crédit / Entrée" : type == SmsDateFilter.TransactionType.DEBIT_EXIT
+                        ? "Débit / Sortie" : "Tous";
+                generateTransactionExport(excel, selected, periodLabel, typeLabel, null,
+                        exportFileSuffix(period, type, custom[0], custom[1]));
+                dialog.dismiss();
+            });
+            refresh.run();
+        });
+        dialog.show();
+    }
+
+    private interface DateSelection { void selected(long value); }
+
+    private void showExportDatePicker(long initialMillis, DateSelection selection) {
+        Calendar initial = Calendar.getInstance();
+        initial.setTimeInMillis(initialMillis);
+        new DatePickerDialog(this, (picker, year, month, day) -> {
+            Calendar date = Calendar.getInstance();
+            date.clear(); date.set(year, month, day);
+            selection.selected(date.getTimeInMillis());
+        }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH),
+                initial.get(Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private List<SmsDateFilter.DisplayMessage> exportSelection(RadioGroup periods,
+            RadioGroup types, long start, long end) {
+        return SmsDateFilter.apply(messages, exportPeriod(periods.getCheckedRadioButtonId()),
+                start, end, System.currentTimeMillis(), java.util.TimeZone.getDefault(), "",
+                exportType(types.getCheckedRadioButtonId()));
+    }
+
+    private SmsDateFilter.Period exportPeriod(int checkedId) {
+        if (checkedId == R.id.exportPeriodToday) return SmsDateFilter.Period.TODAY;
+        if (checkedId == R.id.exportPeriodWeek) return SmsDateFilter.Period.THIS_WEEK;
+        if (checkedId == R.id.exportPeriodMonth) return SmsDateFilter.Period.THIS_MONTH;
+        if (checkedId == R.id.exportPeriodCustom) return SmsDateFilter.Period.CUSTOM_RANGE;
+        return SmsDateFilter.Period.ALL;
+    }
+
+    private SmsDateFilter.TransactionType exportType(int checkedId) {
+        if (checkedId == R.id.exportTypeCredit) return SmsDateFilter.TransactionType.CREDIT_ENTRY;
+        if (checkedId == R.id.exportTypeDebit) return SmsDateFilter.TransactionType.DEBIT_EXIT;
+        return SmsDateFilter.TransactionType.ALL;
+    }
+
+    private String exportPeriodLabel(SmsDateFilter.Period period, long start, long end) {
+        if (period == SmsDateFilter.Period.TODAY) return "Aujourd’hui";
+        if (period == SmsDateFilter.Period.THIS_WEEK) return "Cette semaine";
+        if (period == SmsDateFilter.Period.THIS_MONTH) return "Ce mois";
+        if (period == SmsDateFilter.Period.CUSTOM_RANGE) {
+            return formatExportDate(start) + " – " + formatExportDate(end);
+        }
+        return "Toutes les périodes";
+    }
+
+    private String exportFileSuffix(SmsDateFilter.Period period,
+            SmsDateFilter.TransactionType type, long start, long end) {
+        SimpleDateFormat fileDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
+        if (period == SmsDateFilter.Period.CUSTOM_RANGE) {
+            return fileDate.format(new Date(start)) + "_" + fileDate.format(new Date(end));
+        }
+        String date = fileDate.format(new Date());
+        if (type == SmsDateFilter.TransactionType.CREDIT_ENTRY) return date + "_Credit";
+        if (type == SmsDateFilter.TransactionType.DEBIT_EXIT) return date + "_Debit";
+        return date + "_Toutes";
+    }
+
+    private String formatExportDate(long millis) {
+        return new SimpleDateFormat("dd/MM/yyyy", Locale.FRENCH).format(new Date(millis));
+    }
+
     private void showClientTransactionExportDialog() {
         if (selectedClientSender == null) return;
         // This snapshot is the adapter's exact data source, including its current ordering.
@@ -1854,17 +1979,26 @@ public class MainActivity extends AppCompatActivity {
     private void generateTransactionExport(boolean excel,
             List<SmsDateFilter.DisplayMessage> source, String period, String type,
             String fileNumber) {
+        generateTransactionExport(excel, source, period, type, fileNumber, null);
+    }
+
+    private void generateTransactionExport(boolean excel,
+            List<SmsDateFilter.DisplayMessage> source, String period, String type,
+            String fileNumber, String fileSuffix) {
         if (source.isEmpty()) {
             Toast.makeText(this, "Aucune transaction à exporter.", Toast.LENGTH_LONG).show();
             return;
         }
         List<ExportTransaction> rows = new ArrayList<>();
+        Map<String, TransactionBalanceVerification> verifications =
+                HistoryTransaction.verificationsByMessageKey(messages);
         for (SmsDateFilter.DisplayMessage displayed : source) {
             MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
                     displayed.message.messageBody, displayed.message.receivedDate);
             if (parsed != null) rows.add(new ExportTransaction(displayed.originalNumber,
                     parsed.transactionAt, parsed.type, parsed.clientNumber, parsed.clientName,
-                    parsed.amount, parsed.reference, parsed.bonus, parsed.fee, parsed.balance));
+                    parsed.amount, parsed.reference, parsed.bonus, parsed.fee, parsed.balance,
+                    verificationStatusText(verifications.get(displayed.message.uniqueKey))));
         }
         if (rows.isEmpty()) {
             Toast.makeText(this, "Aucune transaction à exporter.", Toast.LENGTH_LONG).show();
@@ -1874,9 +2008,10 @@ public class MainActivity extends AppCompatActivity {
         String extension = excel ? ".xlsx" : ".pdf";
         String mime = excel ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 : "application/pdf";
+        String suffix = fileSuffix == null ? new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
+                .format(new Date(exportedAt)) : fileSuffix;
         String name = "MVolaCash_" + (fileNumber == null ? "" : fileNumber + "_")
-                + new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT)
-                .format(new Date(exportedAt)) + extension;
+                + suffix + extension;
         Toast.makeText(this, "Création du fichier...", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             try {
@@ -1892,6 +2027,11 @@ public class MainActivity extends AppCompatActivity {
                 showTransferError("Export impossible", error);
             }
         }, "transaction-export").start();
+    }
+
+    private String verificationStatusText(TransactionBalanceVerification verification) {
+        VerificationStatusPresentation presentation = VerificationStatusPresentation.from(verification);
+        return getString(presentation.label);
     }
 
     private String exportPeriodLabel() {
