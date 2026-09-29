@@ -4,11 +4,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import com.netk.mvolatrack.database.SmsMessage;
+import com.netk.mvolatrack.verification.TransactionBalanceVerification;
+import com.netk.mvolatrack.verification.VerificationStatus;
 
 import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 public class HistoryTransactionTest {
     @Test public void mapsRequiredWithdrawalFromPersistedSms() {
@@ -74,5 +77,21 @@ public class HistoryTransactionTest {
         assertEquals("3", latest.get(1).reference);
         assertEquals("2", latest.get(2).reference);
         assertEquals(4, transactions.size());
+    }
+
+    @Test public void indexesVerificationByStableSmsIdentityDespiteDuplicateReferences() {
+        SmsMessage first = SmsMessage.create("MVola",
+                "1 000 Ar recu de A 0341411050 le 20/09/26 a 08:19. Solde: 10 000 Ar. Ref:identique.",
+                1L, true);
+        SmsMessage second = SmsMessage.create("MVola",
+                "2 000 Ar recu de B 0341411051 le 20/09/26 a 08:20. Solde: 12 000 Ar. Ref:identique.",
+                2L, true);
+
+        Map<String, TransactionBalanceVerification> indexed =
+                HistoryTransaction.verificationsByMessageKey(Arrays.asList(first, second));
+
+        assertEquals(2, indexed.size());
+        assertEquals(VerificationStatus.NON_VERIFIABLE, indexed.get(first.uniqueKey).statut);
+        assertEquals(VerificationStatus.NON_VERIFIABLE, indexed.get(second.uniqueKey).statut);
     }
 }

@@ -257,6 +257,7 @@
                         <TextView style="@style/SmsTableHeader.Money" android:text="Bonus" />
                         <TextView style="@style/SmsTableHeader.Money" android:text="Frais" />
                         <TextView style="@style/SmsTableHeader.Money" android:text="Solde" />
+                        <TextView style="@style/SmsTableHeader.Status" android:text="@string/sms_status_header" />
                     </LinearLayout>
 
                     <TextView

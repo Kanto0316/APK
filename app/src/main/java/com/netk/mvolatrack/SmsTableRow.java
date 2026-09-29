@@ -3,6 +3,7 @@ package com.netk.mvolatrack;
 import com.netk.mvolatrack.database.SmsMessage;
 import com.netk.mvolatrack.sms.ClientNumberNormalizer;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
+import com.netk.mvolatrack.verification.TransactionBalanceVerification;
 
 import java.text.SimpleDateFormat;
 import java.util.Locale;
@@ -21,9 +22,11 @@ final class SmsTableRow {
     final String bonus;
     final String frais;
     final String solde;
+    final TransactionBalanceVerification verification;
 
     private SmsTableRow(int number, String dateTime, String type, String numero, String nom,
-                        String montant, String reference, String bonus, String frais, String solde) {
+                        String montant, String reference, String bonus, String frais, String solde,
+                        TransactionBalanceVerification verification) {
         this.number = number;
         this.dateTime = dateTime;
         this.type = type;
@@ -34,9 +37,15 @@ final class SmsTableRow {
         this.bonus = bonus;
         this.frais = frais;
         this.solde = solde;
+        this.verification = verification;
     }
 
     static SmsTableRow from(SmsDateFilter.DisplayMessage displayed) {
+        return from(displayed, null);
+    }
+
+    static SmsTableRow from(SmsDateFilter.DisplayMessage displayed,
+                            TransactionBalanceVerification verification) {
         SmsMessage message = displayed.message;
         MvolaMessageParser.ParsedTransaction transaction =
                 MvolaMessageParser.parse(message.messageBody, message.receivedDate);
@@ -54,7 +63,7 @@ final class SmsTableRow {
                 transaction.reference,
                 transaction.bonus == null ? null : ariary(transaction.bonus),
                 transaction.fee == null ? null : ariary(transaction.fee),
-                transaction.balance == null ? null : ariary(transaction.balance));
+                transaction.balance == null ? null : ariary(transaction.balance), verification);
     }
 
     private static String ariary(long value) {
