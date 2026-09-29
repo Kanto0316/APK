@@ -13,6 +13,7 @@ import android.provider.OpenableColumns;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Build;
+import android.util.Log;
 import android.text.InputType;
 import android.text.Editable;
 import android.text.InputFilter;
@@ -107,8 +108,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Date;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MVolaCash";
     private static final String STATE_SELECTED_SECTION = "selected_section";
     private static final String STATE_STATISTICS_YEAR = "statistics_year";
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
@@ -162,6 +167,8 @@ public class MainActivity extends AppCompatActivity {
     private SmsViewModel viewModel;
     private SmsBackupManager backupManager;
     private List<SmsMessage> messages = new ArrayList<>();
+    private List<HistoryTransaction> preparedHistory = new ArrayList<>();
+    private List<ClientMessageGrouper.ClientGroup> preparedClients = new ArrayList<>();
     private Map<String, TransactionBalanceVerification> messageVerifications =
             Collections.emptyMap();
     private boolean roomLoaded;
@@ -254,6 +261,10 @@ public class MainActivity extends AppCompatActivity {
     private File pendingExportFile;
     private String pendingExportMime;
     private DrawerLayout drawerLayout;
+    private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
+    private Future<?> exportTask;
+    private volatile boolean activityDestroyed;
+    private long lastResumeReloadAt;
 
     @Override
     protected void onStart() {
@@ -278,8 +289,24 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onStop() {
+        Log.d(TAG, "onStop: detaching transaction overlay");
         TransactionOverlayCoordinator.get(this).detach(this);
         super.onStop();
+    }
+
+    @Override
+    protected void onPause() {
+        Log.d(TAG, "onPause: UI callbacks will be lifecycle-checked");
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        activityDestroyed = true;
+        if (exportTask != null) exportTask.cancel(true);
+        ioExecutor.shutdownNow();
+        Log.d(TAG, "onDestroy: background tasks cancelled");
+        super.onDestroy();
     }
 
     private final ActivityResultLauncher<String> backupExportLauncher = registerForActivityResult(
@@ -530,13 +557,7 @@ public class MainActivity extends AppCompatActivity {
             renderBalanceTitle();
         });
         viewModel.getMessages().observe(this, storedMessages -> {
-            messages = storedMessages == null ? new ArrayList<>() : storedMessages;
-            messageVerifications = HistoryTransaction.verificationsByMessageKey(messages);
-            roomLoaded = true;
-            renderState();
-            renderClients();
-            renderHistory();
-            if (selectedSection == SECTION_STATISTICS) renderStatistics();
+            prepareMessagesAsync(storedMessages, false);
         });
         requestRequiredPermissions();
         initializeInstallation();
@@ -1203,7 +1224,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void renderHistory() {
         if (historyAdapter == null) return;
-        List<HistoryTransaction> transactions = HistoryTransaction.fromMessages(messages);
+        List<HistoryTransaction> transactions = preparedHistory == null
+                ? Collections.emptyList() : preparedHistory;
         historyAdapter.submitList(showAllHistory
                 ? transactions : HistoryTransaction.latest(transactions, 3));
         viewAllTransactions.setVisibility(showAllHistory ? View.GONE : View.VISIBLE);
@@ -1235,7 +1257,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void renderClients() {
         if (clientAdapter == null || clientMessageAdapter == null) return;
-        List<ClientMessageGrouper.ClientGroup> allClients = ClientMessageGrouper.group(messages);
+        List<ClientMessageGrouper.ClientGroup> allClients = preparedClients == null
+                ? Collections.emptyList() : preparedClients;
         String query = clientSearchInput == null ? "" : clientSearchInput.getText().toString();
         List<ClientMessageGrouper.ClientGroup> visibleClients = ClientMessageGrouper.filter(
                 allClients, query, selectedClientFilter);
@@ -1944,7 +1967,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showClientTransactionExportDialog() {
-        if (selectedClientSender == null) return;
+        if (selectedClientSender == null || clientMessageAdapter == null) {
+            Log.w(TAG, "Client export ignored: client or adapter is unavailable");
+            showUserError("L’historique du client n’est pas encore disponible.");
+            return;
+        }
         // This snapshot is the adapter's exact data source, including its current ordering.
         List<SmsDateFilter.DisplayMessage> clientTransactions = clientMessageAdapter.snapshot();
         String normalizedNumber = ClientNumberNormalizer.normalize(selectedClientSender);
@@ -2013,20 +2040,26 @@ public class MainActivity extends AppCompatActivity {
         String name = "MVolaCash_" + (fileNumber == null ? "" : fileNumber + "_")
                 + suffix + extension;
         Toast.makeText(this, "Création du fichier...", Toast.LENGTH_SHORT).show();
-        new Thread(() -> {
+        exportTask = ioExecutor.submit(() -> {
             try {
-                File directory = new File(getCacheDir(), "exports");
+                android.content.Context appContext = getApplicationContext();
+                File directory = new File(appContext.getCacheDir(), "exports");
                 if (!directory.exists() && !directory.mkdirs()) throw new IOException("Dossier indisponible");
                 File file = new File(directory, name);
                 try (OutputStream output = new FileOutputStream(file)) {
                     if (excel) XlsxExporter.write(output, rows, period, type, exportedAt);
                     else PdfExporter.write(output, rows, period, type, exportedAt);
                 }
-                runOnUiThread(() -> showExportCompleted(file, mime));
-            } catch (IOException error) {
+                postToActiveUi(() -> showExportCompleted(file, mime));
+            } catch (Exception error) {
+                if (Thread.currentThread().isInterrupted()) {
+                    Log.i(TAG, "Transaction export cancelled because Activity was destroyed");
+                    return;
+                }
+                Log.e(TAG, "Transaction export failed", error);
                 showTransferError("Export impossible", error);
             }
-        }, "transaction-export").start();
+        });
     }
 
     private String verificationStatusText(TransactionBalanceVerification verification) {
@@ -2048,6 +2081,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showExportCompleted(File file, String mime) {
+        if (!canUpdateUi()) return;
         pendingExportFile = file;
         pendingExportMime = mime;
         new AlertDialog.Builder(this).setTitle("Export terminé")
@@ -2093,15 +2127,59 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void refreshMessages(boolean announce) {
-        viewModel.refresh(latest -> runOnUiThread(() -> {
-            messages = latest == null ? new ArrayList<>() : latest;
-            messageVerifications = HistoryTransaction.verificationsByMessageKey(messages);
-            roomLoaded = true;
-            renderState();
-            if (announce) {
-                Toast.makeText(this, "Liste actualisée", Toast.LENGTH_SHORT).show();
+        if (viewModel == null) {
+            Log.w(TAG, "Reload skipped: ViewModel is unavailable");
+            return;
+        }
+        viewModel.refresh(latest -> prepareMessagesAsync(latest, announce));
+    }
+
+    /** Parses and verifies the Room snapshot away from the main thread, then atomically renders it. */
+    private void prepareMessagesAsync(List<SmsMessage> latest, boolean announce) {
+        List<SmsMessage> snapshot = latest == null
+                ? new ArrayList<>() : new ArrayList<>(latest);
+        ioExecutor.submit(() -> {
+            try {
+                Map<String, TransactionBalanceVerification> verifications =
+                        HistoryTransaction.verificationsByMessageKey(snapshot);
+                List<HistoryTransaction> history = HistoryTransaction.fromMessages(snapshot);
+                List<ClientMessageGrouper.ClientGroup> clients =
+                        ClientMessageGrouper.group(snapshot);
+                postToActiveUi(() -> {
+                    messages = snapshot;
+                    messageVerifications = verifications;
+                    preparedHistory = history;
+                    preparedClients = clients;
+                    roomLoaded = true;
+                    ensureRecyclerAdapters();
+                    renderState();
+                    renderClients();
+                    renderHistory();
+                    if (selectedSection == SECTION_STATISTICS) renderStatistics();
+                    if (announce) Toast.makeText(this, "Liste actualisée",
+                            Toast.LENGTH_SHORT).show();
+                });
+            } catch (RuntimeException error) {
+                Log.e(TAG, "Unable to prepare SMS/history snapshot", error);
+                postToActiveUi(() -> showUserError(
+                        "Impossible d’actualiser les transactions. Veuillez réessayer."));
             }
-        }));
+        });
+    }
+
+    private void ensureRecyclerAdapters() {
+        if (adapter == null) {
+            RecyclerView list = findViewById(R.id.transactionsList);
+            adapter = new SmsAdapter(tableZoom);
+            list.setLayoutManager(new LinearLayoutManager(this));
+            list.setAdapter(adapter);
+            Log.w(TAG, "Messages adapter recreated after lifecycle restoration");
+        }
+        if (historyAdapter == null && historyList != null) {
+            historyAdapter = new HistoryAdapter();
+            historyList.setAdapter(historyAdapter);
+            Log.w(TAG, "History adapter recreated after lifecycle restoration");
+        }
     }
 
     private void exportMessages(Uri destination) {
@@ -2206,13 +2284,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showTransferError(String prefix, Exception error) {
-        runOnUiThread(() -> Toast.makeText(this, prefix + " : " + error.getMessage(),
-                Toast.LENGTH_LONG).show());
+        Log.e(TAG, prefix, error);
+        postToActiveUi(() -> showUserError(prefix + " : " + error.getMessage()));
+    }
+
+    private boolean canUpdateUi() {
+        return !activityDestroyed && !isFinishing()
+                && (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1 || !isDestroyed());
+    }
+
+    private void postToActiveUi(Runnable action) {
+        runOnUiThread(() -> {
+            if (canUpdateUi()) action.run();
+            else Log.d(TAG, "Discarding UI callback for a destroyed Activity");
+        });
+    }
+
+    private void showUserError(String message) {
+        if (canUpdateUi()) Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        Log.d(TAG, "onResume: restoring screen=" + selectedSection);
         if (!ActivationStore.hasValidActivation(this)) {
             startActivity(new Intent(this, ActivationActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -2221,6 +2316,13 @@ public class MainActivity extends AppCompatActivity {
         }
         AppLockManager.showLockIfRequired(this);
         refreshPermissionState();
+        // Room remains the source of truth. Throttle the asynchronous snapshot read so returning
+        // from a picker/settings page never parses hundreds of messages on the UI thread.
+        long now = System.currentTimeMillis();
+        if (!firstResume && now - lastResumeReloadAt > 2_000L) {
+            lastResumeReloadAt = now;
+            refreshMessages(false);
+        }
         if (depositCallLaunched) {
             depositCallLaunched = false;
             finishDepositRequest();
@@ -2398,6 +2500,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void renderState() {
+        if (!canUpdateUi() || adapter == null || permissionText == null
+                || loadingIndicator == null || transactionCountText == null
+                || emptyText == null) {
+            Log.w(TAG, "renderState ignored: Activity views are unavailable");
+            return;
+        }
         boolean denied = !hasSmsPermissions();
         boolean loading = !denied && (!roomLoaded || !startupRestoreFinished);
         permissionText.setVisibility(denied ? View.VISIBLE : View.GONE);
