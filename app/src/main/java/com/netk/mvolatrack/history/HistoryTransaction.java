@@ -48,22 +48,38 @@ public final class HistoryTransaction {
     public static List<HistoryTransaction> fromMessages(List<SmsMessage> messages) {
         List<HistoryTransaction> result = new ArrayList<>();
         if (messages == null) return result;
-        List<SmsMessage> chronological = new ArrayList<>(messages);
+        List<SmsMessage> chronological = new ArrayList<>();
+        for (SmsMessage message : messages) {
+            if (message != null) chronological.add(message);
+        }
         chronological.sort(Comparator.comparingLong((SmsMessage item) -> item.receivedDate)
                 .thenComparingLong(item -> item.id));
         SmsMessage previousMessage = null;
         for (SmsMessage message : chronological) {
-            MvolaMessageParser.ParsedTransaction parsed =
-                    MvolaMessageParser.parse(message.messageBody, message.receivedDate);
+            MvolaMessageParser.ParsedTransaction parsed;
+            try {
+                parsed = MvolaMessageParser.parse(message.messageBody,
+                        Math.max(0L, message.receivedDate));
+            } catch (RuntimeException invalidMessage) {
+                // One corrupt persisted SMS must not invalidate verification for every export row.
+                previousMessage = null;
+                continue;
+            }
             if (parsed == null || parsed.clientNumber == null) {
                 previousMessage = message;
                 continue;
             }
             long timestamp = parsed.transactionAt > 0
                     ? parsed.transactionAt : message.receivedDate;
-            MvolaMessageParser.ParsedTransaction previous = previousMessage == null ? null
-                    : MvolaMessageParser.parse(previousMessage.messageBody,
-                    previousMessage.receivedDate);
+            MvolaMessageParser.ParsedTransaction previous = null;
+            if (previousMessage != null) {
+                try {
+                    previous = MvolaMessageParser.parse(previousMessage.messageBody,
+                            Math.max(0L, previousMessage.receivedDate));
+                } catch (RuntimeException ignored) {
+                    // The current row remains exportable, but its balance cannot be verified.
+                }
+            }
             TransactionBalanceVerification verification = verify(parsed, previous, timestamp);
             result.add(new HistoryTransaction(parsed.type, parsed.clientNumber, parsed.amount,
                     parsed.bonus, parsed.fee, parsed.balance, parsed.reference, timestamp,

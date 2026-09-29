@@ -29,7 +29,7 @@ public final class ExportTransaction {
         this.type = safeText(type);
         this.phone = safeText(phone);
         this.name = safeText(name);
-        this.amount = amount;
+        this.amount = Math.max(0L, amount);
         this.reference = safeText(reference);
         this.bonus = bonus == null ? 0L : bonus;
         this.fee = fee == null ? 0L : fee;

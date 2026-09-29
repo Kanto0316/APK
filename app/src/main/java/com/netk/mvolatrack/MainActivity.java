@@ -116,7 +116,9 @@ import java.util.concurrent.Future;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MVolaCash";
-    private static final String EXPORT_TAG = "MVolaCash_EXPORT";
+    private static final String EXPORT_TAG = "MVolaCash_EXPORT_CRASH";
+    private static final String EXPORT_ERROR_MESSAGE =
+            "Export impossible : vérifier les données de transaction";
     private static final String STATE_SELECTED_SECTION = "selected_section";
     private static final String STATE_STATISTICS_YEAR = "statistics_year";
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
@@ -2015,6 +2017,7 @@ public class MainActivity extends AppCompatActivity {
     private void generateTransactionExport(boolean excel,
             List<SmsDateFilter.DisplayMessage> source, String period, String type,
             String fileNumber, String fileSuffix) {
+        Log.i(EXPORT_TAG, "Transactions sélectionnées : " + (source == null ? 0 : source.size()));
         if (source == null || source.isEmpty()) {
             Log.w(EXPORT_TAG, "Export ignored: transaction selection is null or empty");
             showUserError("Aucune transaction à exporter.");
@@ -2023,20 +2026,44 @@ public class MainActivity extends AppCompatActivity {
         List<ExportTransaction> rows = new ArrayList<>();
         List<SmsMessage> messageSnapshot = messages == null
                 ? Collections.emptyList() : messages;
-        Map<String, TransactionBalanceVerification> verifications =
-                HistoryTransaction.verificationsByMessageKey(messageSnapshot);
+        Map<String, TransactionBalanceVerification> verifications = Collections.emptyMap();
+        try {
+            verifications = HistoryTransaction.verificationsByMessageKey(messageSnapshot);
+        } catch (Exception error) {
+            // Verification is useful metadata, but must never prevent the document being created.
+            Log.e(EXPORT_TAG, "Vérification historique impossible; statut non vérifiable", error);
+        }
         for (SmsDateFilter.DisplayMessage displayed : source) {
             if (displayed == null || displayed.message == null) {
                 Log.w(EXPORT_TAG, "Skipping an invalid transaction row");
                 continue;
             }
-            MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
-                    displayed.message.messageBody, displayed.message.receivedDate);
-            if (parsed != null) rows.add(new ExportTransaction(displayed.originalNumber,
-                    parsed.transactionAt, parsed.type, parsed.clientNumber, parsed.clientName,
-                    parsed.amount, parsed.reference, parsed.bonus, parsed.fee, parsed.balance,
-                    verificationStatusText(verifications.get(displayed.message.uniqueKey))));
+            try {
+                SmsMessage message = displayed.message;
+                if (message.messageBody == null || message.messageBody.trim().isEmpty()) {
+                    Log.w(EXPORT_TAG, "Transaction ignorée : message vide");
+                    continue;
+                }
+                MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
+                        message.messageBody, Math.max(0L, message.receivedDate));
+                if (parsed == null) {
+                    Log.w(EXPORT_TAG, "Transaction ignorée : format non reconnu");
+                    continue;
+                }
+                long date = parsed.transactionAt > 0 ? parsed.transactionAt
+                        : Math.max(0L, message.receivedDate);
+                TransactionBalanceVerification verification = message.uniqueKey == null
+                        ? null : verifications.get(message.uniqueKey);
+                rows.add(new ExportTransaction(displayed.originalNumber, date,
+                        parsed.type, parsed.clientNumber, parsed.clientName, parsed.amount,
+                        parsed.reference, parsed.bonus, parsed.fee, parsed.balance,
+                        verification == null ? "Non vérifiable"
+                                : verificationStatusText(verification)));
+            } catch (Exception error) {
+                Log.e(EXPORT_TAG, "Transaction ignorée", error);
+            }
         }
+        Log.i(EXPORT_TAG, "Lignes ExportTransaction créées : " + rows.size());
         if (rows.isEmpty()) {
             Log.w(EXPORT_TAG, "Export ignored: no selected message could be parsed");
             showUserError("Aucune transaction à exporter.");
@@ -2057,6 +2084,8 @@ public class MainActivity extends AppCompatActivity {
                 File directory = new File(appContext.getCacheDir(), "exports");
                 if (!directory.exists() && !directory.mkdirs()) throw new IOException("Dossier indisponible");
                 File file = new File(directory, name);
+                Log.i(EXPORT_TAG, "Début génération " + (excel ? "XLSX" : "PDF"));
+                Log.i(EXPORT_TAG, "Chemin du fichier : " + file.getAbsolutePath());
                 try (OutputStream output = new FileOutputStream(file)) {
                     if (excel) XlsxExporter.write(output, rows, period, type, exportedAt);
                     else PdfExporter.write(output, rows, period, type, exportedAt);
@@ -2084,7 +2113,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         Log.e(EXPORT_TAG, detail, error);
-        showTransferError("Export impossible", error);
+        postToActiveUi(() -> showUserError(EXPORT_ERROR_MESSAGE));
     }
 
     private String verificationStatusText(TransactionBalanceVerification verification) {

@@ -17,6 +17,7 @@ import java.util.Locale;
 
 /** A4 landscape report with deterministic pagination and a repeated table header. */
 public final class PdfExporter {
+    private static final int MAX_TEXT_LENGTH = 4096;
     private static final int PAGE_WIDTH = 842;
     private static final int PAGE_HEIGHT = 595;
     private static final float LEFT = 22;
@@ -68,10 +69,10 @@ public final class PdfExporter {
         paint.setTextSize(13); canvas.drawText("Récapitulatif des transactions", LEFT, TOP + 21, paint);
         paint.setColor(Color.DKGRAY); paint.setTypeface(android.graphics.Typeface.DEFAULT);
         paint.setTextSize(9);
-        canvas.drawText("Période : " + period + "    Type : " + type
+        canvas.drawText("Période : " + missing(period) + "    Type : " + missing(type)
                 + "    Nombre de transactions : " + count, LEFT, TOP + 42, paint);
-        String date = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRENCH)
-                .format(new Date(exportedAt));
+        String date = exportedAt > 0 ? new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRENCH)
+                .format(new Date(exportedAt)) : "-";
         canvas.drawText("Date d’export : " + date, LEFT, TOP + 56, paint);
         canvas.drawText("Page " + page, PAGE_WIDTH - 60, TOP, paint);
         return TOP + 68;
@@ -91,7 +92,9 @@ public final class PdfExporter {
         paint.setStyle(Paint.Style.FILL); paint.setColor(Color.WHITE); canvas.drawRect(LEFT, y, right(), y + ROW_HEIGHT, paint);
         paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(.5f); paint.setColor(Color.LTGRAY);
         canvas.drawRect(LEFT, y, right(), y + ROW_HEIGHT, paint); paint.setStyle(Paint.Style.FILL);
-        String date = new SimpleDateFormat("dd/MM/yy HH:mm", Locale.FRENCH).format(new Date(row.dateTime));
+        String date = row.dateTime > 0
+                ? new SimpleDateFormat("dd/MM/yy HH:mm", Locale.FRENCH)
+                .format(new Date(row.dateTime)) : "-";
         String[] values = {String.valueOf(row.number), date, row.type,
                 ClientNumberNormalizer.format(row.phone), missing(row.reference), ariary(row.amount),
                 nullableAriary(row.bonus, false), nullableAriary(row.fee, true),
@@ -106,12 +109,22 @@ public final class PdfExporter {
     }
 
     private static String ellipsize(Paint paint, String value, float width) {
+        value = safeText(value);
         if (paint.measureText(value) <= width) return value;
         String suffix = "…"; int end = value.length();
         while (end > 0 && paint.measureText(value, 0, end) + paint.measureText(suffix) > width) end--;
         return value.substring(0, end) + suffix;
     }
-    private static String missing(String value) { return value == null || value.trim().isEmpty() ? "-" : value; }
+    private static String missing(String value) { return safeText(value); }
+    private static String safeText(String value) {
+        if (value == null || value.trim().isEmpty()) return "-";
+        StringBuilder safe = new StringBuilder(Math.min(value.length(), MAX_TEXT_LENGTH));
+        for (int index = 0; index < value.length() && safe.length() < MAX_TEXT_LENGTH; index++) {
+            char character = value.charAt(index);
+            safe.append(Character.isISOControl(character) ? ' ' : character);
+        }
+        return safe.toString();
+    }
     private static String nullableAriary(Long value, boolean zeroMissing) { return value == null || (zeroMissing && value == 0) ? "-" : ariary(value); }
     private static String ariary(long value) { return String.format(Locale.FRENCH, "%,d Ar", value).replace('\u00a0', ' ').replace('\u202f', ' '); }
     private static float right() { float value = LEFT; for (float width : WIDTHS) value += width; return value; }

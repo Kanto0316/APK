@@ -13,6 +13,8 @@ import java.util.zip.ZipOutputStream;
 
 /** Minimal OOXML writer: produces a real, interoperable XLSX without a heavyweight dependency. */
 public final class XlsxExporter {
+    /** Excel limits a cell to 32,767 characters. */
+    private static final int MAX_CELL_LENGTH = 32767;
     private static final String[] HEADERS = {"#", "Date et heure", "Type", "Numéro client",
             "Référence", "Montant", "Bonus", "Frais", "Solde", "Statut de vérification"};
     private XlsxExporter() {}
@@ -57,10 +59,12 @@ public final class XlsxExporter {
                 .append("\" max=\"").append(i + 1).append("\" width=\"").append(widths[i]).append("\" customWidth=\"1\"/>");
         xml.append("</cols><sheetData>");
         textRow(xml, 1, 1, "RÉCAPITULATIF DES TRANSACTIONS");
-        textRow(xml, 2, 0, "Période : " + period);
-        textRow(xml, 3, 0, "Type : " + type);
+        textRow(xml, 2, 0, "Période : " + missing(period));
+        textRow(xml, 3, 0, "Type : " + missing(type));
         textRow(xml, 4, 0, "Nombre de transactions : " + rows.size());
-        textRow(xml, 5, 0, "Date d’export : " + new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRENCH).format(new Date(exportedAt)));
+        textRow(xml, 5, 0, "Date d’export : " + (exportedAt > 0
+                ? new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.FRENCH)
+                .format(new Date(exportedAt)) : "-"));
         xml.append("<row r=\"7\">");
         for (int i = 0; i < HEADERS.length; i++) textCell(xml, cell(i, 7), HEADERS[i], 1);
         xml.append("</row>");
@@ -69,7 +73,9 @@ public final class XlsxExporter {
             if (row == null) continue;
             xml.append("<row r=\"").append(rowNumber).append("\">");
             numberCell(xml, cell(0, rowNumber), row.number, 0);
-            numberCell(xml, cell(1, rowNumber), excelDate(row.dateTime), 2);
+            if (row.dateTime > 0) numberCell(xml, cell(1, rowNumber),
+                    excelDate(row.dateTime), 2);
+            else textCell(xml, cell(1, rowNumber), "-", 0);
             textCell(xml, cell(2, rowNumber), row.type, 0);
             textCell(xml, cell(3, rowNumber), row.phone, 0);
             textCell(xml, cell(4, rowNumber), row.reference, 0);
@@ -97,10 +103,31 @@ public final class XlsxExporter {
                 .append("\"><is><t xml:space=\"preserve\">").append(escape(value == null || value.trim().isEmpty() ? "-" : value)).append("</t></is></c>");
     }
     private static void numberCell(StringBuilder xml, String ref, double value, int style) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) value = 0;
         xml.append("<c r=\"").append(ref).append("\" s=\"").append(style).append("\"><v>").append(value).append("</v></c>");
     }
     private static String cell(int column, int row) { return String.valueOf((char) ('A' + column)) + row; }
-    private static String escape(String value) { return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;"); }
+    private static String missing(String value) {
+        return value == null || value.trim().isEmpty() ? "-" : value;
+    }
+    private static String escape(String value) {
+        StringBuilder safe = new StringBuilder(Math.min(value.length(), MAX_CELL_LENGTH));
+        for (int index = 0; index < value.length() && safe.length() < MAX_CELL_LENGTH;) {
+            int character = value.codePointAt(index);
+            index += Character.charCount(character);
+            // XML 1.0 forbids most control characters, even when escaped.
+            if (character == '\t' || character == '\n' || character == '\r'
+                    || (character >= 0x20 && character <= 0xD7FF)
+                    || (character >= 0xE000 && character <= 0xFFFD)
+                    || (character >= 0x10000 && character <= 0x10FFFF)) {
+                if (safe.length() + Character.charCount(character) <= MAX_CELL_LENGTH) {
+                    safe.appendCodePoint(character);
+                }
+            }
+        }
+        return safe.toString().replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\"", "&quot;");
+    }
     private static void entry(ZipOutputStream zip, String name, String value) throws IOException {
         zip.putNextEntry(new ZipEntry(name)); zip.write(value.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
     }
