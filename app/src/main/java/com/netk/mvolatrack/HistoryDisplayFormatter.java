@@ -3,6 +3,8 @@ package com.netk.mvolatrack;
 import com.netk.mvolatrack.history.HistoryTransaction;
 
 import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Locale;
 
 /** Pure formatting rules for history cards. */
@@ -21,6 +23,11 @@ final class HistoryDisplayFormatter {
 
     static String bonus(Long bonus) {
         return bonus == null ? "-" : ariary(bonus);
+    }
+
+    static String time(long timestamp) {
+        return timestamp <= 0 ? "-" : new SimpleDateFormat("HH:mm", Locale.FRENCH)
+                .format(new Date(timestamp));
     }
 
     static String amount(HistoryTransaction item) {
