@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="sms_status_header">Statut</string>
-    <string name="sms_status_verified">✅ Vérifié</string>
-    <string name="sms_status_not_verified">❌ Non</string>
+    <string name="sms_status_verified">Vérifié</string>
+    <string name="sms_status_bonus_not_credited">Bonus non crédité</string>
+    <string name="sms_status_partial_bonus">Bonus partiel</string>
+    <string name="sms_status_higher_bonus">Bonus supérieur</string>
+    <string name="sms_status_balance_difference">Écart de solde</string>
+    <string name="sms_status_not_verifiable">Non vérifiable</string>
+    <string name="sms_status_accessibility">%1$s. Afficher le détail de vérification</string>
+    <string name="verification_insufficient_information">Informations insuffisantes pour vérifier cette transaction</string>
     <string name="latest_transactions">Dernières transactions</string>
     <string name="view_all_transactions">Voir tout ›</string>
     <string name="app_name">MVolaCash</string>

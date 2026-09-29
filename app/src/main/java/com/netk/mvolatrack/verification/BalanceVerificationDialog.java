@@ -18,6 +18,13 @@ public final class BalanceVerificationDialog {
     private BalanceVerificationDialog() {}
 
     public static void show(Context context, TransactionBalanceVerification value) {
+        if (value == null) {
+            new AlertDialog.Builder(context)
+                    .setMessage(R.string.verification_insufficient_information)
+                    .setNegativeButton("Fermer", null)
+                    .show();
+            return;
+        }
         View content = LayoutInflater.from(context)
                 .inflate(R.layout.dialog_balance_verification, null, false);
         text(content, R.id.verificationReference, "Référence : "

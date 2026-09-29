@@ -45,10 +45,7 @@
         <TextView android:id="@+id/itemBalance" android:layout_width="@dimen/sms_column_money_width"
             android:layout_height="wrap_content" android:gravity="center" android:maxLines="1"
             android:textColor="@color/sms_text_primary" android:textSize="13sp" />
-        <TextView android:id="@+id/itemStatus" android:layout_width="@dimen/sms_column_status_width"
-            android:layout_height="wrap_content" android:gravity="center" android:maxLines="1"
-            android:clickable="true" android:focusable="true"
-            android:textColor="@color/verification_error" android:textSize="13sp" />
+        <include android:id="@+id/itemStatus" layout="@layout/view_verification_status" />
     </LinearLayout>
 
     <View android:layout_width="match_parent" android:layout_height="1dp"
