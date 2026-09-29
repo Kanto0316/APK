@@ -2,6 +2,7 @@ package com.netk.mvolatrack.export;
 
 /** Immutable, parsed transaction data consumed by both document exporters. */
 public final class ExportTransaction {
+    private static final String MISSING = "-";
     public final int number;
     public final long dateTime;
     public final String type;
@@ -23,16 +24,20 @@ public final class ExportTransaction {
     public ExportTransaction(int number, long dateTime, String type, String phone, String name,
                              long amount, String reference, Long bonus, Long fee, Long balance,
                              String verificationStatus) {
-        this.number = number;
-        this.dateTime = dateTime;
-        this.type = type;
-        this.phone = phone;
-        this.name = name;
+        this.number = Math.max(0, number);
+        this.dateTime = Math.max(0L, dateTime);
+        this.type = safeText(type);
+        this.phone = safeText(phone);
+        this.name = safeText(name);
         this.amount = amount;
-        this.reference = reference;
-        this.bonus = bonus;
-        this.fee = fee;
-        this.balance = balance;
-        this.verificationStatus = verificationStatus;
+        this.reference = safeText(reference);
+        this.bonus = bonus == null ? 0L : bonus;
+        this.fee = fee == null ? 0L : fee;
+        this.balance = balance == null ? 0L : balance;
+        this.verificationStatus = safeText(verificationStatus);
+    }
+
+    private static String safeText(String value) {
+        return value == null || value.trim().isEmpty() ? MISSING : value;
     }
 }

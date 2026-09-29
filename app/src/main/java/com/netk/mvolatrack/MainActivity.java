@@ -3,6 +3,8 @@ package com.netk.mvolatrack;
 import android.Manifest;
 import android.app.DatePickerDialog;
 import android.content.Intent;
+import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
@@ -114,6 +116,7 @@ import java.util.concurrent.Future;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MVolaCash";
+    private static final String EXPORT_TAG = "MVolaCash_EXPORT";
     private static final String STATE_SELECTED_SECTION = "selected_section";
     private static final String STATE_STATISTICS_YEAR = "statistics_year";
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
@@ -2012,14 +2015,21 @@ public class MainActivity extends AppCompatActivity {
     private void generateTransactionExport(boolean excel,
             List<SmsDateFilter.DisplayMessage> source, String period, String type,
             String fileNumber, String fileSuffix) {
-        if (source.isEmpty()) {
-            Toast.makeText(this, "Aucune transaction à exporter.", Toast.LENGTH_LONG).show();
+        if (source == null || source.isEmpty()) {
+            Log.w(EXPORT_TAG, "Export ignored: transaction selection is null or empty");
+            showUserError("Aucune transaction à exporter.");
             return;
         }
         List<ExportTransaction> rows = new ArrayList<>();
+        List<SmsMessage> messageSnapshot = messages == null
+                ? Collections.emptyList() : messages;
         Map<String, TransactionBalanceVerification> verifications =
-                HistoryTransaction.verificationsByMessageKey(messages);
+                HistoryTransaction.verificationsByMessageKey(messageSnapshot);
         for (SmsDateFilter.DisplayMessage displayed : source) {
+            if (displayed == null || displayed.message == null) {
+                Log.w(EXPORT_TAG, "Skipping an invalid transaction row");
+                continue;
+            }
             MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
                     displayed.message.messageBody, displayed.message.receivedDate);
             if (parsed != null) rows.add(new ExportTransaction(displayed.originalNumber,
@@ -2028,7 +2038,8 @@ public class MainActivity extends AppCompatActivity {
                     verificationStatusText(verifications.get(displayed.message.uniqueKey))));
         }
         if (rows.isEmpty()) {
-            Toast.makeText(this, "Aucune transaction à exporter.", Toast.LENGTH_LONG).show();
+            Log.w(EXPORT_TAG, "Export ignored: no selected message could be parsed");
+            showUserError("Aucune transaction à exporter.");
             return;
         }
         long exportedAt = System.currentTimeMillis();
@@ -2039,10 +2050,10 @@ public class MainActivity extends AppCompatActivity {
                 .format(new Date(exportedAt)) : fileSuffix;
         String name = "MVolaCash_" + (fileNumber == null ? "" : fileNumber + "_")
                 + suffix + extension;
-        Toast.makeText(this, "Création du fichier...", Toast.LENGTH_SHORT).show();
+        showUserMessage("Création du fichier...");
         exportTask = ioExecutor.submit(() -> {
             try {
-                android.content.Context appContext = getApplicationContext();
+                Context appContext = getApplicationContext();
                 File directory = new File(appContext.getCacheDir(), "exports");
                 if (!directory.exists() && !directory.mkdirs()) throw new IOException("Dossier indisponible");
                 File file = new File(directory, name);
@@ -2051,15 +2062,29 @@ public class MainActivity extends AppCompatActivity {
                     else PdfExporter.write(output, rows, period, type, exportedAt);
                 }
                 postToActiveUi(() -> showExportCompleted(file, mime));
-            } catch (Exception error) {
+            } catch (IOException error) {
+                handleExportFailure("I/O failure while generating export", error);
+            } catch (IllegalArgumentException error) {
+                handleExportFailure("Invalid export argument", error);
+            } catch (NullPointerException error) {
+                handleExportFailure("Unexpected null while generating export", error);
+            } catch (RuntimeException error) {
                 if (Thread.currentThread().isInterrupted()) {
-                    Log.i(TAG, "Transaction export cancelled because Activity was destroyed");
+                    Log.i(EXPORT_TAG, "Transaction export cancelled because Activity was destroyed");
                     return;
                 }
-                Log.e(TAG, "Transaction export failed", error);
-                showTransferError("Export impossible", error);
+                handleExportFailure("Unexpected export failure", error);
             }
         });
+    }
+
+    private void handleExportFailure(String detail, Exception error) {
+        if (Thread.currentThread().isInterrupted()) {
+            Log.i(EXPORT_TAG, detail + ": task cancelled", error);
+            return;
+        }
+        Log.e(EXPORT_TAG, detail, error);
+        showTransferError("Export impossible", error);
     }
 
     private String verificationStatusText(TransactionBalanceVerification verification) {
@@ -2081,49 +2106,95 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showExportCompleted(File file, String mime) {
-        if (!canUpdateUi()) return;
+        if (!canUpdateUi() || file == null || !file.isFile()) {
+            Log.w(EXPORT_TAG, "Completion dialog skipped: inactive Activity or missing file");
+            return;
+        }
         pendingExportFile = file;
         pendingExportMime = mime;
-        new AlertDialog.Builder(this).setTitle("Export terminé")
-                .setMessage(file.getName())
-                .setPositiveButton("Enregistrer", (dialog, which) -> savePendingExport())
-                .setNeutralButton("Partager", (dialog, which) -> shareExport(file, mime))
-                .setNegativeButton("Fermer", null).show();
+        try {
+            new AlertDialog.Builder(this).setTitle("Export terminé")
+                    .setMessage(file.getName())
+                    .setPositiveButton("Enregistrer", (dialog, which) -> savePendingExport())
+                    .setNeutralButton("Partager", (dialog, which) -> shareExport(file, mime))
+                    .setNegativeButton("Fermer", null).show();
+        } catch (WindowManager.BadTokenException | IllegalStateException error) {
+            Log.e(EXPORT_TAG, "Completion dialog rejected by Activity lifecycle", error);
+        }
     }
 
     private void savePendingExport() {
-        if (pendingExportFile == null) return;
+        if (!canUpdateUi() || pendingExportFile == null || !pendingExportFile.isFile()) {
+            Log.w(EXPORT_TAG, "Save ignored: inactive Activity or missing export");
+            return;
+        }
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
                 .addCategory(Intent.CATEGORY_OPENABLE)
                 .setType(pendingExportMime)
                 .putExtra(Intent.EXTRA_TITLE, pendingExportFile.getName());
-        transactionSaveLauncher.launch(intent);
+        try {
+            transactionSaveLauncher.launch(intent);
+        } catch (ActivityNotFoundException error) {
+            Log.e(EXPORT_TAG, "No document provider can save the export", error);
+            showUserError("Aucune application ne permet d’enregistrer ce fichier.");
+        } catch (IllegalArgumentException | NullPointerException error) {
+            Log.e(EXPORT_TAG, "Invalid save request", error);
+            showUserError("Enregistrement impossible.");
+        }
     }
 
     private void copyExportTo(Uri destination, File source) {
         String mime = pendingExportMime;
+        Context appContext = getApplicationContext();
         new Thread(() -> {
             try (InputStream input = new FileInputStream(source);
-                 OutputStream output = getContentResolver().openOutputStream(destination)) {
+                 OutputStream output = appContext.getContentResolver().openOutputStream(destination)) {
                 if (output == null) throw new IOException("Destination indisponible");
                 byte[] buffer = new byte[8192]; int count;
                 while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
                 String fileName = displayName(destination, source.getName());
-                runOnUiThread(() -> {
-                    Toast.makeText(this, "Export terminé", Toast.LENGTH_SHORT).show();
-                    ExportNotificationHelper.showExportCompletedNotification(this, fileName,
+                postToActiveUi(() -> {
+                    Toast.makeText(appContext, "Export terminé", Toast.LENGTH_SHORT).show();
+                    ExportNotificationHelper.showExportCompletedNotification(appContext, fileName,
                             destination, mime);
                 });
-            } catch (IOException error) { showTransferError("Enregistrement impossible", error); }
+            } catch (IOException error) {
+                Log.e(EXPORT_TAG, "I/O failure while saving export", error);
+                showTransferError("Enregistrement impossible", error);
+            } catch (IllegalArgumentException error) {
+                Log.e(EXPORT_TAG, "Invalid export destination", error);
+                showTransferError("Enregistrement impossible", error);
+            } catch (NullPointerException error) {
+                Log.e(EXPORT_TAG, "Unexpected null while saving export", error);
+                showTransferError("Enregistrement impossible", error);
+            }
         }, "transaction-export-save").start();
     }
 
     private void shareExport(File file, String mime) {
-        Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", file);
-        Intent send = new Intent(Intent.ACTION_SEND).setType(mime)
-                .putExtra(Intent.EXTRA_STREAM, uri)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        startActivity(Intent.createChooser(send, "Partager l’export"));
+        if (!canUpdateUi() || file == null || !file.isFile()) {
+            Log.w(EXPORT_TAG, "Share ignored: inactive Activity or missing export");
+            return;
+        }
+        Context appContext = getApplicationContext();
+        try {
+            Uri uri = FileProvider.getUriForFile(appContext,
+                    appContext.getPackageName() + ".fileprovider", file);
+            Intent send = new Intent(Intent.ACTION_SEND).setType(
+                    mime == null ? "application/octet-stream" : mime)
+                    .putExtra(Intent.EXTRA_STREAM, uri)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(send, "Partager l’export"));
+        } catch (ActivityNotFoundException error) {
+            Log.e(EXPORT_TAG, "No Activity can share the export", error);
+            showUserError("Aucune application ne permet de partager ce fichier.");
+        } catch (IllegalArgumentException error) {
+            Log.e(EXPORT_TAG, "FileProvider rejected export path: " + file, error);
+            showUserError("Le fichier d’export ne peut pas être partagé.");
+        } catch (NullPointerException error) {
+            Log.e(EXPORT_TAG, "Unexpected null while sharing export", error);
+            showUserError("Partage impossible.");
+        }
     }
 
     private void refreshMessages(boolean announce) {
@@ -2302,6 +2373,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void showUserError(String message) {
         if (canUpdateUi()) Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+    }
+
+    private void showUserMessage(String message) {
+        if (canUpdateUi()) Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
     }
 
     @Override
