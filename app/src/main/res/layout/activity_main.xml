@@ -354,6 +354,56 @@
                         android:scrollbars="vertical" />
                 </LinearLayout>
             </com.netk.mvolatrack.ZoomableTableScrollView>
+
+            <LinearLayout
+                android:id="@+id/transactionPagination"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:visibility="gone">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/transactionPreviousPage"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="Page précédente"
+                    android:minWidth="0dp"
+                    android:padding="0dp"
+                    android:text="←"
+                    android:textColor="@color/sms_accent"
+                    android:textSize="22sp" />
+
+                <TextView
+                    android:id="@+id/transactionPageIndicator"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginEnd="20dp"
+                    android:gravity="center"
+                    android:minWidth="96dp"
+                    android:text="Page 1 sur 1"
+                    android:textColor="@color/sms_text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/transactionNextPage"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="Page suivante"
+                    android:minWidth="0dp"
+                    android:padding="0dp"
+                    android:text="→"
+                    android:textColor="@color/sms_accent"
+                    android:textSize="22sp" />
+            </LinearLayout>
         </LinearLayout>
 
         <FrameLayout
