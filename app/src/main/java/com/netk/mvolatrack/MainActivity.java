@@ -369,7 +369,8 @@ public class MainActivity extends AppCompatActivity {
         AppLockManager.showLockIfRequired(this);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
-        applySystemBarInsets(findViewById(R.id.mainRoot));
+        applySystemBarInsets(findViewById(R.id.mainRoot),
+                findViewById(R.id.systemNavigationInset));
 
         permissionText = findViewById(R.id.permissionText);
         permissionText.setOnClickListener(view -> requestRequiredPermissions());
@@ -1166,15 +1167,20 @@ public class MainActivity extends AppCompatActivity {
         if (depositCard != null) depositCard.setEnabled(true);
     }
 
-    private void applySystemBarInsets(View root) {
+    private void applySystemBarInsets(View root, View navigationInsetBackground) {
         int initialLeft = root.getPaddingLeft();
         int initialTop = root.getPaddingTop();
         int initialRight = root.getPaddingRight();
-        int initialBottom = root.getPaddingBottom();
         ViewCompat.setOnApplyWindowInsetsListener(root, (view, windowInsets) -> {
             Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
             view.setPadding(initialLeft + systemBars.left, initialTop + systemBars.top,
-                    initialRight + systemBars.right, initialBottom + systemBars.bottom);
+                    initialRight + systemBars.right, 0);
+
+            // Keep the bottom bar flush with the content. Paint only the system navigation
+            // inset with the same dark color instead of padding the light main container.
+            ViewGroup.LayoutParams layoutParams = navigationInsetBackground.getLayoutParams();
+            layoutParams.height = systemBars.bottom;
+            navigationInsetBackground.setLayoutParams(layoutParams);
             return windowInsets;
         });
         ViewCompat.requestApplyInsets(root);
