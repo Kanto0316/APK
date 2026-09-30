@@ -15,8 +15,8 @@ import java.util.zip.ZipOutputStream;
 public final class XlsxExporter {
     /** Excel limits a cell to 32,767 characters. */
     private static final int MAX_CELL_LENGTH = 32767;
-    private static final String[] HEADERS = {"#", "Date et heure", "Type", "Numéro client",
-            "Référence", "Montant", "Bonus", "Frais", "Solde", "Statut de vérification"};
+    private static final String[] HEADERS = {"Réf", "Date et heure", "Type", "Numéro client",
+            "Montant", "Bonus", "Frais", "Solde", "Statut"};
     private XlsxExporter() {}
 
     public static void write(OutputStream output, List<ExportTransaction> rows, String period,
@@ -54,7 +54,7 @@ public final class XlsxExporter {
     private static String sheet(List<ExportTransaction> rows, String period, String type,
                                 long exportedAt) {
         StringBuilder xml = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?><worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><cols>");
-        double[] widths = {7, 20, 13, 18, 22, 15, 15, 15, 15, 24};
+        double[] widths = {22, 20, 13, 18, 15, 15, 15, 15, 24};
         for (int i = 0; i < widths.length; i++) xml.append("<col min=\"").append(i + 1)
                 .append("\" max=\"").append(i + 1).append("\" width=\"").append(widths[i]).append("\" customWidth=\"1\"/>");
         xml.append("</cols><sheetData>");
@@ -72,22 +72,21 @@ public final class XlsxExporter {
         for (ExportTransaction row : rows) {
             if (row == null) continue;
             xml.append("<row r=\"").append(rowNumber).append("\">");
-            numberCell(xml, cell(0, rowNumber), row.number, 0);
+            textCell(xml, cell(0, rowNumber), row.reference, 0);
             if (row.dateTime > 0) numberCell(xml, cell(1, rowNumber),
                     excelDate(row.dateTime), 2);
             else textCell(xml, cell(1, rowNumber), "-", 0);
             textCell(xml, cell(2, rowNumber), row.type, 0);
             textCell(xml, cell(3, rowNumber), row.phone, 0);
-            textCell(xml, cell(4, rowNumber), row.reference, 0);
-            numberCell(xml, cell(5, rowNumber), row.amount, 0);
-            nullableNumber(xml, cell(6, rowNumber), row.bonus);
-            nullableNumber(xml, cell(7, rowNumber), row.fee);
-            nullableNumber(xml, cell(8, rowNumber), row.balance);
-            textCell(xml, cell(9, rowNumber), row.verificationStatus, 0);
+            numberCell(xml, cell(4, rowNumber), row.amount, 0);
+            nullableNumber(xml, cell(5, rowNumber), row.bonus);
+            nullableNumber(xml, cell(6, rowNumber), row.fee);
+            nullableNumber(xml, cell(7, rowNumber), row.balance);
+            textCell(xml, cell(8, rowNumber), row.verificationStatus, 0);
             xml.append("</row>"); rowNumber++;
         }
         int lastRow = Math.max(7, rowNumber - 1);
-        return xml.append("</sheetData><autoFilter ref=\"A7:J").append(lastRow)
+        return xml.append("</sheetData><autoFilter ref=\"A7:I").append(lastRow)
                 .append("\"/></worksheet>").toString();
     }
 

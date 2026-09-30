@@ -1956,7 +1956,7 @@ public class MainActivity extends AppCompatActivity {
                         : Math.max(0L, message.receivedDate);
                 TransactionBalanceVerification verification = message.uniqueKey == null
                         ? null : verifications.get(message.uniqueKey);
-                ExportTransaction row = new ExportTransaction(displayed.originalNumber, date,
+                ExportTransaction row = new ExportTransaction(date,
                         parsed.type, parsed.clientNumber, parsed.clientName, parsed.amount,
                         parsed.reference, parsed.bonus, parsed.fee, parsed.balance,
                         verification == null ? "Non vérifiable"
