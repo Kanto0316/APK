@@ -392,8 +392,16 @@ public class MainActivity extends AppCompatActivity {
         TextView notificationBadge = findViewById(R.id.bonusNotificationBadge);
         BonusNotificationRepository bonusNotifications = new BonusNotificationRepository(this);
         notificationButton.setContentDescription("Notifications Bonus");
-        notificationButton.setOnClickListener(view -> startActivity(
-                new Intent(this, BonusNotificationsActivity.class)));
+        notificationButton.setOnClickListener(view -> {
+            try {
+                startActivity(new Intent(this, BonusNotificationsActivity.class));
+            } catch (RuntimeException error) {
+                CrashLogger.recordException(this, error);
+                Toast.makeText(this,
+                        "Impossible d’ouvrir les notifications. Exportez le rapport diagnostic.",
+                        Toast.LENGTH_LONG).show();
+            }
+        });
         bonusNotifications.observeUnreadCount().observe(this, count -> {
             int unread = count == null ? 0 : count;
             notificationBadge.setText(unread > 99 ? "99+" : String.valueOf(unread));
@@ -1755,8 +1763,7 @@ public class MainActivity extends AppCompatActivity {
         navigationView.setNavigationItemSelectedListener(item -> {
             drawerLayout.closeDrawer(android.view.Gravity.START);
             int id = item.getItemId();
-            if (id == R.id.nav_settings) showPlaceholderPage("Paramètres",
-                    "Les réglages de MVolaCash seront disponibles ici.");
+            if (id == R.id.nav_settings) showSettingsPage();
             else if (id == R.id.nav_security)
                 startActivity(new Intent(this, SecurityActivity.class));
             else if (id == R.id.nav_export_json) launchExport();
@@ -1794,6 +1801,37 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage(message)
                 .setPositiveButton("Fermer", null)
                 .show();
+    }
+
+    private void showSettingsPage() {
+        new AlertDialog.Builder(this)
+                .setTitle("Paramètres")
+                .setItems(new String[]{"Exporter le rapport diagnostic"}, (dialog, which) ->
+                        shareDiagnosticReport())
+                .setNegativeButton("Fermer", null)
+                .show();
+    }
+
+    private void shareDiagnosticReport() {
+        File report = CrashLogger.getReportFile(this);
+        if (report == null || !report.isFile()) {
+            Toast.makeText(this, "Aucun rapport diagnostic disponible.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        try {
+            Uri uri = FileProvider.getUriForFile(this,
+                    getPackageName() + ".fileprovider", report);
+            Intent send = new Intent(Intent.ACTION_SEND)
+                    .setType("text/plain")
+                    .putExtra(Intent.EXTRA_STREAM, uri)
+                    .putExtra(Intent.EXTRA_SUBJECT, CrashLogger.FILE_NAME)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(send, "Exporter le rapport diagnostic"));
+        } catch (RuntimeException error) {
+            CrashLogger.recordException(this, error);
+            Toast.makeText(this, "Impossible de partager le rapport diagnostic.",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private void showHelpPage() {
