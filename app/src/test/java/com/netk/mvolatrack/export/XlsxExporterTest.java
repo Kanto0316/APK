@@ -13,8 +13,36 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class XlsxExporterTest {
+    @Test
+    public void streamsRequestedTransactionVolumesAndReportsProgress() throws Exception {
+        int[] volumes = {20, 100, 500, 1000};
+        for (int volume : volumes) {
+            List<ExportTransaction> rows = new ArrayList<>();
+            for (int index = 0; index < volume; index++) {
+                rows.add(new ExportTransaction(1790258400000L + index, "Dépôt",
+                        "0340000000", "Client", index, "REF" + index,
+                        0L, 0L, 0L));
+            }
+            AtomicInteger processed = new AtomicInteger();
+            AtomicInteger total = new AtomicInteger();
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+            XlsxExporter.write(output, rows, "Tous", "Tous", 1790260200000L,
+                    (current, count) -> {
+                        processed.set(current);
+                        total.set(count);
+                    });
+
+            assertEquals(volume, processed.get());
+            assertEquals(volume, total.get());
+            String sheet = zipEntry(output.toByteArray(), "xl/worksheets/sheet1.xml");
+            assertTrue(sheet.contains("<row r=\"" + (volume + 7) + "\">"));
+        }
+    }
+
     @Test
     public void createsRealXlsxWithTextIdentifiersAndNumericAmounts() throws Exception {
         List<ExportTransaction> rows = new ArrayList<>();

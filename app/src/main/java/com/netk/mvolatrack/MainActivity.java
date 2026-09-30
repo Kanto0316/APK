@@ -72,6 +72,7 @@ import com.netk.mvolatrack.overlay.TransactionOverlayCoordinator;
 import com.netk.mvolatrack.notification.NotificationHelper;
 import com.netk.mvolatrack.notification.ExportNotificationHelper;
 import com.netk.mvolatrack.export.ExportTransaction;
+import com.netk.mvolatrack.export.ExportProgressListener;
 import com.netk.mvolatrack.export.PdfExporter;
 import com.netk.mvolatrack.export.XlsxExporter;
 import com.netk.mvolatrack.sms.ClientNumberNormalizer;
@@ -108,6 +109,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.AbstractList;
 import java.util.Locale;
 import java.util.Date;
 import java.nio.charset.StandardCharsets;
@@ -176,6 +178,7 @@ public class MainActivity extends AppCompatActivity {
     private View mainHeaderDivider;
     private ProgressBar loadingIndicator;
     private View exportProgress;
+    private TextView exportProgressText;
     private NavigationView navigationView;
     private SmsAdapter adapter;
     private float tableZoom = 1f;
@@ -434,6 +437,7 @@ public class MainActivity extends AppCompatActivity {
         mainHeaderDivider = findViewById(R.id.mainHeaderDivider);
         loadingIndicator = findViewById(R.id.loadingIndicator);
         exportProgress = findViewById(R.id.exportProgress);
+        exportProgressText = findViewById(R.id.exportProgressText);
         configureMessageFilters(savedInstanceState);
         backupManager = new SmsBackupManager(this);
         configureNavigationDrawer();
@@ -2038,16 +2042,11 @@ public class MainActivity extends AppCompatActivity {
     private void generateTransactionExport(boolean excel,
             List<SmsDateFilter.DisplayMessage> source, String period, String type,
             String fileNumber, String fileSuffix) {
-        final List<SmsDateFilter.DisplayMessage> safeSource;
-        try {
-            safeSource = source == null ? Collections.emptyList() : new ArrayList<>(source);
-            Log.i(EXPORT_TAG, "Transactions reçues : " + safeSource.size());
-        } catch (RuntimeException error) {
-            logExportException("MainActivity", "generateTransactionExport/data", error);
-            showExportFailure(() -> generateTransactionExport(excel, source, period, type,
-                    fileNumber, fileSuffix));
-            return;
-        }
+        // The adapters already return stable snapshots. Do not duplicate that potentially large
+        // list here; parsing is performed lazily by the exporter on its worker thread.
+        final List<SmsDateFilter.DisplayMessage> safeSource = source == null
+                ? Collections.emptyList() : source;
+        Log.i(EXPORT_TAG, "Transactions reçues : " + safeSource.size());
         if (safeSource.isEmpty()) {
             Log.w(EXPORT_TAG, "Export ignored: transaction selection is null or empty");
             showUserError("Aucune transaction à exporter.");
@@ -2055,49 +2054,6 @@ public class MainActivity extends AppCompatActivity {
         }
         if (exportInProgress) return;
         setExportInProgress(true);
-        List<ExportTransaction> rows = new ArrayList<>();
-        Map<String, TransactionBalanceVerification> verifications = messageVerifications == null
-                ? Collections.emptyMap() : new java.util.HashMap<>(messageVerifications);
-        for (SmsDateFilter.DisplayMessage displayed : safeSource) {
-            if (displayed == null || displayed.message == null) {
-                Log.w(EXPORT_TAG, "Skipping an invalid transaction row");
-                continue;
-            }
-            try {
-                SmsMessage message = displayed.message;
-                if (message.messageBody == null || message.messageBody.trim().isEmpty()) {
-                    Log.w(EXPORT_TAG, "Transaction ignorée : message vide");
-                    continue;
-                }
-                MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
-                        message.messageBody, Math.max(0L, message.receivedDate));
-                if (parsed == null) {
-                    Log.w(EXPORT_TAG, "Transaction ignorée : format non reconnu");
-                    continue;
-                }
-                long date = parsed.transactionAt > 0 ? parsed.transactionAt
-                        : Math.max(0L, message.receivedDate);
-                TransactionBalanceVerification verification = message.uniqueKey == null
-                        ? null : verifications.get(message.uniqueKey);
-                ExportTransaction row = new ExportTransaction(date,
-                        parsed.type, parsed.clientNumber, parsed.clientName, parsed.amount,
-                        parsed.reference, parsed.bonus, parsed.fee, parsed.balance,
-                        verification == null ? "Non vérifiable"
-                                : verificationStatusText(verification));
-                rows.add(row);
-                Log.d(EXPORT_TAG, "ExportTransaction créée : index=" + rows.size()
-                        + ", référence=" + row.reference);
-            } catch (Exception error) {
-                logExportException("MainActivity", "generateTransactionExport/parsing", error);
-            }
-        }
-        Log.i(EXPORT_TAG, "Transactions valides : " + rows.size());
-        if (rows.isEmpty()) {
-            Log.w(EXPORT_TAG, "Export ignored: no selected message could be parsed");
-            showUserError("Aucune transaction à exporter.");
-            setExportInProgress(false);
-            return;
-        }
         long exportedAt = System.currentTimeMillis();
         String extension = excel ? ".xlsx" : ".pdf";
         String mime = excel ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -2106,12 +2062,49 @@ public class MainActivity extends AppCompatActivity {
                 .format(new Date(exportedAt)) : fileSuffix;
         String name = "MVolaCash_" + (fileNumber == null ? "" : fileNumber + "_")
                 + suffix + extension;
-        showUserMessage("Création du fichier...");
+        showUserMessage("Export en cours");
         Runnable retry = () -> generateTransactionExport(excel, safeSource, period, type,
                 fileNumber, fileSuffix);
         try {
             exportTask = ioExecutor.submit(() -> {
             try {
+                Map<String, TransactionBalanceVerification> verifications =
+                        messageVerifications == null ? Collections.emptyMap()
+                                : messageVerifications;
+                List<ExportTransaction> rows = new AbstractList<ExportTransaction>() {
+                    @Override public int size() { return safeSource.size(); }
+
+                    @Override public ExportTransaction get(int index) {
+                        try {
+                            SmsDateFilter.DisplayMessage displayed = safeSource.get(index);
+                            if (displayed == null || displayed.message == null) return null;
+                            SmsMessage message = displayed.message;
+                            if (message.messageBody == null
+                                    || message.messageBody.trim().isEmpty()) return null;
+                            MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
+                                    message.messageBody, Math.max(0L, message.receivedDate));
+                            if (parsed == null) return null;
+                            long date = parsed.transactionAt > 0 ? parsed.transactionAt
+                                    : Math.max(0L, message.receivedDate);
+                            TransactionBalanceVerification verification =
+                                    message.uniqueKey == null ? null
+                                            : verifications.get(message.uniqueKey);
+                            return new ExportTransaction(date, parsed.type, parsed.clientNumber,
+                                    parsed.clientName, parsed.amount, parsed.reference,
+                                    parsed.bonus, parsed.fee, parsed.balance, verification == null
+                                    ? "Non vérifiable"
+                                    : verificationStatusText(verification));
+                        } catch (Exception error) {
+                            logExportException("MainActivity", "exportTransaction/parsing", error);
+                            return null;
+                        }
+                    }
+                };
+                ExportProgressListener progress = (processed, total) -> {
+                    if (processed == total || processed == 1 || processed % 25 == 0) {
+                        postToActiveUi(() -> updateExportProgress(processed, total));
+                    }
+                };
                 Context appContext = getApplicationContext();
                 File directory = new File(appContext.getCacheDir(), "exports");
                 if (!directory.exists() && !directory.mkdirs()) throw new IOException("Dossier indisponible");
@@ -2119,12 +2112,14 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(EXPORT_TAG, "Début génération " + (excel ? "XLSX" : "PDF"));
                 Log.i(EXPORT_TAG, "Chemin du fichier : " + file.getAbsolutePath());
                 try (OutputStream output = new FileOutputStream(file)) {
-                    if (excel) XlsxExporter.write(output, rows, period, type, exportedAt);
-                    else PdfExporter.write(output, rows, period, type, exportedAt);
+                    if (excel) XlsxExporter.write(output, rows, period, type, exportedAt, progress);
+                    else PdfExporter.write(output, rows, period, type, exportedAt, progress);
                 }
                 Log.i(EXPORT_TAG, "Fichier créé : " + file.getAbsolutePath()
                         + " (" + file.length() + " octets)");
                 postToActiveUi(() -> showExportCompleted(file, mime));
+            } catch (OutOfMemoryError error) {
+                handleExportFailure("generateTransactionExport/memory", error, retry);
             } catch (IOException error) {
                 handleExportFailure("generateTransactionExport/io", error, retry);
             } catch (SecurityException error) {
@@ -2133,7 +2128,7 @@ public class MainActivity extends AppCompatActivity {
                 handleExportFailure("generateTransactionExport/argument", error, retry);
             } catch (NullPointerException error) {
                 handleExportFailure("generateTransactionExport/null", error, retry);
-            } catch (RuntimeException error) {
+            } catch (Exception error) {
                 if (Thread.currentThread().isInterrupted()) {
                     Log.i(EXPORT_TAG, "Transaction export cancelled because Activity was destroyed");
                     return;
@@ -2141,7 +2136,9 @@ public class MainActivity extends AppCompatActivity {
                 handleExportFailure("generateTransactionExport/unexpected", error, retry);
             }
             });
-        } catch (RuntimeException error) {
+        } catch (OutOfMemoryError error) {
+            handleExportFailure("generateTransactionExport/executor-memory", error, retry);
+        } catch (Exception error) {
             handleExportFailure("generateTransactionExport/executor", error, retry);
         }
     }
@@ -2149,7 +2146,15 @@ public class MainActivity extends AppCompatActivity {
     private void setExportInProgress(boolean inProgress) {
         exportInProgress = inProgress;
         if (exportProgress != null) exportProgress.setVisibility(inProgress ? View.VISIBLE : View.GONE);
+        if (inProgress && exportProgressText != null) exportProgressText.setText("Export en cours");
         updateExportActions();
+    }
+
+    private void updateExportProgress(int processed, int total) {
+        if (exportProgressText != null) {
+            exportProgressText.setText("Traitement " + processed + " / " + total
+                    + " transactions");
+        }
     }
 
     private void updateExportActions() {
@@ -2159,7 +2164,7 @@ public class MainActivity extends AppCompatActivity {
         messagesExportButton.setVisibility(View.VISIBLE);
     }
 
-    private void handleExportFailure(String detail, Exception error, Runnable retry) {
+    private void handleExportFailure(String detail, Throwable error, Runnable retry) {
         if (Thread.currentThread().isInterrupted()) {
             Log.i(EXPORT_TAG, detail + ": task cancelled", error);
             return;

@@ -247,10 +247,11 @@
                     android:contentDescription="Export en cours" />
 
                 <TextView
+                    android:id="@+id/exportProgressText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
-                    android:text="Création du fichier…"
+                    android:text="Export en cours"
                     android:textColor="@color/sms_text_secondary"
                     android:textSize="13sp" />
             </LinearLayout>
