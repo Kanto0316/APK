@@ -40,6 +40,7 @@
     <color name="notification_unread_background">#EEF6FF</color>
     <color name="notification_read_background">#FFFFFF</color>
     <color name="notification_new_background">#1565C0</color>
+    <color name="notification_license">#217A47</color>
 
     <!-- Home service cards -->
     <color name="service_text_primary">#18212B</color>

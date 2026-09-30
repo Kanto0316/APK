@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey;
 import androidx.room.ColumnInfo;
 import androidx.annotation.NonNull;
 
-/** Persisted inbox entry created from an existing balance-verification result. */
+/** Persisted application notification. Legacy bonus columns remain for rich bonus details. */
 @Entity(tableName = "bonus_notifications", indices = {
         @Index(value = "transactionKey", unique = true), @Index("is_read")})
 public class NotificationBonus {
@@ -22,6 +22,11 @@ public class NotificationBonus {
     public long transactionDate;
     @ColumnInfo(name = "is_read", defaultValue = "0")
     public boolean isRead;
+    @NonNull public String type;
+    @NonNull public String title;
+    @NonNull public String message;
+    public long date;
+    public String metadata;
 
     public NotificationBonus(long createdAt, @NonNull String transactionKey, String transactionReference,
                              String clientNumber, @NonNull String anomalyType, long expectedBonus,
@@ -37,5 +42,30 @@ public class NotificationBonus {
         this.explanation = explanation;
         this.transactionDate = transactionDate;
         this.isRead = isRead;
+        this.type = NotificationType.BONUS.name();
+        this.title = bonusTitle(anomalyType);
+        this.message = explanation;
+        this.date = transactionDate;
+        this.metadata = null;
+    }
+
+    public static NotificationBonus general(long date, @NonNull String uniqueKey,
+            @NonNull NotificationType type, @NonNull String title, @NonNull String message,
+            String metadata) {
+        NotificationBonus value = new NotificationBonus(date, uniqueKey, null, null,
+                type.name(), 0, null, message, date, false);
+        value.type = type.name();
+        value.title = title;
+        value.message = message;
+        value.metadata = metadata;
+        return value;
+    }
+
+    private static String bonusTitle(String anomalyType) {
+        if ("BONUS_SUPERIEUR".equals(anomalyType)) return "Bonus supérieur";
+        if ("BONUS_NON_CREDITE".equals(anomalyType)) return "Bonus non crédité";
+        if ("BONUS_PARTIEL".equals(anomalyType)) return "Bonus partiel";
+        if ("BONUS_VERIFIE".equals(anomalyType)) return "Bonus vérifié";
+        return "Bonus non vérifiable";
     }
 }

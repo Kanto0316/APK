@@ -20,9 +20,7 @@
     <string name="backup_transactions">Sauvegarder les Transactions</string>
     <string name="restore_transactions">Restaurer les Transactions</string>
     <string name="notifications_title">Notifications</string>
-    <string name="notifications_subtitle">Alertes de vérification des bonus</string>
-    <string name="notifications_mark_all_read">Tout marquer comme lu</string>
     <string name="notifications_new">Nouveau</string>
     <string name="notifications_empty_title">Aucune notification</string>
-    <string name="notifications_empty_message">Les alertes de vérification des bonus apparaîtront ici.</string>
+    <string name="notifications_empty_message">Les informations importantes de MVolaCash apparaîtront ici.</string>
 </resources>
