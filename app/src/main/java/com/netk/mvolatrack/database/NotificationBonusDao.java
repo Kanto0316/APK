@@ -18,6 +18,7 @@ public abstract class NotificationBonusDao {
     /** Keeps insertion and retention cleanup in one database transaction. */
     @Transaction
     public long insertAndTrim(NotificationBonus notification) {
+        if (isDeleted(notification.transactionKey)) return -1L;
         long id = insert(notification);
         deleteOutsideNewest(MAX_NOTIFICATIONS);
         return id;
@@ -35,8 +36,22 @@ public abstract class NotificationBonusDao {
     @Query("UPDATE bonus_notifications SET is_read = 1 WHERE is_read = 0")
     public abstract int markAllRead();
 
+    @Query("SELECT EXISTS(SELECT 1 FROM deleted_notifications WHERE transactionKey = :key)")
+    abstract boolean isDeleted(String key);
+
+    @Query("INSERT OR IGNORE INTO deleted_notifications (transactionKey) "
+            + "SELECT transactionKey FROM bonus_notifications WHERE id IN (:ids)")
+    abstract void rememberDeletedKeys(List<Long> ids);
+
     @Query("DELETE FROM bonus_notifications WHERE id IN (:ids)")
-    public abstract int deleteByIds(List<Long> ids);
+    abstract int deleteRowsByIds(List<Long> ids);
+
+    /** Atomically records permanent deletion before removing the visible inbox rows. */
+    @Transaction
+    public int deleteByIds(List<Long> ids) {
+        rememberDeletedKeys(ids);
+        return deleteRowsByIds(ids);
+    }
 
     @Query("DELETE FROM bonus_notifications WHERE id NOT IN "
             + "(SELECT id FROM bonus_notifications ORDER BY date DESC, id DESC LIMIT :limit)")

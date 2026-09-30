@@ -89,6 +89,15 @@ public class NotificationBonusDaoTest {
         assertEquals(1, (int) await(dao.observeUnreadCount()));
     }
 
+    @Test public void deletedNotificationCannotBeRecreatedBySynchronization() throws Exception {
+        long id = dao.insertAndTrim(notification(1));
+        assertEquals(1, dao.deleteByIds(Arrays.asList(id)));
+
+        assertEquals(-1L, dao.insertAndTrim(notification(1)));
+        assertTrue(await(dao.observeAll()).isEmpty());
+        assertEquals(0, (int) await(dao.observeUnreadCount()));
+    }
+
     @Test public void readStateSurvivesDatabaseRestart() throws Exception {
         database.close();
         database = null;
