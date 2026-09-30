@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Shared by the table header and every SMS row to keep all columns aligned. -->
-    <dimen name="sms_table_width">1282dp</dimen>
+    <dimen name="sms_table_width">1242dp</dimen>
     <dimen name="sms_column_number_width">40dp</dimen>
     <dimen name="sms_column_datetime_width">144dp</dimen>
     <dimen name="sms_column_type_width">100dp</dimen>

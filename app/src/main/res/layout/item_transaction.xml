@@ -9,9 +9,12 @@
         android:orientation="horizontal" android:paddingStart="4dp"
         android:paddingTop="7dp" android:paddingEnd="4dp" android:paddingBottom="7dp">
 
-        <TextView android:id="@+id/itemNumber" android:layout_width="@dimen/sms_column_number_width"
-            android:layout_height="wrap_content" android:gravity="center"
-            android:maxLines="1" android:textColor="@color/sms_text_secondary" android:textSize="12sp" />
+        <TextView android:id="@+id/itemReference"
+            android:layout_width="@dimen/sms_column_reference_width"
+            android:layout_height="match_parent" android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true" android:ellipsize="end" android:focusable="true"
+            android:gravity="center" android:maxLines="1"
+            android:textColor="@color/sms_reference_link" android:textSize="13sp" />
         <TextView android:id="@+id/itemDateTime" android:layout_width="@dimen/sms_column_datetime_width"
             android:layout_height="wrap_content" android:gravity="center" android:maxLines="1"
             android:textColor="@color/sms_text_secondary" android:textSize="12sp" />
@@ -33,9 +36,6 @@
         <TextView android:id="@+id/itemAmount" android:layout_width="@dimen/sms_column_money_width"
             android:layout_height="wrap_content" android:gravity="center" android:maxLines="1"
             android:textColor="@color/sms_text_primary" android:textSize="13sp" />
-        <TextView android:id="@+id/itemReference" android:layout_width="@dimen/sms_column_reference_width"
-            android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center"
-            android:maxLines="1" android:textColor="@color/sms_text_primary" android:textSize="13sp" />
         <TextView android:id="@+id/itemBonus" android:layout_width="@dimen/sms_column_money_width"
             android:layout_height="wrap_content" android:gravity="center" android:maxLines="1"
             android:textColor="@color/sms_text_primary" android:textSize="13sp" />

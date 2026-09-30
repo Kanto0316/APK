@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="sms_status_header">Statut</string>
+    <string name="reference_copied">Référence copiée</string>
+    <string name="reference_unavailable">Référence indisponible</string>
     <string name="sms_status_verified">Vérifié</string>
     <string name="sms_status_bonus_not_credited">Bonus non crédité</string>
     <string name="sms_status_partial_bonus">Bonus partiel</string>

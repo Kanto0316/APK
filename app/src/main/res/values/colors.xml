@@ -15,6 +15,7 @@
     <color name="sms_type_credit_background">#FFF3DC</color>
     <color name="sms_type_credit_text">#8A4B08</color>
     <color name="sms_accent">#1565C0</color>
+    <color name="sms_reference_link">#245F97</color>
     <color name="sms_filter_background">#F7F9FB</color>
     <color name="sms_filter_border">#CCD6DF</color>
     <color name="sms_category_background">#EAF2FC</color>
