@@ -116,9 +116,9 @@ import java.util.concurrent.Future;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MVolaCash";
-    private static final String EXPORT_TAG = "MVolaCash_EXPORT_CRASH";
+    private static final String EXPORT_TAG = "MVolaCash_EXPORT_DIAGNOSTIC";
     private static final String EXPORT_ERROR_MESSAGE =
-            "Export impossible : vérifier les données de transaction";
+            "Export impossible : une erreur est survenue";
     private static final String STATE_SELECTED_SECTION = "selected_section";
     private static final String STATE_STATISTICS_YEAR = "statistics_year";
     private static final String STATE_STATISTICS_MONTH = "statistics_month";
@@ -1692,8 +1692,8 @@ public class MainActivity extends AppCompatActivity {
                     "Les réglages de MVolaCash seront disponibles ici.");
             else if (id == R.id.nav_security)
                 startActivity(new Intent(this, SecurityActivity.class));
-            else if (id == R.id.nav_export_pdf) showExportSettingsDialog(false);
-            else if (id == R.id.nav_export_excel) showExportSettingsDialog(true);
+            else if (id == R.id.nav_export_pdf) openExportSettings(false);
+            else if (id == R.id.nav_export_excel) openExportSettings(true);
             else if (id == R.id.nav_export_json) launchExport();
             else if (id == R.id.nav_import_json) launchImport();
             else if (id == R.id.nav_permissions) showPermissionStatusPage();
@@ -1701,6 +1701,16 @@ public class MainActivity extends AppCompatActivity {
             else if (id == R.id.nav_about) showAboutDialog();
             return true;
         });
+    }
+
+    private void openExportSettings(boolean excel) {
+        Log.i(EXPORT_TAG, "Clic utilisateur : Export " + (excel ? "Excel" : "PDF"));
+        try {
+            showExportSettingsDialog(excel);
+        } catch (RuntimeException error) {
+            logExportException("MainActivity", "openExportSettings", error);
+            showExportFailure(() -> openExportSettings(excel));
+        }
     }
 
     private String applicationVersionName() {
@@ -2017,8 +2027,17 @@ public class MainActivity extends AppCompatActivity {
     private void generateTransactionExport(boolean excel,
             List<SmsDateFilter.DisplayMessage> source, String period, String type,
             String fileNumber, String fileSuffix) {
-        Log.i(EXPORT_TAG, "Transactions sélectionnées : " + (source == null ? 0 : source.size()));
-        if (source == null || source.isEmpty()) {
+        final List<SmsDateFilter.DisplayMessage> safeSource;
+        try {
+            safeSource = source == null ? Collections.emptyList() : new ArrayList<>(source);
+            Log.i(EXPORT_TAG, "Transactions reçues : " + safeSource.size());
+        } catch (RuntimeException error) {
+            logExportException("MainActivity", "generateTransactionExport/data", error);
+            showExportFailure(() -> generateTransactionExport(excel, source, period, type,
+                    fileNumber, fileSuffix));
+            return;
+        }
+        if (safeSource.isEmpty()) {
             Log.w(EXPORT_TAG, "Export ignored: transaction selection is null or empty");
             showUserError("Aucune transaction à exporter.");
             return;
@@ -2033,7 +2052,7 @@ public class MainActivity extends AppCompatActivity {
             // Verification is useful metadata, but must never prevent the document being created.
             Log.e(EXPORT_TAG, "Vérification historique impossible; statut non vérifiable", error);
         }
-        for (SmsDateFilter.DisplayMessage displayed : source) {
+        for (SmsDateFilter.DisplayMessage displayed : safeSource) {
             if (displayed == null || displayed.message == null) {
                 Log.w(EXPORT_TAG, "Skipping an invalid transaction row");
                 continue;
@@ -2054,16 +2073,19 @@ public class MainActivity extends AppCompatActivity {
                         : Math.max(0L, message.receivedDate);
                 TransactionBalanceVerification verification = message.uniqueKey == null
                         ? null : verifications.get(message.uniqueKey);
-                rows.add(new ExportTransaction(displayed.originalNumber, date,
+                ExportTransaction row = new ExportTransaction(displayed.originalNumber, date,
                         parsed.type, parsed.clientNumber, parsed.clientName, parsed.amount,
                         parsed.reference, parsed.bonus, parsed.fee, parsed.balance,
                         verification == null ? "Non vérifiable"
-                                : verificationStatusText(verification)));
+                                : verificationStatusText(verification));
+                rows.add(row);
+                Log.d(EXPORT_TAG, "ExportTransaction créée : index=" + rows.size()
+                        + ", référence=" + row.reference);
             } catch (Exception error) {
-                Log.e(EXPORT_TAG, "Transaction ignorée", error);
+                logExportException("MainActivity", "generateTransactionExport/parsing", error);
             }
         }
-        Log.i(EXPORT_TAG, "Lignes ExportTransaction créées : " + rows.size());
+        Log.i(EXPORT_TAG, "Transactions valides : " + rows.size());
         if (rows.isEmpty()) {
             Log.w(EXPORT_TAG, "Export ignored: no selected message could be parsed");
             showUserError("Aucune transaction à exporter.");
@@ -2078,7 +2100,10 @@ public class MainActivity extends AppCompatActivity {
         String name = "MVolaCash_" + (fileNumber == null ? "" : fileNumber + "_")
                 + suffix + extension;
         showUserMessage("Création du fichier...");
-        exportTask = ioExecutor.submit(() -> {
+        Runnable retry = () -> generateTransactionExport(excel, safeSource, period, type,
+                fileNumber, fileSuffix);
+        try {
+            exportTask = ioExecutor.submit(() -> {
             try {
                 Context appContext = getApplicationContext();
                 File directory = new File(appContext.getCacheDir(), "exports");
@@ -2090,30 +2115,63 @@ public class MainActivity extends AppCompatActivity {
                     if (excel) XlsxExporter.write(output, rows, period, type, exportedAt);
                     else PdfExporter.write(output, rows, period, type, exportedAt);
                 }
+                Log.i(EXPORT_TAG, "Fichier créé : " + file.getAbsolutePath()
+                        + " (" + file.length() + " octets)");
                 postToActiveUi(() -> showExportCompleted(file, mime));
             } catch (IOException error) {
-                handleExportFailure("I/O failure while generating export", error);
+                handleExportFailure("generateTransactionExport/io", error, retry);
+            } catch (SecurityException error) {
+                handleExportFailure("generateTransactionExport/security", error, retry);
             } catch (IllegalArgumentException error) {
-                handleExportFailure("Invalid export argument", error);
+                handleExportFailure("generateTransactionExport/argument", error, retry);
             } catch (NullPointerException error) {
-                handleExportFailure("Unexpected null while generating export", error);
+                handleExportFailure("generateTransactionExport/null", error, retry);
             } catch (RuntimeException error) {
                 if (Thread.currentThread().isInterrupted()) {
                     Log.i(EXPORT_TAG, "Transaction export cancelled because Activity was destroyed");
                     return;
                 }
-                handleExportFailure("Unexpected export failure", error);
+                handleExportFailure("generateTransactionExport/unexpected", error, retry);
             }
-        });
+            });
+        } catch (RuntimeException error) {
+            handleExportFailure("generateTransactionExport/executor", error, retry);
+        }
     }
 
-    private void handleExportFailure(String detail, Exception error) {
+    private void handleExportFailure(String detail, Exception error, Runnable retry) {
         if (Thread.currentThread().isInterrupted()) {
             Log.i(EXPORT_TAG, detail + ": task cancelled", error);
             return;
         }
-        Log.e(EXPORT_TAG, detail, error);
-        postToActiveUi(() -> showUserError(EXPORT_ERROR_MESSAGE));
+        logExportException("MainActivity", detail, error);
+        postToActiveUi(() -> showExportFailure(retry));
+    }
+
+    private void logExportException(String className, String method, Throwable error) {
+        StackTraceElement location = null;
+        for (StackTraceElement element : error.getStackTrace()) {
+            if (element.getClassName().startsWith("com.netk.mvolatrack")) {
+                location = element;
+                break;
+            }
+        }
+        String line = location == null ? "inconnue" : String.valueOf(location.getLineNumber());
+        Log.e(EXPORT_TAG, "type=" + error.getClass().getName()
+                + ", message=" + String.valueOf(error.getMessage())
+                + ", classe=" + className + ", méthode=" + method + ", ligne=" + line, error);
+    }
+
+    private void showExportFailure(Runnable retry) {
+        if (!canUpdateUi()) return;
+        try {
+            new MaterialAlertDialogBuilder(this).setMessage(EXPORT_ERROR_MESSAGE)
+                    .setPositiveButton("Réessayer", (dialog, which) -> retry.run())
+                    .setNegativeButton("Fermer", null).show();
+        } catch (WindowManager.BadTokenException | IllegalStateException dialogError) {
+            logExportException("MainActivity", "showExportFailure", dialogError);
+            showUserError(EXPORT_ERROR_MESSAGE);
+        }
     }
 
     private String verificationStatusText(TransactionBalanceVerification verification) {
@@ -2141,6 +2199,7 @@ public class MainActivity extends AppCompatActivity {
         }
         pendingExportFile = file;
         pendingExportMime = mime;
+        Log.i(EXPORT_TAG, "Fichier prêt pour partage ou enregistrement : " + file.getName());
         try {
             new AlertDialog.Builder(this).setTitle("Export terminé")
                     .setMessage(file.getName())
@@ -2162,13 +2221,20 @@ public class MainActivity extends AppCompatActivity {
                 .setType(pendingExportMime)
                 .putExtra(Intent.EXTRA_TITLE, pendingExportFile.getName());
         try {
+            Log.i(EXPORT_TAG, "Demande d’enregistrement : " + pendingExportFile.getName());
             transactionSaveLauncher.launch(intent);
         } catch (ActivityNotFoundException error) {
             Log.e(EXPORT_TAG, "No document provider can save the export", error);
             showUserError("Aucune application ne permet d’enregistrer ce fichier.");
         } catch (IllegalArgumentException | NullPointerException error) {
-            Log.e(EXPORT_TAG, "Invalid save request", error);
-            showUserError("Enregistrement impossible.");
+            logExportException("MainActivity", "savePendingExport", error);
+            showExportFailure(this::savePendingExport);
+        } catch (SecurityException error) {
+            logExportException("MainActivity", "savePendingExport/security", error);
+            showExportFailure(this::savePendingExport);
+        } catch (RuntimeException error) {
+            logExportException("MainActivity", "savePendingExport/unexpected", error);
+            showExportFailure(this::savePendingExport);
         }
     }
 
@@ -2196,6 +2262,12 @@ public class MainActivity extends AppCompatActivity {
             } catch (NullPointerException error) {
                 Log.e(EXPORT_TAG, "Unexpected null while saving export", error);
                 showTransferError("Enregistrement impossible", error);
+            } catch (SecurityException error) {
+                logExportException("MainActivity", "copyExportTo/security", error);
+                postToActiveUi(() -> showExportFailure(() -> copyExportTo(destination, source)));
+            } catch (RuntimeException error) {
+                logExportException("MainActivity", "copyExportTo/unexpected", error);
+                postToActiveUi(() -> showExportFailure(() -> copyExportTo(destination, source)));
             }
         }, "transaction-export-save").start();
     }
@@ -2214,6 +2286,7 @@ public class MainActivity extends AppCompatActivity {
                     .putExtra(Intent.EXTRA_STREAM, uri)
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(Intent.createChooser(send, "Partager l’export"));
+            Log.i(EXPORT_TAG, "Intent de partage lancé : " + uri);
         } catch (ActivityNotFoundException error) {
             Log.e(EXPORT_TAG, "No Activity can share the export", error);
             showUserError("Aucune application ne permet de partager ce fichier.");
@@ -2223,6 +2296,12 @@ public class MainActivity extends AppCompatActivity {
         } catch (NullPointerException error) {
             Log.e(EXPORT_TAG, "Unexpected null while sharing export", error);
             showUserError("Partage impossible.");
+        } catch (SecurityException error) {
+            logExportException("MainActivity", "shareExport/FileProvider", error);
+            showExportFailure(() -> shareExport(file, mime));
+        } catch (RuntimeException error) {
+            logExportException("MainActivity", "shareExport/unexpected", error);
+            showExportFailure(() -> shareExport(file, mime));
         }
     }
 
