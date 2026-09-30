@@ -17,7 +17,7 @@
             android:clipToPadding="false" android:padding="16dp" />
         <TextView android:id="@+id/notificationsEmpty" android:layout_width="wrap_content"
             android:layout_height="wrap_content" android:layout_gravity="center" android:gravity="center"
-            android:text="Aucune anomalie de bonus" android:textColor="@color/sms_text_secondary"
+            android:text="Aucune notification disponible" android:textColor="@color/sms_text_secondary"
             android:textSize="16sp" />
     </FrameLayout>
 </LinearLayout>
