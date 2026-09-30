@@ -6,8 +6,10 @@ import static org.junit.Assert.assertNull;
 import com.netk.mvolatrack.database.SmsMessage;
 import org.junit.Test;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.TimeZone;
 
 public class ClientMessageGrouperTest {
     @Test public void group_usesOnlyExtractedClientAndSortsMessagesByRecency() {
@@ -46,24 +48,50 @@ public class ClientMessageGrouperTest {
                 ClientMessageGrouper.Filter.ALL).size());
     }
 
-    @Test public void filtersUseParsedTransactionCount() {
+    @Test public void filtersUseFirstTransactionDayRatherThanTransactionCount() {
+        TimeZone zone = TimeZone.getTimeZone("Indian/Antananarivo");
         List<ClientMessageGrouper.ClientGroup> groups = ClientMessageGrouper.group(Arrays.asList(
-                transaction("0343242318", "premier", 100L),
-                transaction("0343242318", "deuxième", 200L),
-                transaction("0384900247", "unique", 300L),
+                datedTransaction("0343242318", "premier", 2026, 9, 29, 8, zone),
+                datedTransaction("0343242318", "deuxième", 2026, 9, 30, 8, zone),
+                datedTransaction("0384900247", "unique", 2026, 9, 30, 9, zone),
                 SmsMessage.create("MVola", "ignoré", 400L, true)));
+        long september30 = time(2026, 9, 30, 12, zone);
 
         assertEquals(1, ClientMessageGrouper.filter(groups, "",
-                ClientMessageGrouper.Filter.NEW).size());
+                ClientMessageGrouper.Filter.NEW, september30, zone).size());
         assertEquals("0384900247", ClientMessageGrouper.filter(groups, "",
-                ClientMessageGrouper.Filter.NEW).get(0).sender);
+                ClientMessageGrouper.Filter.NEW, september30, zone).get(0).sender);
         assertEquals(1, ClientMessageGrouper.filter(groups, "",
-                ClientMessageGrouper.Filter.EXISTING).size());
+                ClientMessageGrouper.Filter.EXISTING, september30, zone).size());
+
+        // The category is derived from the current day, so no persisted flag needs updating.
+        long october1 = time(2026, 10, 1, 0, zone);
+        assertEquals(0, ClientMessageGrouper.filter(groups, "",
+                ClientMessageGrouper.Filter.NEW, october1, zone).size());
+        assertEquals(2, ClientMessageGrouper.filter(groups, "",
+                ClientMessageGrouper.Filter.EXISTING, october1, zone).size());
     }
 
     private static SmsMessage transaction(String number, String label, long receivedAt) {
         return SmsMessage.create("MVola", "1 000 Ar recu de " + label + " " + number
                 + " le 21/09/26 a 08:19. Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.",
                 receivedAt, true);
+    }
+
+    private static SmsMessage datedTransaction(String number, String label, int year, int month,
+                                                int day, int hour, TimeZone zone) {
+        long timestamp = time(year, month, day, hour, zone);
+        String date = String.format(java.util.Locale.ROOT, "%02d/%02d/%02d a %02d:00",
+                day, month, year % 100, hour);
+        return SmsMessage.create("MVola", "1 000 Ar recu de " + label + " " + number
+                + " le " + date + ". Bonus:1 Ar. Solde: 10 000 Ar. Ref: 123456.",
+                timestamp, true);
+    }
+
+    private static long time(int year, int month, int day, int hour, TimeZone zone) {
+        Calendar calendar = Calendar.getInstance(zone);
+        calendar.clear();
+        calendar.set(year, month - 1, day, hour, 0);
+        return calendar.getTimeInMillis();
     }
 }

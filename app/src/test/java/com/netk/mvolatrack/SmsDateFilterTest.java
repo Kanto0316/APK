@@ -118,31 +118,13 @@ public class SmsDateFilterTest {
     }
 
     @Test
-    public void nameSearchIsPartialCaseAndAccentInsensitive() {
+    public void searchDoesNotMatchClientNames() {
         List<SmsMessage> source = Arrays.asList(
                 namedMessage("Ravaka", "0385829562", 2026, 9, 22, 10),
-                namedMessage("Falitiana", "0345829482", 2026, 9, 22, 9),
-                namedMessage("MARIÉTTE", "0344153878", 2026, 9, 22, 8));
+                namedMessage("Falitiana", "0345829482", 2026, 9, 22, 9));
 
-        assertSingleNamedResult(source, "rav", "Ravaka");
-        assertSingleNamedResult(source, "RAVAKA", "Ravaka");
-        assertSingleNamedResult(source, "fali", "Falitiana");
-        assertSingleNamedResult(source, "mariette", "MARIÉTTE");
-    }
-
-    @Test
-    public void nameSearchCombinesWithDateAndDoesNotSearchRawSmsFields() {
-        List<SmsMessage> source = Arrays.asList(
-                namedMessage("Ravaka", "0385829562", 2026, 9, 22, 10),
-                namedMessage("Ravaka", "0345829482", 2026, 9, 21, 10),
-                namedMessage("Falitiana", "0344153878", 2026, 9, 22, 9));
-
-        List<SmsDateFilter.DisplayMessage> today = SmsDateFilter.apply(source,
-                SmsDateFilter.Period.TODAY, null, time(2026, 9, 22, 12), ZONE, "ravaka");
-        assertEquals(1, today.size());
-        assertEquals("0385829562", today.get(0).message.sender);
         assertEquals(0, SmsDateFilter.apply(source, SmsDateFilter.Period.ALL, null,
-                time(2026, 9, 22, 12), ZONE, "solde").size());
+                time(2026, 9, 22, 12), ZONE, "ravaka").size());
     }
 
     @Test
@@ -185,17 +167,6 @@ public class SmsDateFilterTest {
 
         assertSingleTypeResult(source, SmsDateFilter.Period.SEVEN_DAYS, "",
                 SmsDateFilter.TransactionType.CREDIT, "Crédit");
-    }
-
-    @Test
-    public void nameSearchAndWithdrawalFiltersAreCombined() {
-        List<SmsMessage> source = Arrays.asList(
-                typedMessage("Retrait", "Ravaka", "0385829562", 2026, 9, 22, 10),
-                typedMessage("Dépôt", "Ravaka", "0340677891", 2026, 9, 22, 9),
-                typedMessage("Retrait", "Falitiana", "0345829482", 2026, 9, 22, 8));
-
-        assertSingleTypeResult(source, SmsDateFilter.Period.ALL, "ravaka",
-                SmsDateFilter.TransactionType.WITHDRAWAL, "Retrait");
     }
 
     @Test
@@ -294,16 +265,6 @@ public class SmsDateFilterTest {
     private static String parsedType(SmsDateFilter.DisplayMessage displayed) {
         return com.netk.mvolatrack.sms.MvolaMessageParser.parse(
                 displayed.message.messageBody, displayed.message.receivedDate).type;
-    }
-
-    private static void assertSingleNamedResult(List<SmsMessage> source, String query,
-                                                String expectedName) {
-        List<SmsDateFilter.DisplayMessage> result = SmsDateFilter.apply(source,
-                SmsDateFilter.Period.ALL, null, time(2026, 9, 22, 12), ZONE, query);
-        assertEquals(query, 1, result.size());
-        assertEquals(expectedName,
-                com.netk.mvolatrack.sms.MvolaMessageParser.parse(
-                        result.get(0).message.messageBody).clientName);
     }
 
     private static SmsMessage message(int year, int month, int day, int hour) {
