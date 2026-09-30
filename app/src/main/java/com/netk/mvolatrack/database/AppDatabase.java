@@ -25,6 +25,7 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /** Adds the persistent bonus-notification inbox to databases created by version 2. */
     private static final Migration MIGRATION_2_3 = new Migration(2, 3) {
         @Override public void migrate(SupportSQLiteDatabase database) {
             database.execSQL("CREATE TABLE IF NOT EXISTS `bonus_notifications` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `createdAt` INTEGER NOT NULL, `transactionKey` TEXT NOT NULL, `transactionReference` TEXT, `clientNumber` TEXT, `anomalyType` TEXT NOT NULL, `expectedBonus` INTEGER NOT NULL, `detectedBonus` INTEGER, `explanation` TEXT NOT NULL, `transactionDate` INTEGER NOT NULL, `isRead` INTEGER NOT NULL)");
