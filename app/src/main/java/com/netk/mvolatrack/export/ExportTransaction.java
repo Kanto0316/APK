@@ -3,7 +3,6 @@ package com.netk.mvolatrack.export;
 /** Immutable, parsed transaction data consumed by both document exporters. */
 public final class ExportTransaction {
     private static final String MISSING = "-";
-    public final int number;
     public final long dateTime;
     public final String type;
     public final String phone;
@@ -15,16 +14,15 @@ public final class ExportTransaction {
     public final Long balance;
     public final String verificationStatus;
 
-    public ExportTransaction(int number, long dateTime, String type, String phone, String name,
+    public ExportTransaction(long dateTime, String type, String phone, String name,
                              long amount, String reference, Long bonus, Long fee, Long balance) {
-        this(number, dateTime, type, phone, name, amount, reference, bonus, fee, balance,
+        this(dateTime, type, phone, name, amount, reference, bonus, fee, balance,
                 "Non vérifiable");
     }
 
-    public ExportTransaction(int number, long dateTime, String type, String phone, String name,
+    public ExportTransaction(long dateTime, String type, String phone, String name,
                              long amount, String reference, Long bonus, Long fee, Long balance,
                              String verificationStatus) {
-        this.number = Math.max(0, number);
         this.dateTime = Math.max(0L, dateTime);
         this.type = safeText(type);
         this.phone = safeText(phone);

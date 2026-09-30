@@ -1,5 +1,6 @@
 package com.netk.mvolatrack.export;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.graphics.pdf.PdfRenderer;
@@ -13,16 +14,27 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
 @RunWith(AndroidJUnit4.class)
 public class PdfExporterTest {
     @Test
+    public void usesTransactionReferenceAsTheFirstColumn() throws Exception {
+        Field headersField = PdfExporter.class.getDeclaredField("HEADERS");
+        headersField.setAccessible(true);
+
+        assertArrayEquals(new String[]{"Réf", "Date et heure", "Type", "Numéro client",
+                "Montant", "Bonus", "Frais", "Solde", "Statut"},
+                (String[]) headersField.get(null));
+    }
+
+    @Test
     public void hundredsOfTransactionsProduceAReadableMultipagePdf() throws Exception {
         List<ExportTransaction> rows = new ArrayList<>();
         for (int index = 0; index < 500; index++) {
-            rows.add(new ExportTransaction(index + 1, 1790258400000L, "Retrait",
+            rows.add(new ExportTransaction(1790258400000L, "Retrait",
                     "0345079482", "Ravaka", 16000, "12345678901234567890",
                     null, index % 2 == 0 ? 0L : null, 4250L));
         }

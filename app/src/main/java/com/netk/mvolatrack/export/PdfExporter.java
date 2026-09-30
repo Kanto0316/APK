@@ -23,9 +23,9 @@ public final class PdfExporter {
     private static final float LEFT = 22;
     private static final float TOP = 24;
     private static final float ROW_HEIGHT = 22;
-    private static final float[] WIDTHS = {24, 72, 45, 72, 78, 62, 52, 52, 58, 96};
-    private static final String[] HEADERS = {"#", "Date et heure", "Type", "Numéro client",
-            "Référence", "Montant", "Bonus", "Frais", "Solde", "Statut de vérification"};
+    private static final float[] WIDTHS = {82, 76, 49, 78, 66, 56, 56, 62, 106};
+    private static final String[] HEADERS = {"Réf", "Date et heure", "Type", "Numéro client",
+            "Montant", "Bonus", "Frais", "Solde", "Statut"};
 
     private PdfExporter() {}
 
@@ -95,8 +95,8 @@ public final class PdfExporter {
         String date = row.dateTime > 0
                 ? new SimpleDateFormat("dd/MM/yy HH:mm", Locale.FRENCH)
                 .format(new Date(row.dateTime)) : "-";
-        String[] values = {String.valueOf(row.number), date, row.type,
-                ClientNumberNormalizer.format(row.phone), missing(row.reference), ariary(row.amount),
+        String[] values = {missing(row.reference), date, row.type,
+                ClientNumberNormalizer.format(row.phone), ariary(row.amount),
                 nullableAriary(row.bonus, false), nullableAriary(row.fee, true),
                 nullableAriary(row.balance, false), missing(row.verificationStatus)};
         paint.setColor(Color.BLACK); paint.setTypeface(android.graphics.Typeface.DEFAULT); paint.setTextSize(7.2f);

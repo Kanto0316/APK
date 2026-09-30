@@ -18,7 +18,7 @@ public class XlsxExporterTest {
     @Test
     public void createsRealXlsxWithTextIdentifiersAndNumericAmounts() throws Exception {
         List<ExportTransaction> rows = new ArrayList<>();
-        rows.add(new ExportTransaction(1, 1790258400000L, "Retrait", "0345079482",
+        rows.add(new ExportTransaction(1790258400000L, "Retrait", "0345079482",
                 "Ravaka", 16000, "12345678901234567890", null, 0L, 4250L,
                 "Écart de solde"));
         ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -29,12 +29,13 @@ public class XlsxExporterTest {
         assertEquals('K', output.toByteArray()[1]);
         String sheet = zipEntry(output.toByteArray(), "xl/worksheets/sheet1.xml");
         assertTrue(sheet.contains("RÉCAPITULATIF DES TRANSACTIONS"));
+        assertTrue(sheet.contains("<c r=\"A7\" t=\"inlineStr\" s=\"1\"><is><t xml:space=\"preserve\">Réf</t>"));
+        assertTrue(sheet.contains("<c r=\"A8\" t=\"inlineStr\" s=\"0\"><is><t xml:space=\"preserve\">12345678901234567890</t>"));
         assertTrue(sheet.contains("t=\"inlineStr\" s=\"0\"><is><t xml:space=\"preserve\">0345079482"));
-        assertTrue(sheet.contains("12345678901234567890"));
-        assertTrue(sheet.contains("<c r=\"F8\" s=\"0\"><v>16000.0</v></c>"));
-        assertTrue(sheet.contains("Statut de vérification"));
+        assertTrue(sheet.contains("<c r=\"E8\" s=\"0\"><v>16000.0</v></c>"));
+        assertTrue(sheet.contains(">Statut</t>"));
         assertTrue(sheet.contains("Écart de solde"));
-        assertTrue(sheet.contains("<autoFilter ref=\"A7:J8\"/>"));
+        assertTrue(sheet.contains("<autoFilter ref=\"A7:I8\"/>"));
         assertFalse(sheet.contains("message brut"));
     }
 
@@ -42,7 +43,7 @@ public class XlsxExporterTest {
     public void supportsHundredsOfRowsAndKeepsNullNumericCellsEmpty() throws Exception {
         List<ExportTransaction> rows = new ArrayList<>();
         for (int index = 0; index < 500; index++) {
-            rows.add(new ExportTransaction(index + 1, index * 1000L, "Dépôt",
+            rows.add(new ExportTransaction(index * 1000L, "Dépôt",
                     "0340000000", "Client", index, "REF" + index, null, null, null));
         }
         ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -50,8 +51,8 @@ public class XlsxExporterTest {
 
         String sheet = zipEntry(output.toByteArray(), "xl/worksheets/sheet1.xml");
         assertTrue(sheet.contains("<row r=\"507\">"));
+        assertTrue(sheet.contains("<c r=\"G8\" s=\"0\"><v>0.0</v></c>"));
         assertTrue(sheet.contains("<c r=\"H8\" s=\"0\"><v>0.0</v></c>"));
-        assertTrue(sheet.contains("<c r=\"I8\" s=\"0\"><v>0.0</v></c>"));
     }
 
     @Test
@@ -62,13 +63,13 @@ public class XlsxExporterTest {
         assertTrue(emptySheet.contains("Nombre de transactions : 0"));
 
         List<ExportTransaction> rows = new ArrayList<>();
-        rows.add(new ExportTransaction(-1, -1, null, null, null, 0,
+        rows.add(new ExportTransaction(-1, null, null, null, 0,
                 null, null, null, null, null));
         ByteArrayOutputStream safeOutput = new ByteArrayOutputStream();
         XlsxExporter.write(safeOutput, rows, null, null, 0);
         String safeSheet = zipEntry(safeOutput.toByteArray(), "xl/worksheets/sheet1.xml");
         assertFalse(safeSheet.contains(">null<"));
-        assertTrue(safeSheet.contains("<c r=\"A8\" s=\"0\"><v>0.0</v></c>"));
+        assertTrue(safeSheet.contains("<c r=\"A8\" t=\"inlineStr\" s=\"0\"><is><t xml:space=\"preserve\">-</t>"));
     }
 
     @Test
@@ -78,7 +79,7 @@ public class XlsxExporterTest {
         for (int index = 0; index < 40000; index++) longReference.append('R');
         longReference.insert(10, '\u0001');
         for (int index = 0; index < 20; index++) {
-            rows.add(new ExportTransaction(index + 1, 1790258400000L, "Dépôt & crédit",
+            rows.add(new ExportTransaction(1790258400000L, "Dépôt & crédit",
                     "0340000000", "Client", 1000, index == 0
                     ? longReference.toString() : "REF<" + index, 50L, null, null,
                     index == 19 ? "Non vérifiable" : "Conforme"));
@@ -89,7 +90,7 @@ public class XlsxExporterTest {
 
         String sheet = zipEntry(output.toByteArray(), "xl/worksheets/sheet1.xml");
         assertTrue(sheet.contains("<row r=\"27\">"));
-        assertTrue(sheet.contains("<c r=\"G8\" s=\"0\"><v>50.0</v></c>"));
+        assertTrue(sheet.contains("<c r=\"F8\" s=\"0\"><v>50.0</v></c>"));
         assertTrue(sheet.contains("Non vérifiable"));
         assertTrue(sheet.contains("Dépôt &amp; crédit"));
         assertTrue(sheet.contains("REF&lt;1"));
