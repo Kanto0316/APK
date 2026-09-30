@@ -14,5 +14,5 @@
     <dimen name="sms_status_icon_size">20dp</dimen>
     <dimen name="sms_status_icon_spacing">8dp</dimen>
     <!-- Same table as Messages, without the sender column (the number is in the title). -->
-    <dimen name="client_table_width">1142dp</dimen>
+    <dimen name="client_table_width">1102dp</dimen>
 </resources>
