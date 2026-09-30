@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.LiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.netk.mvolatrack.R;
@@ -18,6 +19,7 @@ import com.netk.mvolatrack.repository.BonusNotificationRepository;
 import com.netk.mvolatrack.verification.VerificationStatus;
 import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -34,32 +36,46 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         RecyclerView list = findViewById(R.id.bonusNotificationsList);
         list.setLayoutManager(new LinearLayoutManager(this));
         list.setAdapter(adapter);
-        repository = new BonusNotificationRepository(this);
-        repository.observeAll().observe(this, values -> {
-            adapter.submit(values);
-            findViewById(R.id.notificationsEmpty).setVisibility(
-                    values == null || values.isEmpty() ? View.VISIBLE : View.GONE);
-        });
+        showNotifications(Collections.emptyList());
+        try {
+            repository = new BonusNotificationRepository(this);
+            LiveData<List<NotificationBonus>> notifications = repository.observeAll();
+            if (notifications != null) notifications.observe(this, this::showNotifications);
+        } catch (RuntimeException ignored) {
+            // A damaged or temporarily unavailable database must not make the inbox crash.
+            showNotifications(Collections.emptyList());
+        }
     }
 
     @Override protected void onResume() {
         super.onResume();
-        repository.markAllRead();
+        if (repository != null) repository.markAllRead();
+    }
+
+    private void showNotifications(List<NotificationBonus> values) {
+        List<NotificationBonus> safeValues = values == null ? Collections.emptyList() : values;
+        adapter.submit(safeValues);
+        findViewById(R.id.notificationsEmpty).setVisibility(
+                adapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
     }
 
     private void showDetail(NotificationBonus item) {
-        String detected = item.detectedBonus == null ? "Indisponible"
+        if (item == null) return;
+        String detected = item.detectedBonus == null ? "-"
                 : item.detectedBonus + " Ar";
         new AlertDialog.Builder(this)
                 .setTitle(label(item.anomalyType))
                 .setMessage("Client : " + safe(item.clientNumber) + "\nRéférence : "
                         + safe(item.transactionReference) + "\nDate : " + formatDate(item.transactionDate)
                         + "\nBonus attendu : " + item.expectedBonus + " Ar\nBonus reçu : "
-                        + detected + "\n\n" + item.explanation)
+                        + detected + "\n\n" + explanation(item.explanation))
                 .setPositiveButton(android.R.string.ok, null).show();
     }
 
-    private static String safe(String value) { return value == null || value.trim().isEmpty() ? "—" : value; }
+    private static String safe(String value) { return value == null || value.trim().isEmpty() ? "-" : value; }
+    private static String explanation(String value) {
+        return value == null || value.trim().isEmpty() ? "Aucune information disponible" : value;
+    }
     private static String formatDate(long value) {
         return DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT,
                 Locale.getDefault()).format(new Date(value));
@@ -80,7 +96,11 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
     private final class Adapter extends RecyclerView.Adapter<Holder> {
         private final List<NotificationBonus> items = new ArrayList<>();
         void submit(List<NotificationBonus> values) {
-            items.clear(); if (values != null) items.addAll(values); notifyDataSetChanged();
+            items.clear();
+            if (values != null) {
+                for (NotificationBonus item : values) if (item != null) items.add(item);
+            }
+            notifyDataSetChanged();
         }
         @NonNull @Override public Holder onCreateViewHolder(@NonNull ViewGroup parent, int type) {
             return new Holder(LayoutInflater.from(parent.getContext()).inflate(
@@ -96,8 +116,8 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
             holder.client.setText("Client " + safe(item.clientNumber) + "  •  Réf. " + safe(item.transactionReference));
             holder.date.setText(formatDate(item.transactionDate));
             holder.amounts.setText("Attendu : " + item.expectedBonus + " Ar   •   Reçu : "
-                    + (item.detectedBonus == null ? "—" : item.detectedBonus + " Ar"));
-            holder.explanation.setText(item.explanation);
+                    + (item.detectedBonus == null ? "-" : item.detectedBonus + " Ar"));
+            holder.explanation.setText(explanation(item.explanation));
             holder.itemView.setOnClickListener(view -> showDetail(item));
             holder.itemView.setContentDescription(label(item.anomalyType) + ", " + holder.client.getText());
         }
