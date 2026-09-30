@@ -162,6 +162,12 @@ public class MainActivity extends AppCompatActivity {
     private TextView backgroundExecutionText;
     private TextView emptyText;
     private TextView transactionCountText;
+    private View transactionPagination;
+    private TextView transactionPageIndicator;
+    private View transactionPreviousPage;
+    private View transactionNextPage;
+    private RecyclerView transactionsList;
+    private int transactionPage;
     private TextView balanceTitle;
     private ImageButton balanceVisibilityButton;
     private String visibleBalanceTitle = "0 Ar";
@@ -388,6 +394,12 @@ public class MainActivity extends AppCompatActivity {
         backgroundExecutionText.setOnClickListener(view -> showBackgroundPermissionDialog(false));
         emptyText = findViewById(R.id.emptyText);
         transactionCountText = findViewById(R.id.transactionCountText);
+        transactionPagination = findViewById(R.id.transactionPagination);
+        transactionPageIndicator = findViewById(R.id.transactionPageIndicator);
+        transactionPreviousPage = findViewById(R.id.transactionPreviousPage);
+        transactionNextPage = findViewById(R.id.transactionNextPage);
+        transactionPreviousPage.setOnClickListener(view -> changeTransactionPage(-1));
+        transactionNextPage.setOnClickListener(view -> changeTransactionPage(1));
         balanceTitle = findViewById(R.id.balanceTitle);
         balanceVisibilityButton = findViewById(R.id.balanceVisibilityButton);
         balanceHidden = getSharedPreferences(DISPLAY_PREFERENCES, MODE_PRIVATE)
@@ -548,6 +560,7 @@ public class MainActivity extends AppCompatActivity {
         showSection(savedInstanceState == null ? SECTION_HOME
                 : savedInstanceState.getInt(STATE_SELECTED_SECTION, SECTION_HOME));
         RecyclerView list = findViewById(R.id.transactionsList);
+        transactionsList = list;
         if (savedInstanceState != null) {
             tableZoom = clampTableZoom(savedInstanceState.getFloat(STATE_TABLE_ZOOM, 1f));
         }
@@ -1466,6 +1479,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override public void onTextChanged(CharSequence value, int start, int before,
                     int count) {
+                transactionPage = 0;
                 renderState();
             }
 
@@ -1560,6 +1574,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void selectMessageFilter(SmsDateFilter.Period period) {
+        transactionPage = 0;
         selectedMessageFilter = period;
         if (period != SmsDateFilter.Period.CUSTOM_DATE) customFilterDate = null;
         persistMessagePeriodFilter();
@@ -1568,6 +1583,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void selectMessageType(SmsDateFilter.TransactionType type) {
+        transactionPage = 0;
         selectedMessageType = type;
         getSharedPreferences(MESSAGE_FILTER_PREFERENCES, MODE_PRIVATE).edit()
                 .putString(MESSAGES_FILTER_TYPE, type.name())
@@ -1585,6 +1601,7 @@ public class MainActivity extends AppCompatActivity {
             selected.set(year, month, day);
             customFilterDate = selected.getTimeInMillis();
             selectedMessageFilter = SmsDateFilter.Period.CUSTOM_DATE;
+            transactionPage = 0;
             persistMessagePeriodFilter();
             updateFilterChips();
             renderState();
@@ -2709,20 +2726,46 @@ public class MainActivity extends AppCompatActivity {
                 System.currentTimeMillis(), java.util.TimeZone.getDefault(),
                 messageSearchInput == null ? "" : messageSearchInput.getText().toString(),
                 selectedMessageType);
-        adapter.submitList(displayed, messageVerifications);
+        transactionPage = TransactionPaginator.clampPage(transactionPage, displayed.size());
+        adapter.submitList(TransactionPaginator.page(displayed, transactionPage),
+                messageVerifications);
         updateExportActions();
         int displayedCount = displayed.size();
-        transactionCountText.setText(displayedCount
-                + (displayedCount > 1 ? " transactions" : " transaction"));
+        int firstDisplayed = displayedCount == 0
+                ? 0 : transactionPage * TransactionPaginator.PAGE_SIZE + 1;
+        int lastDisplayed = Math.min((transactionPage + 1) * TransactionPaginator.PAGE_SIZE,
+                displayedCount);
+        transactionCountText.setText(displayedCount == 0 ? "0 transaction"
+                : "Transactions " + firstDisplayed + "-" + lastDisplayed + " sur "
+                + displayedCount);
+        updateTransactionPagination(displayedCount);
         boolean noDisplayedMessages = displayed.isEmpty();
-        boolean searching = messageSearchInput != null
-                && !messageSearchInput.getText().toString().trim().isEmpty();
-        emptyText.setText(searching ? "Aucun message trouvé"
-                : selectedMessageFilter == SmsDateFilter.Period.ALL
-                && selectedMessageType == SmsDateFilter.TransactionType.ALL
-                ? "Aucun message enregistré" : "Aucun message pour cette période");
+        emptyText.setText("Aucune transaction disponible");
         emptyText.setVisibility(!denied && !loading && noDisplayedMessages
                 ? View.VISIBLE : View.GONE);
+    }
+
+    private void changeTransactionPage(int offset) {
+        int requestedPage = transactionPage + offset;
+        if (requestedPage < 0) return;
+        transactionPage = requestedPage;
+        renderState();
+        if (transactionsList != null) {
+            transactionsList.scrollToPosition(0);
+            transactionsList.setAlpha(0.72f);
+            transactionsList.animate().alpha(1f).setDuration(160L).start();
+        }
+    }
+
+    private void updateTransactionPagination(int itemCount) {
+        int pageCount = TransactionPaginator.pageCount(itemCount);
+        transactionPagination.setVisibility(pageCount > 1 ? View.VISIBLE : View.GONE);
+        if (pageCount <= 1) return;
+        transactionPageIndicator.setText("Page " + (transactionPage + 1) + " sur " + pageCount);
+        transactionPreviousPage.setEnabled(transactionPage > 0);
+        transactionNextPage.setEnabled(transactionPage < pageCount - 1);
+        transactionPreviousPage.setAlpha(transactionPage > 0 ? 1f : 0.4f);
+        transactionNextPage.setAlpha(transactionPage < pageCount - 1 ? 1f : 0.4f);
     }
 
     private interface ClientClickListener {
