@@ -6,8 +6,8 @@
         android:minHeight="48dp" android:gravity="center_vertical" android:orientation="horizontal"
         android:paddingStart="4dp" android:paddingTop="7dp" android:paddingEnd="4dp"
         android:paddingBottom="7dp">
-        <TextView android:id="@+id/clientMessageNumber"
-            android:layout_width="@dimen/sms_column_number_width" android:layout_height="wrap_content"
+        <TextView android:id="@+id/clientMessageReference"
+            android:layout_width="@dimen/sms_column_reference_width" android:layout_height="wrap_content"
             android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_secondary"
             android:textSize="12sp" />
         <TextView android:id="@+id/clientMessageDateTime"
@@ -31,10 +31,6 @@
             android:layout_width="@dimen/sms_column_money_width" android:layout_height="wrap_content"
             android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_primary"
             android:textSize="13sp" />
-        <TextView android:id="@+id/clientMessageReference"
-            android:layout_width="@dimen/sms_column_reference_width" android:layout_height="wrap_content"
-            android:ellipsize="end" android:gravity="center" android:maxLines="1"
-            android:textColor="@color/sms_text_primary" android:textSize="13sp" />
         <TextView android:id="@+id/clientMessageBonus"
             android:layout_width="@dimen/sms_column_money_width" android:layout_height="wrap_content"
             android:gravity="center" android:maxLines="1" android:textColor="@color/sms_text_primary"

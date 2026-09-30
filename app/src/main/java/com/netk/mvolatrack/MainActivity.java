@@ -2772,12 +2772,11 @@ public class MainActivity extends AppCompatActivity {
             SmsDateFilter.DisplayMessage displayed = items.get(position);
             SmsTableRow row = SmsTableRow.from(displayed,
                     verifications.get(displayed.message.uniqueKey));
-            holder.number.setText(String.valueOf(row.number));
+            holder.reference.setText(SmsTableRow.display(row.reference));
             holder.dateTime.setText(row.dateTime);
             bindTypeBadge(holder.type, row.type);
             holder.name.setText(SmsTableRow.display(row.nom));
             holder.amount.setText(SmsTableRow.display(row.montant));
-            holder.reference.setText(SmsTableRow.display(row.reference));
             holder.bonus.setText(SmsTableRow.display(row.bonus));
             holder.fees.setText(SmsTableRow.displayFee(row.frais));
             holder.balance.setText(SmsTableRow.display(row.solde));
@@ -2789,24 +2788,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static class ClientMessageViewHolder extends RecyclerView.ViewHolder {
-        final TextView number;
+        final TextView reference;
         final TextView dateTime;
         final TextView type;
         final TextView name;
         final TextView amount;
-        final TextView reference;
         final TextView bonus;
         final TextView fees;
         final TextView balance;
         final View status;
         ClientMessageViewHolder(View itemView) {
             super(itemView);
-            number = itemView.findViewById(R.id.clientMessageNumber);
+            reference = itemView.findViewById(R.id.clientMessageReference);
             dateTime = itemView.findViewById(R.id.clientMessageDateTime);
             type = itemView.findViewById(R.id.clientMessageType);
             name = itemView.findViewById(R.id.clientMessageName);
             amount = itemView.findViewById(R.id.clientMessageAmount);
-            reference = itemView.findViewById(R.id.clientMessageReference);
             bonus = itemView.findViewById(R.id.clientMessageBonus);
             fees = itemView.findViewById(R.id.clientMessageFees);
             balance = itemView.findViewById(R.id.clientMessageBalance);
@@ -2814,13 +2811,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void applyZoom(float zoom) {
-            applyRowZoom(itemView, new TextView[]{number, dateTime, type, name, amount,
-                    reference, bonus, fees, balance},
-                    new int[]{R.dimen.sms_column_number_width,
+            applyRowZoom(itemView, new TextView[]{reference, dateTime, type, name, amount,
+                    bonus, fees, balance},
+                    new int[]{R.dimen.sms_column_reference_width,
                             R.dimen.sms_column_datetime_width, R.dimen.sms_column_type_width,
                             R.dimen.sms_column_name_width, R.dimen.sms_column_money_width,
-                            R.dimen.sms_column_reference_width, R.dimen.sms_column_money_width,
-                            R.dimen.sms_column_money_width, R.dimen.sms_column_money_width}, zoom);
+                            R.dimen.sms_column_money_width, R.dimen.sms_column_money_width,
+                            R.dimen.sms_column_money_width}, zoom);
             applyStatusZoom(status, zoom);
         }
     }
@@ -2866,10 +2863,10 @@ public class MainActivity extends AppCompatActivity {
                 R.dimen.client_table_width, tableZoom);
         clientTransactionTable.requestLayout();
         clientTableHeader.getLayoutParams().height = dp(40f * tableZoom);
-        int[] widths = {R.dimen.sms_column_number_width, R.dimen.sms_column_datetime_width,
+        int[] widths = {R.dimen.sms_column_reference_width, R.dimen.sms_column_datetime_width,
                 R.dimen.sms_column_type_width, R.dimen.sms_column_name_width,
-                R.dimen.sms_column_money_width, R.dimen.sms_column_reference_width,
                 R.dimen.sms_column_money_width, R.dimen.sms_column_money_width,
+                R.dimen.sms_column_money_width,
                 R.dimen.sms_column_money_width, R.dimen.sms_column_status_width};
         for (int index = 0; index < clientTableHeader.getChildCount(); index++) {
             View column = clientTableHeader.getChildAt(index);
