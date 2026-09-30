@@ -12,6 +12,10 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.LiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -37,7 +41,9 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_bonus_notifications);
+        applyToolbarInsets(findViewById(R.id.notificationsToolbar));
         findViewById(R.id.notificationsBack).setOnClickListener(view -> finish());
         RecyclerView list = findViewById(R.id.bonusNotificationsList);
         notificationList = list;
@@ -53,6 +59,22 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         } catch (Throwable error) {
             showInitializationError(error);
         }
+    }
+
+    private static void applyToolbarInsets(View toolbar) {
+        final int initialLeft = toolbar.getPaddingLeft();
+        final int initialTop = toolbar.getPaddingTop();
+        final int initialRight = toolbar.getPaddingRight();
+        final int initialBottom = toolbar.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(toolbar, (view, windowInsets) -> {
+            Insets topInsets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.statusBars()
+                            | WindowInsetsCompat.Type.displayCutout());
+            view.setPadding(initialLeft, initialTop + topInsets.top,
+                    initialRight, initialBottom);
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(toolbar);
     }
 
     private void showNotifications(List<NotificationBonus> values) {
