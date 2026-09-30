@@ -110,6 +110,10 @@ final class SmsDateFilter {
         boolean emptyQuery = query == null || query.trim().isEmpty();
         for (int index = 0; index < total; index++) {
             SmsMessage message = source.get(index);
+            // The global source is broader than the already-curated client adapter snapshot.
+            // Imports or a refresh may therefore expose an incomplete row. Treat it exactly like
+            // an unrecognised SMS instead of crashing before the shared export pipeline is called.
+            if (message == null || message.messageBody == null) continue;
             MvolaMessageParser.ParsedTransaction parsed =
                     MvolaMessageParser.parse(message.messageBody, message.receivedDate);
             // A persisted SMS is not necessarily a business transaction. Keep unrecognised

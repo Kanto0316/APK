@@ -256,6 +256,30 @@ public class SmsDateFilterTest {
                 SmsDateFilter.TransactionType.DEBIT_EXIT).size());
     }
 
+    @Test
+    public void globalExportFiltersIgnoreIncompleteRowsBeforeSharedExportPipeline() {
+        SmsMessage missingBody = message(2026, 9, 29, 7);
+        missingBody.messageBody = null;
+        List<SmsMessage> globalSource = Arrays.asList(
+                typedMessage("Crédit", "-", "0386825677", 2026, 9, 29, 10),
+                null,
+                missingBody,
+                typedMessage("Retrait", "Ravaka", "0385829562", 2026, 9, 28, 8));
+
+        List<SmsDateFilter.DisplayMessage> periodResult = SmsDateFilter.apply(globalSource,
+                SmsDateFilter.Period.CUSTOM_RANGE, time(2026, 9, 29, 0),
+                time(2026, 9, 29, 0), time(2026, 9, 29, 12), ZONE, "",
+                SmsDateFilter.TransactionType.ALL);
+        List<SmsDateFilter.DisplayMessage> typeResult = SmsDateFilter.apply(globalSource,
+                SmsDateFilter.Period.ALL, null, null, time(2026, 9, 29, 12), ZONE, "",
+                SmsDateFilter.TransactionType.DEBIT_EXIT);
+
+        assertEquals(1, periodResult.size());
+        assertEquals("Crédit", parsedType(periodResult.get(0)));
+        assertEquals(1, typeResult.size());
+        assertEquals("Retrait", parsedType(typeResult.get(0)));
+    }
+
     private static void assertSingleTypeResult(List<SmsMessage> source,
                                                SmsDateFilter.Period period, String query,
                                                SmsDateFilter.TransactionType type,
@@ -265,6 +289,11 @@ public class SmsDateFilterTest {
         assertEquals(1, result.size());
         assertEquals(expectedParsedType, com.netk.mvolatrack.sms.MvolaMessageParser.parse(
                 result.get(0).message.messageBody, result.get(0).message.receivedDate).type);
+    }
+
+    private static String parsedType(SmsDateFilter.DisplayMessage displayed) {
+        return com.netk.mvolatrack.sms.MvolaMessageParser.parse(
+                displayed.message.messageBody, displayed.message.receivedDate).type;
     }
 
     private static void assertSingleNamedResult(List<SmsMessage> source, String query,
