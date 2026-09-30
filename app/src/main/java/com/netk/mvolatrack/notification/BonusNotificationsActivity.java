@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.netk.mvolatrack.R;
 import com.netk.mvolatrack.database.NotificationBonus;
+import com.netk.mvolatrack.database.NotificationType;
 import com.netk.mvolatrack.repository.BonusNotificationRepository;
 import com.netk.mvolatrack.verification.VerificationStatus;
 import com.google.android.material.card.MaterialCardView;
@@ -27,7 +28,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/** Material-style persistent inbox for bonus verification anomalies. */
+/** Material-style persistent inbox for every application notification category. */
 public final class BonusNotificationsActivity extends AppCompatActivity {
     private static final String TAG = "BonusNotification";
     private final Adapter adapter = new Adapter();
@@ -42,16 +43,6 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         notificationList = list;
         list.setLayoutManager(new LinearLayoutManager(this));
         list.setAdapter(adapter);
-        list.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
-            @Override public void onChildViewAttachedToWindow(@NonNull View view) {
-                RecyclerView.ViewHolder rawHolder = list.getChildViewHolder(view);
-                if (rawHolder instanceof Holder) markRead(((Holder) rawHolder).notificationId);
-            }
-            @Override public void onChildViewDetachedFromWindow(@NonNull View view) { }
-        });
-        findViewById(R.id.notificationsMarkAllRead).setOnClickListener(view -> {
-            if (repository != null) repository.markAllRead();
-        });
         showNotifications(Collections.emptyList());
         try {
             repository = new BonusNotificationRepository(this);
@@ -69,18 +60,6 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         adapter.submit(safeValues);
         findViewById(R.id.notificationsEmpty).setVisibility(
                 adapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
-        boolean hasUnread = false;
-        for (NotificationBonus item : safeValues) {
-            if (item != null && !item.isRead) { hasUnread = true; break; }
-        }
-        findViewById(R.id.notificationsMarkAllRead).setEnabled(hasUnread);
-        notificationList.post(() -> {
-            for (int index = 0; index < notificationList.getChildCount(); index++) {
-                RecyclerView.ViewHolder holder = notificationList.getChildViewHolder(
-                        notificationList.getChildAt(index));
-                if (holder instanceof Holder) markRead(((Holder) holder).notificationId);
-            }
-        });
     }
 
     private void markRead(long notificationId) {
@@ -96,6 +75,13 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
 
     private void showDetail(NotificationBonus item) {
         if (item == null) return;
+        if (!NotificationType.BONUS.name().equals(item.type)) {
+            new AlertDialog.Builder(this).setTitle(item.title).setMessage(item.message
+                    + (item.metadata == null || item.metadata.trim().isEmpty() ? ""
+                    : "\n\n" + formatMetadata(item.metadata)))
+                    .setPositiveButton(android.R.string.ok, null).show();
+            return;
+        }
         String detected = item.detectedBonus == null ? "-"
                 : item.detectedBonus + " Ar";
         new AlertDialog.Builder(this)
@@ -105,6 +91,23 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
                         + "\nBonus attendu : " + item.expectedBonus + " Ar\nBonus reçu : "
                         + detected + "\n\n" + explanation(item.explanation))
                 .setPositiveButton(android.R.string.ok, null).show();
+    }
+    private static String formatMetadata(String metadata) {
+        String[] lines = metadata.split("\\n");
+        StringBuilder result = new StringBuilder();
+        for (String line : lines) {
+            int separator = line.indexOf(':');
+            String value = separator < 0 ? "" : line.substring(separator + 1).trim();
+            if ((line.startsWith("Date d’activation") || line.startsWith("Date d’expiration"))
+                    && value.matches("\\d+")) {
+                line = line.substring(0, separator + 1) + " "
+                        + DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault())
+                        .format(new Date(Long.parseLong(value)));
+            }
+            if (result.length() > 0) result.append('\n');
+            result.append(line);
+        }
+        return result.toString();
     }
 
     private static String safe(String value) { return value == null || value.trim().isEmpty() ? "-" : value; }
@@ -143,16 +146,23 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         }
         @Override public void onBindViewHolder(@NonNull Holder holder, int position) {
             NotificationBonus item = items.get(position);
-            holder.icon.setImageResource(icon(item.anomalyType));
+            boolean bonus = NotificationType.BONUS.name().equals(item.type);
+            boolean licence = NotificationType.LICENCE.name().equals(item.type);
+            holder.icon.setImageResource(licence ? R.drawable.ic_verified_24
+                    : bonus ? icon(item.anomalyType) : R.drawable.ic_info_24);
             holder.icon.setColorFilter(ContextCompat.getColor(holder.itemView.getContext(),
-                    VerificationStatus.BONUS_NON_CREDITE.name().equals(item.anomalyType)
-                            ? R.color.verification_error : R.color.verification_warning));
-            holder.title.setText(label(item.anomalyType));
-            holder.client.setText("Client " + safe(item.clientNumber) + "  •  Réf. " + safe(item.transactionReference));
-            holder.date.setText(formatDate(item.transactionDate));
-            holder.amounts.setText("Attendu : " + item.expectedBonus + " Ar   •   Reçu : "
-                    + (item.detectedBonus == null ? "-" : item.detectedBonus + " Ar"));
-            holder.explanation.setText(explanation(item.explanation));
+                    licence ? R.color.notification_license : bonus
+                    ? (VerificationStatus.BONUS_NON_CREDITE.name().equals(item.anomalyType)
+                    ? R.color.verification_error : R.color.verification_warning) : R.color.sms_accent));
+            holder.title.setText(item.title);
+            holder.client.setText(bonus ? "Client " + safe(item.clientNumber) + "  •  Réf. "
+                    + safe(item.transactionReference) : item.message);
+            holder.date.setText(formatDate(item.date));
+            holder.amounts.setVisibility(bonus ? View.VISIBLE : View.GONE);
+            holder.amounts.setText(bonus ? "Attendu : " + item.expectedBonus + " Ar   •   Reçu : "
+                    + (item.detectedBonus == null ? "-" : item.detectedBonus + " Ar") : "");
+            holder.explanation.setVisibility(bonus ? View.VISIBLE : View.GONE);
+            holder.explanation.setText(bonus ? explanation(item.message) : "");
             holder.notificationId = item.id;
             holder.newIndicator.setVisibility(item.isRead ? View.GONE : View.VISIBLE);
             holder.card.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(),
@@ -163,10 +173,13 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
             holder.client.setTypeface(holder.client.getTypeface(), textStyle);
             holder.amounts.setTypeface(holder.amounts.getTypeface(), textStyle);
             holder.itemView.setOnClickListener(view -> {
+                item.isRead = true;
+                int currentPosition = holder.getBindingAdapterPosition();
+                if (currentPosition != RecyclerView.NO_POSITION) notifyItemChanged(currentPosition);
                 markRead(item.id);
                 showDetail(item);
             });
-            holder.itemView.setContentDescription(label(item.anomalyType) + ", "
+            holder.itemView.setContentDescription(item.title + ", "
                     + holder.client.getText() + (item.isRead ? "" : ", nouveau"));
         }
         @Override public int getItemCount() { return items.size(); }

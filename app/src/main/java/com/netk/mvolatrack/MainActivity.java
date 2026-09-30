@@ -391,7 +391,7 @@ public class MainActivity extends AppCompatActivity {
         View notificationButton = findViewById(R.id.bonusNotificationButton);
         TextView notificationBadge = findViewById(R.id.bonusNotificationBadge);
         BonusNotificationRepository bonusNotifications = new BonusNotificationRepository(this);
-        notificationButton.setContentDescription("Notifications Bonus");
+        notificationButton.setContentDescription("Notifications");
         notificationButton.setOnClickListener(view -> {
             try {
                 startActivity(new Intent(this, BonusNotificationsActivity.class));
@@ -406,7 +406,7 @@ public class MainActivity extends AppCompatActivity {
             int unread = count == null ? 0 : count;
             notificationBadge.setText(unread > 99 ? "99+" : String.valueOf(unread));
             notificationBadge.setVisibility(unread == 0 ? View.GONE : View.VISIBLE);
-            notificationButton.setContentDescription("Notifications Bonus, " + unread + " non lues");
+            notificationButton.setContentDescription("Notifications, " + unread + " non lues");
             if (unread > 0) {
                 notificationButton.animate().rotation(-8f).setDuration(90).withEndAction(() ->
                         notificationButton.animate().rotation(0f).setDuration(120).start()).start();

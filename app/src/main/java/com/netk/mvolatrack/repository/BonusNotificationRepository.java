@@ -7,6 +7,10 @@ import androidx.lifecycle.MutableLiveData;
 import com.netk.mvolatrack.database.AppDatabase;
 import com.netk.mvolatrack.database.NotificationBonus;
 import com.netk.mvolatrack.database.NotificationBonusDao;
+import com.netk.mvolatrack.database.NotificationType;
+import com.netk.mvolatrack.activation.ActivationResponse;
+import com.netk.mvolatrack.activation.ActivationStore;
+import com.netk.mvolatrack.activation.ActivationVerifier;
 import com.netk.mvolatrack.history.HistoryTransaction;
 import com.netk.mvolatrack.notification.BonusNotificationFactory;
 import java.util.Collections;
@@ -30,6 +34,56 @@ public final class BonusNotificationRepository {
             logError("initialization", error);
         }
         dao = availableDao;
+        synchronizeActiveLicense(context.getApplicationContext());
+    }
+
+    /** Adds one stable inbox entry for the currently verified licence. */
+    private void synchronizeActiveLicense(Context context) {
+        if (dao == null) return;
+        EXECUTOR.execute(() -> {
+            try {
+                ActivationVerifier.Verification verification = ActivationStore.status(context);
+                if (verification.result != ActivationVerifier.Result.VALID
+                        || verification.license == null) return;
+                ActivationResponse licence = verification.license;
+                long now = System.currentTimeMillis();
+                long activatedAt = licence.getIssuedAt() > 0
+                        ? licence.getIssuedAt() * 1000L : now;
+                Long expiresAt = licence.getExpiresAt() == null ? null
+                        : licence.getExpiresAt() * 1000L;
+                long remainingDays = expiresAt == null ? -1
+                        : Math.max(0, (expiresAt - now + 86_399_999L) / 86_400_000L);
+                String kind = licence.getType() == ActivationResponse.LicenseType.WEEK
+                        ? "Premium – Hebdomadaire"
+                        : licence.getType() == ActivationResponse.LicenseType.MONTH
+                        ? "Premium – Mensuelle" : "Premium – Permanente";
+                String metadata = "Type de licence : " + kind + "\n"
+                        + "Date d’activation : " + activatedAt + "\n"
+                        + "Date d’expiration : " + (expiresAt == null ? "Permanente" : expiresAt) + "\n"
+                        + "Jours restants : " + (remainingDays < 0 ? "Illimités" : remainingDays + " jours");
+                String proof = ActivationStore.loadProof(context);
+                String key = "licence-active-" + Integer.toHexString(
+                        proof == null ? 0 : proof.hashCode());
+                dao.insertAndTrim(NotificationBonus.general(now, key, NotificationType.LICENCE,
+                        "Licence active", "Votre licence MVolaCash est active.", metadata));
+            } catch (Throwable error) {
+                logError("synchronizeActiveLicense", error);
+            }
+        });
+    }
+
+    /** Persists a non-bonus event (licence lifecycle, update, backup or application info). */
+    public void addNotification(NotificationType type, String uniqueKey, String title,
+            String message, String metadata) {
+        if (dao == null || type == null || uniqueKey == null || title == null || message == null) return;
+        EXECUTOR.execute(() -> {
+            try {
+                dao.insertAndTrim(NotificationBonus.general(System.currentTimeMillis(), uniqueKey,
+                        type, title, message, metadata));
+            } catch (Throwable error) {
+                logError("addNotification", error);
+            }
+        });
     }
     public LiveData<List<NotificationBonus>> observeAll() {
         if (dao == null) return new MutableLiveData<>(Collections.emptyList());

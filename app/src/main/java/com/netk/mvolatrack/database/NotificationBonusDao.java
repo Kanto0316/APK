@@ -23,7 +23,7 @@ public abstract class NotificationBonusDao {
         return id;
     }
 
-    @Query("SELECT * FROM bonus_notifications ORDER BY transactionDate DESC, id DESC LIMIT 50")
+    @Query("SELECT * FROM bonus_notifications ORDER BY date DESC, id DESC LIMIT 50")
     public abstract LiveData<List<NotificationBonus>> observeAll();
 
     @Query("SELECT COUNT(*) FROM bonus_notifications WHERE is_read = 0")
@@ -36,6 +36,6 @@ public abstract class NotificationBonusDao {
     public abstract int markAllRead();
 
     @Query("DELETE FROM bonus_notifications WHERE id NOT IN "
-            + "(SELECT id FROM bonus_notifications ORDER BY transactionDate DESC, id DESC LIMIT :limit)")
+            + "(SELECT id FROM bonus_notifications ORDER BY date DESC, id DESC LIMIT :limit)")
     abstract int deleteOutsideNewest(int limit);
 }

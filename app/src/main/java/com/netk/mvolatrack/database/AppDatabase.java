@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {Transaction.class, SmsMessage.class, NotificationBonus.class}, version = 4, exportSchema = false)
+@Database(entities = {Transaction.class, SmsMessage.class, NotificationBonus.class}, version = 5, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase instance;
 
@@ -47,13 +47,28 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /** Generalizes the bonus inbox while preserving every existing alert and its read state. */
+    static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE `bonus_notifications` ADD COLUMN `type` TEXT NOT NULL DEFAULT 'BONUS'");
+            database.execSQL("ALTER TABLE `bonus_notifications` ADD COLUMN `title` TEXT NOT NULL DEFAULT 'Notification bonus'");
+            database.execSQL("ALTER TABLE `bonus_notifications` ADD COLUMN `message` TEXT NOT NULL DEFAULT ''");
+            database.execSQL("ALTER TABLE `bonus_notifications` ADD COLUMN `date` INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("ALTER TABLE `bonus_notifications` ADD COLUMN `metadata` TEXT");
+            database.execSQL("UPDATE `bonus_notifications` SET `date` = `transactionDate`, `message` = `explanation`, "
+                    + "`title` = CASE `anomalyType` WHEN 'BONUS_SUPERIEUR' THEN 'Bonus supérieur' "
+                    + "WHEN 'BONUS_NON_CREDITE' THEN 'Bonus non crédité' WHEN 'BONUS_PARTIEL' THEN 'Bonus partiel' "
+                    + "WHEN 'BONUS_VERIFIE' THEN 'Bonus vérifié' ELSE 'Bonus non vérifiable' END");
+        }
+    };
+
     public static AppDatabase getInstance(Context context) {
         if (instance == null) {
             synchronized (AppDatabase.class) {
                 if (instance == null) {
                     instance = Room.databaseBuilder(context.getApplicationContext(),
                             AppDatabase.class, "sms-tracker.db")
-                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                             .build();
                 }
             }
