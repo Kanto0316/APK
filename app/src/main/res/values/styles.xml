@@ -13,8 +13,19 @@
         <item name="android:textSize">15sp</item>
         <item name="android:textStyle">bold</item>
     </style>
-    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+    <!--
+        Keep the application theme Material-based: layouts such as
+        item_bonus_notification.xml inflate MaterialCardView directly.
+    -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:fontFamily">sans</item>
+        <item name="colorPrimary">@color/sms_accent</item>
+        <item name="colorPrimaryVariant">@color/sms_accent</item>
+        <item name="colorSecondary">@color/sms_accent</item>
+        <item name="colorSurface">@color/sms_surface</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorOnSurface">@color/sms_text_primary</item>
         <item name="android:colorAccent">@color/sms_accent</item>
         <item name="android:navigationBarColor">@color/sms_bottom_bar</item>
         <item name="android:statusBarColor">@color/sms_surface</item>
