@@ -41,9 +41,8 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
     private final Adapter adapter = new Adapter();
     private BonusNotificationRepository repository;
     private RecyclerView notificationList;
-    private View normalToolbar;
-    private View selectionToolbar;
-    private TextView selectionCount;
+    private View selectionActions;
+    private TextView selectAllAction;
     private View deleteAction;
     private boolean selectionMode;
     private final Set<Long> selectedIds = new HashSet<>();
@@ -52,14 +51,15 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         super.onCreate(state);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_bonus_notifications);
-        normalToolbar = findViewById(R.id.notificationsToolbar);
-        selectionToolbar = findViewById(R.id.notificationsSelectionToolbar);
-        selectionCount = findViewById(R.id.notificationsSelectionCount);
+        View normalToolbar = findViewById(R.id.notificationsToolbar);
+        selectionActions = findViewById(R.id.notificationsSelectionActions);
+        selectAllAction = findViewById(R.id.notificationsSelectAll);
         deleteAction = findViewById(R.id.notificationsDelete);
         applyToolbarInsets(normalToolbar);
-        applyToolbarInsets(selectionToolbar);
-        findViewById(R.id.notificationsBack).setOnClickListener(view -> finish());
-        findViewById(R.id.notificationsSelectionClose).setOnClickListener(view -> exitSelectionMode());
+        findViewById(R.id.notificationsBack).setOnClickListener(view -> {
+            if (selectionMode) exitSelectionMode();
+            else finish();
+        });
         findViewById(R.id.notificationsSelectAll).setOnClickListener(view -> selectAll());
         deleteAction.setOnClickListener(view -> confirmDeletion());
         RecyclerView list = findViewById(R.id.bonusNotificationsList);
@@ -113,8 +113,7 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
     private void enterSelectionMode(long notificationId) {
         selectionMode = true;
         selectedIds.add(notificationId);
-        normalToolbar.setVisibility(View.GONE);
-        selectionToolbar.setVisibility(View.VISIBLE);
+        selectionActions.setVisibility(View.VISIBLE);
         adapter.notifyDataSetChanged();
         updateSelectionToolbar();
     }
@@ -123,8 +122,7 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         if (!selectionMode) return;
         selectionMode = false;
         selectedIds.clear();
-        selectionToolbar.setVisibility(View.GONE);
-        normalToolbar.setVisibility(View.VISIBLE);
+        selectionActions.setVisibility(View.GONE);
         adapter.notifyDataSetChanged();
     }
 
@@ -135,16 +133,19 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
     }
 
     private void selectAll() {
-        selectedIds.clear();
-        selectedIds.addAll(adapter.itemIds());
+        if (selectedIds.size() == adapter.getItemCount()) selectedIds.clear();
+        else {
+            selectedIds.clear();
+            selectedIds.addAll(adapter.itemIds());
+        }
         adapter.notifyDataSetChanged();
         updateSelectionToolbar();
     }
 
     private void updateSelectionToolbar() {
         int count = selectedIds.size();
-        selectionCount.setText(getResources().getQuantityString(
-                R.plurals.notifications_selected, count, count));
+        selectAllAction.setText(count == adapter.getItemCount()
+                ? R.string.notifications_deselect_all : R.string.notifications_select_all);
         deleteAction.setEnabled(!selectedIds.isEmpty());
     }
 

@@ -28,8 +28,9 @@
         <item quantity="other">%1$d sélectionnées</item>
     </plurals>
     <string name="notifications_select_all">Tout sélectionner</string>
+    <string name="notifications_deselect_all">Tout désélectionner</string>
     <string name="notifications_delete">Supprimer</string>
-    <string name="notifications_delete_confirmation">Supprimer les notifications sélectionnées ?</string>
+    <string name="notifications_delete_confirmation">Voulez-vous supprimer définitivement les notifications sélectionnées ?</string>
     <string name="notifications_cancel">Annuler</string>
     <string name="notifications_exit_selection">Quitter la sélection</string>
 </resources>

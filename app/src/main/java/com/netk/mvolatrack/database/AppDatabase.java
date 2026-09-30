@@ -8,7 +8,8 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {Transaction.class, SmsMessage.class, NotificationBonus.class}, version = 5, exportSchema = false)
+@Database(entities = {Transaction.class, SmsMessage.class, NotificationBonus.class,
+        DeletedNotification.class}, version = 6, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase instance;
 
@@ -62,13 +63,22 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /** Remembers explicit inbox deletions so synchronization cannot recreate them. */
+    static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `deleted_notifications` "
+                    + "(`transactionKey` TEXT NOT NULL, PRIMARY KEY(`transactionKey`))");
+        }
+    };
+
     public static AppDatabase getInstance(Context context) {
         if (instance == null) {
             synchronized (AppDatabase.class) {
                 if (instance == null) {
                     instance = Room.databaseBuilder(context.getApplicationContext(),
                             AppDatabase.class, "sms-tracker.db")
-                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                                    MIGRATION_4_5, MIGRATION_5_6)
                             .build();
                 }
             }
