@@ -254,6 +254,7 @@ public class MainActivity extends AppCompatActivity {
     private SmsDateFilter.TransactionType selectedMessageType = SmsDateFilter.TransactionType.ALL;
     private Long customFilterDate;
     private EditText messageSearchInput;
+    private ImageButton messagesExportButton;
     private TextView periodFilterDropdown;
     private TextView typeFilterDropdown;
     private View depositCard;
@@ -1400,6 +1401,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void configureMessageFilters(Bundle savedInstanceState) {
         messageSearchInput = findViewById(R.id.messageSearchInput);
+        messagesExportButton = findViewById(R.id.messagesExportButton);
         periodFilterDropdown = findViewById(R.id.periodFilterDropdown);
         typeFilterDropdown = findViewById(R.id.typeFilterDropdown);
         restoreMessageFilters();
@@ -1416,7 +1418,24 @@ public class MainActivity extends AppCompatActivity {
 
             @Override public void afterTextChanged(Editable value) {}
         });
+        messagesExportButton.setOnClickListener(this::showMessagesExportMenu);
         updateFilterChips();
+    }
+
+    private void showMessagesExportMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        boolean canExport = !exportInProgress && adapter != null && adapter.getItemCount() > 0;
+        menu.getMenu().add("Exporter en PDF").setEnabled(canExport)
+                .setOnMenuItemClickListener(item -> {
+                    openMessagesExport(false);
+                    return true;
+                });
+        menu.getMenu().add("Exporter en Excel").setEnabled(canExport)
+                .setOnMenuItemClickListener(item -> {
+                    openMessagesExport(true);
+                    return true;
+                });
+        menu.show();
     }
 
     private void showPeriodFilterMenu(View anchor) {
@@ -1693,8 +1712,6 @@ public class MainActivity extends AppCompatActivity {
                     "Les réglages de MVolaCash seront disponibles ici.");
             else if (id == R.id.nav_security)
                 startActivity(new Intent(this, SecurityActivity.class));
-            else if (id == R.id.nav_export_pdf) openExportSettings(false);
-            else if (id == R.id.nav_export_excel) openExportSettings(true);
             else if (id == R.id.nav_export_json) launchExport();
             else if (id == R.id.nav_import_json) launchImport();
             else if (id == R.id.nav_permissions) showPermissionStatusPage();
@@ -1702,17 +1719,16 @@ public class MainActivity extends AppCompatActivity {
             else if (id == R.id.nav_about) showAboutDialog();
             return true;
         });
-        updateExportActions();
     }
 
-    private void openExportSettings(boolean excel) {
+    private void openMessagesExport(boolean excel) {
         Log.i(EXPORT_TAG, "Clic utilisateur : Export " + (excel ? "Excel" : "PDF"));
-        if (exportInProgress) return;
+        if (exportInProgress || adapter == null || adapter.getItemCount() == 0) return;
         try {
             generateTransactionExport(excel);
         } catch (RuntimeException error) {
-            logExportException("MainActivity", "openExportSettings", error);
-            showExportFailure(() -> openExportSettings(excel));
+            logExportException("MainActivity", "openMessagesExport", error);
+            showExportFailure(() -> openMessagesExport(excel));
         }
     }
 
@@ -2012,10 +2028,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateExportActions() {
-        if (navigationView == null) return;
-        boolean enabled = !exportInProgress && adapter != null && adapter.getItemCount() > 0;
-        navigationView.getMenu().findItem(R.id.nav_export_pdf).setEnabled(enabled);
-        navigationView.getMenu().findItem(R.id.nav_export_excel).setEnabled(enabled);
+        if (messagesExportButton == null) return;
+        // The overflow remains available so its disabled menu entries explain that no export
+        // action is currently possible. Availability is evaluated when the popup is opened.
+        messagesExportButton.setVisibility(View.VISIBLE);
     }
 
     private void handleExportFailure(String detail, Exception error, Runnable retry) {

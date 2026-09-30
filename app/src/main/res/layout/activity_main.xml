@@ -126,25 +126,44 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
-            <EditText
-                android:id="@+id/messageSearchInput"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="44dp"
+                android:layout_height="wrap_content"
                 android:layout_marginStart="20dp"
                 android:layout_marginTop="12dp"
                 android:layout_marginEnd="20dp"
-                android:background="@drawable/bg_client_search"
-                android:drawableStart="@drawable/ic_search_24"
-                android:drawablePadding="10dp"
-                android:hint="Rechercher un numéro ou un nom"
-                android:imeOptions="actionSearch"
-                android:inputType="text"
-                android:maxLines="1"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:textColor="@color/sms_text_primary"
-                android:textColorHint="@color/sms_text_secondary"
-                android:textSize="14sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/messageSearchInput"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_client_search"
+                    android:drawableStart="@drawable/ic_search_24"
+                    android:drawablePadding="10dp"
+                    android:hint="Rechercher un numéro ou un nom"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:textColor="@color/sms_text_primary"
+                    android:textColorHint="@color/sms_text_secondary"
+                    android:textSize="14sp" />
+
+                <ImageButton
+                    android:id="@+id/messagesExportButton"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Options d’export"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_more_vert_24"
+                    android:tint="@color/sms_text_primary" />
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/transactionFilters"
