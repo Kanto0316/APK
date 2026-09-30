@@ -130,6 +130,34 @@ public class SmsStatisticsTest {
         assertEquals(sum(halves), sum(hours));
     }
 
+    @Test public void intervalBonusSumsAmountsForEverySupportedPeriodAndSelectedDay() {
+        List<SmsMessage> messages = Arrays.asList(
+                mvola("0381453472", "00:14", 10, 1L),
+                mvola("0381453472", "00:15", 20, 2L),
+                mvola("0381453472", "08:40", 30, 3L),
+                mvola("0381453472", "23:59", 40, 4L));
+        long day = utcDate(2026, Calendar.SEPTEMBER, 21, 12);
+
+        int[] quarters = SmsStatistics.intervalBonus(messages, day, UTC, 15);
+        int[] halves = SmsStatistics.intervalBonus(messages, day, UTC, 30);
+        int[] hours = SmsStatistics.intervalBonus(messages, day, UTC, 60);
+
+        assertEquals(96, quarters.length);
+        assertEquals(10, quarters[0]);
+        assertEquals(20, quarters[1]);
+        assertEquals(30, quarters[34]);
+        assertEquals(40, quarters[95]);
+        assertEquals(48, halves.length);
+        assertEquals(30, halves[0]);
+        assertEquals(30, halves[17]);
+        assertEquals(24, hours.length);
+        assertEquals(30, hours[0]);
+        assertEquals(30, hours[8]);
+        assertEquals(40, hours[23]);
+        assertEquals(0, sum(SmsStatistics.intervalBonus(messages,
+                utcDate(2026, Calendar.SEPTEMBER, 22, 12), UTC, 15)));
+    }
+
     private static int sum(int[] values) {
         int total = 0;
         for (int value : values) total += value;

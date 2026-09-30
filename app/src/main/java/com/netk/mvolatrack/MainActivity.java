@@ -217,10 +217,13 @@ public class MainActivity extends AppCompatActivity {
     private StatisticsChartView userChart;
     private TextView emptyUserChartText;
     private HourlyActivityChartView hourlyActivityChart;
+    private HourlyActivityChartView hourlyBonusChart;
+    private TextView emptyHourlyBonusText;
     private TextView hourlyDateText;
     private TextView hourlyNextDay;
     private TextView hourlyActivityTitle;
     private TextView[] activityIntervalChips;
+    private TextView[] bonusIntervalChips;
     private Calendar selectedHourlyDay;
     private int activityIntervalMinutes = 60;
     private int selectedStatisticsTab = STATISTICS_TAB_BONUS;
@@ -423,11 +426,15 @@ public class MainActivity extends AppCompatActivity {
         userChart = findViewById(R.id.userChart);
         emptyUserChartText = findViewById(R.id.emptyUserChartText);
         hourlyActivityChart = findViewById(R.id.hourlyActivityChart);
+        hourlyBonusChart = findViewById(R.id.hourlyBonusChart);
+        emptyHourlyBonusText = findViewById(R.id.emptyHourlyBonusText);
         hourlyDateText = findViewById(R.id.hourlyDateText);
         hourlyNextDay = findViewById(R.id.hourlyNextDay);
         hourlyActivityTitle = findViewById(R.id.hourlyActivityTitle);
         activityIntervalChips = new TextView[]{findViewById(R.id.activityInterval15),
                 findViewById(R.id.activityInterval30), findViewById(R.id.activityInterval60)};
+        bonusIntervalChips = new TextView[]{findViewById(R.id.bonusInterval15),
+                findViewById(R.id.bonusInterval30), findViewById(R.id.bonusInterval60)};
         int savedInterval = getSharedPreferences(STATISTICS_PREFERENCES, MODE_PRIVATE)
                 .getInt(ACTIVITY_INTERVAL_MINUTES, 60);
         activityIntervalMinutes = savedInterval == 15 || savedInterval == 30 ? savedInterval : 60;
@@ -457,10 +464,16 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.bonusPreviousMonth).setOnClickListener(view -> changeMonth(-1));
         findViewById(R.id.bonusNextMonth).setOnClickListener(view -> changeMonth(1));
         findViewById(R.id.hourlyPreviousDay).setOnClickListener(view -> changeHourlyDay(-1));
+        findViewById(R.id.bonusHourlyPreviousDay).setOnClickListener(
+                view -> changeHourlyDay(-1));
         hourlyNextDay.setOnClickListener(view -> changeHourlyDay(1));
+        findViewById(R.id.bonusHourlyNextDay).setOnClickListener(view -> changeHourlyDay(1));
         activityIntervalChips[0].setOnClickListener(view -> selectActivityInterval(15));
         activityIntervalChips[1].setOnClickListener(view -> selectActivityInterval(30));
         activityIntervalChips[2].setOnClickListener(view -> selectActivityInterval(60));
+        bonusIntervalChips[0].setOnClickListener(view -> selectActivityInterval(15));
+        bonusIntervalChips[1].setOnClickListener(view -> selectActivityInterval(30));
+        bonusIntervalChips[2].setOnClickListener(view -> selectActivityInterval(60));
         statisticsBonusTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_BONUS));
         statisticsUserTab.setOnClickListener(view -> selectStatisticsTab(STATISTICS_TAB_USER));
         selectStatisticsTab(selectedStatisticsTab);
@@ -1629,14 +1642,28 @@ public class MainActivity extends AppCompatActivity {
         int[] intervals = {15, 30, 60};
         for (int index = 0; index < activityIntervalChips.length; index++) {
             activityIntervalChips[index].setSelected(activityIntervalMinutes == intervals[index]);
+            bonusIntervalChips[index].setSelected(activityIntervalMinutes == intervals[index]);
         }
         hourlyActivityChart.setData(SmsStatistics.intervalActivity(messages,
                 selectedHourlyDay.getTimeInMillis(), java.util.TimeZone.getDefault(),
                 activityIntervalMinutes), activityIntervalMinutes);
+        int[] bonusAmounts = SmsStatistics.intervalBonus(messages,
+                selectedHourlyDay.getTimeInMillis(), java.util.TimeZone.getDefault(),
+                activityIntervalMinutes);
+        hourlyBonusChart.setData(bonusAmounts, activityIntervalMinutes, "Bonus", "ariary",
+                "ariary");
+        boolean hasBonus = false;
+        for (int amount : bonusAmounts) hasBonus |= amount > 0;
+        hourlyBonusChart.setVisibility(hasBonus ? View.VISIBLE : View.GONE);
+        emptyHourlyBonusText.setVisibility(hasBonus ? View.GONE : View.VISIBLE);
         Calendar today = Calendar.getInstance();
         boolean canGoForward = isBeforeLocalDay(selectedHourlyDay, today);
         hourlyNextDay.setEnabled(canGoForward);
         hourlyNextDay.setAlpha(canGoForward ? 1f : 0.35f);
+        TextView bonusNextDay = findViewById(R.id.bonusHourlyNextDay);
+        bonusNextDay.setEnabled(canGoForward);
+        bonusNextDay.setAlpha(canGoForward ? 1f : 0.35f);
+        ((TextView) findViewById(R.id.bonusHourlyDateText)).setText(hourlyDateText.getText());
     }
 
     private void selectActivityInterval(int minutes) {
@@ -1671,6 +1698,7 @@ public class MainActivity extends AppCompatActivity {
         boolean hasBonus = !monthlyBonusBars.isEmpty();
         bonusChart.setVisibility(hasBonus ? View.VISIBLE : View.GONE);
         emptyBonusChartText.setVisibility(hasBonus ? View.GONE : View.VISIBLE);
+        renderHourlyActivity();
     }
 
     private void renderPeriodLabels(TextView monthLabel, TextView yearLabel) {

@@ -26,6 +26,9 @@ public final class HourlyActivityChartView extends View {
     private int maximum = 1;
     private int intervalMinutes = 60;
     private int selectedInterval = -1;
+    private String descriptionLabel = "Activité";
+    private String singularValueLabel = "transaction";
+    private String pluralValueLabel = "transactions";
 
     public HourlyActivityChartView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -44,6 +47,11 @@ public final class HourlyActivityChartView extends View {
     }
 
     void setData(int[] intervalValues, int minutes) {
+        setData(intervalValues, minutes, "Activité", "transaction", "transactions");
+    }
+
+    void setData(int[] intervalValues, int minutes, String description, String singular,
+                 String plural) {
         if (minutes != 15 && minutes != 30 && minutes != 60) {
             throw new IllegalArgumentException("Interval must be 15, 30 or 60 minutes");
         }
@@ -53,6 +61,9 @@ public final class HourlyActivityChartView extends View {
             throw new IllegalArgumentException(expectedSize + " interval values required");
         }
         intervalMinutes = minutes;
+        descriptionLabel = description;
+        singularValueLabel = singular;
+        pluralValueLabel = plural;
         maximum = 1;
         for (int value : values) maximum = Math.max(maximum, value);
         selectedInterval = -1;
@@ -99,7 +110,8 @@ public final class HourlyActivityChartView extends View {
             }
         }
         if (selectedInterval >= 0) {
-            String suffix = values[selectedInterval] == 1 ? " transaction" : " transactions";
+            String suffix = values[selectedInterval] == 1
+                    ? " " + singularValueLabel : " " + pluralValueLabel;
             textPaint.setColor(ContextCompat.getColor(getContext(), R.color.sms_text_primary));
             textPaint.setFakeBoldText(true);
             canvas.drawText(intervalLabel(selectedInterval) + " · "
@@ -126,11 +138,12 @@ public final class HourlyActivityChartView extends View {
     @Override public boolean performClick() { super.performClick(); return true; }
 
     private String buildDescription() {
-        StringBuilder description = new StringBuilder(intervalMinutes == 60
-                ? "Activité par heure. " : "Activité par intervalle. ");
+        StringBuilder description = new StringBuilder(descriptionLabel).append(intervalMinutes == 60
+                ? " par heure. " : " par intervalle. ");
         for (int index = 0; index < values.length; index++) {
             description.append(intervalLabel(index)).append(" : ").append(values[index])
-                    .append(values[index] == 1 ? " transaction. " : " transactions. ");
+                    .append(values[index] == 1 ? " " + singularValueLabel + ". "
+                            : " " + pluralValueLabel + ". ");
         }
         return description.toString();
     }
