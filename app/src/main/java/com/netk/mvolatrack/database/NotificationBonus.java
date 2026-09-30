@@ -3,11 +3,12 @@ package com.netk.mvolatrack.database;
 import androidx.room.Entity;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
+import androidx.room.ColumnInfo;
 import androidx.annotation.NonNull;
 
 /** Persisted inbox entry created from an existing balance-verification result. */
 @Entity(tableName = "bonus_notifications", indices = {
-        @Index(value = "transactionKey", unique = true), @Index("isRead")})
+        @Index(value = "transactionKey", unique = true), @Index("is_read")})
 public class NotificationBonus {
     @PrimaryKey(autoGenerate = true) public long id;
     public long createdAt;
@@ -19,6 +20,7 @@ public class NotificationBonus {
     public Long detectedBonus;
     @NonNull public String explanation;
     public long transactionDate;
+    @ColumnInfo(name = "is_read", defaultValue = "0")
     public boolean isRead;
 
     public NotificationBonus(long createdAt, @NonNull String transactionKey, String transactionReference,
