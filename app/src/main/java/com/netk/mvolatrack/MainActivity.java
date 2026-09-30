@@ -1811,7 +1811,9 @@ public class MainActivity extends AppCompatActivity {
         navigationView.setNavigationItemSelectedListener(item -> {
             drawerLayout.closeDrawer(android.view.Gravity.START);
             int id = item.getItemId();
-            if (id == R.id.nav_settings) showSettingsPage();
+            if (id == R.id.nav_dashboard)
+                startActivity(new Intent(this, DashboardActivity.class));
+            else if (id == R.id.nav_settings) showSettingsPage();
             else if (id == R.id.nav_security)
                 startActivity(new Intent(this, SecurityActivity.class));
             else if (id == R.id.nav_export_json) launchExport();
