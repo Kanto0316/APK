@@ -66,6 +66,8 @@ import com.netk.mvolatrack.verification.BalanceVerificationDialog;
 import com.netk.mvolatrack.verification.TransactionBalanceVerification;
 import com.netk.mvolatrack.verification.VerificationStatusCell;
 import com.netk.mvolatrack.verification.VerificationStatusPresentation;
+import com.netk.mvolatrack.notification.BonusNotificationsActivity;
+import com.netk.mvolatrack.repository.BonusNotificationRepository;
 import com.netk.mvolatrack.overlay.TransactionOverlayCoordinator;
 import com.netk.mvolatrack.notification.NotificationHelper;
 import com.netk.mvolatrack.notification.ExportNotificationHelper;
@@ -386,6 +388,22 @@ public class MainActivity extends AppCompatActivity {
         balanceHidden = getSharedPreferences(DISPLAY_PREFERENCES, MODE_PRIVATE)
                 .getBoolean(BALANCE_HIDDEN, false);
         balanceVisibilityButton.setOnClickListener(view -> toggleBalanceVisibility());
+        View notificationButton = findViewById(R.id.bonusNotificationButton);
+        TextView notificationBadge = findViewById(R.id.bonusNotificationBadge);
+        BonusNotificationRepository bonusNotifications = new BonusNotificationRepository(this);
+        notificationButton.setContentDescription("Notifications Bonus");
+        notificationButton.setOnClickListener(view -> startActivity(
+                new Intent(this, BonusNotificationsActivity.class)));
+        bonusNotifications.observeUnreadCount().observe(this, count -> {
+            int unread = count == null ? 0 : count;
+            notificationBadge.setText(unread > 99 ? "99+" : String.valueOf(unread));
+            notificationBadge.setVisibility(unread == 0 ? View.GONE : View.VISIBLE);
+            notificationButton.setContentDescription("Notifications Bonus, " + unread + " non lues");
+            if (unread > 0) {
+                notificationButton.animate().rotation(-8f).setDuration(90).withEndAction(() ->
+                        notificationButton.animate().rotation(0f).setDuration(120).start()).start();
+            }
+        });
         renderBalanceTitle();
         mainHeader = findViewById(R.id.mainHeader);
         mainHeaderDivider = findViewById(R.id.mainHeaderDivider);
@@ -2250,6 +2268,7 @@ public class MainActivity extends AppCompatActivity {
                 Map<String, TransactionBalanceVerification> verifications =
                         HistoryTransaction.verificationsByMessageKey(snapshot);
                 List<HistoryTransaction> history = HistoryTransaction.fromMessages(snapshot);
+                new BonusNotificationRepository(getApplicationContext()).synchronize(history);
                 List<ClientMessageGrouper.ClientGroup> clients =
                         ClientMessageGrouper.group(snapshot);
                 postToActiveUi(() -> {
