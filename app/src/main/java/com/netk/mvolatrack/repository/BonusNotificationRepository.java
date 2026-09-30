@@ -60,7 +60,7 @@ public final class BonusNotificationRepository {
                 NotificationBonus notification = BonusNotificationFactory.from(transaction, now);
                 if (notification != null) {
                     try {
-                        dao.insert(notification);
+                        dao.insertAndTrim(notification);
                     } catch (Throwable error) {
                         logError("insert", error);
                     }
@@ -75,6 +75,17 @@ public final class BonusNotificationRepository {
                 dao.markAllRead();
             } catch (Throwable error) {
                 logError("markAllRead", error);
+            }
+        });
+    }
+
+    public void markRead(long notificationId) {
+        if (dao == null || notificationId <= 0) return;
+        EXECUTOR.execute(() -> {
+            try {
+                dao.markRead(notificationId);
+            } catch (Throwable error) {
+                logError("markRead", error);
             }
         });
     }

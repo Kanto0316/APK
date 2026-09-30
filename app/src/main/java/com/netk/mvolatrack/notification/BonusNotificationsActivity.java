@@ -1,6 +1,7 @@
 package com.netk.mvolatrack.notification;
 
 import android.os.Bundle;
+import android.graphics.Typeface;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,6 +19,7 @@ import com.netk.mvolatrack.R;
 import com.netk.mvolatrack.database.NotificationBonus;
 import com.netk.mvolatrack.repository.BonusNotificationRepository;
 import com.netk.mvolatrack.verification.VerificationStatus;
+import com.google.android.material.card.MaterialCardView;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,14 +32,26 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
     private static final String TAG = "BonusNotification";
     private final Adapter adapter = new Adapter();
     private BonusNotificationRepository repository;
+    private RecyclerView notificationList;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         setContentView(R.layout.activity_bonus_notifications);
         findViewById(R.id.notificationsBack).setOnClickListener(view -> finish());
         RecyclerView list = findViewById(R.id.bonusNotificationsList);
+        notificationList = list;
         list.setLayoutManager(new LinearLayoutManager(this));
         list.setAdapter(adapter);
+        list.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
+            @Override public void onChildViewAttachedToWindow(@NonNull View view) {
+                RecyclerView.ViewHolder rawHolder = list.getChildViewHolder(view);
+                if (rawHolder instanceof Holder) markRead(((Holder) rawHolder).notificationId);
+            }
+            @Override public void onChildViewDetachedFromWindow(@NonNull View view) { }
+        });
+        findViewById(R.id.notificationsMarkAllRead).setOnClickListener(view -> {
+            if (repository != null) repository.markAllRead();
+        });
         showNotifications(Collections.emptyList());
         try {
             repository = new BonusNotificationRepository(this);
@@ -50,23 +64,27 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         }
     }
 
-    @Override protected void onResume() {
-        super.onResume();
-        if (repository != null) {
-            try {
-                repository.markAllRead();
-            } catch (Throwable error) {
-                Log.e(TAG, "markAllRead failed (" + error.getClass().getName() + "): "
-                        + error.getMessage(), error);
-            }
-        }
-    }
-
     private void showNotifications(List<NotificationBonus> values) {
         List<NotificationBonus> safeValues = values == null ? Collections.emptyList() : values;
         adapter.submit(safeValues);
         findViewById(R.id.notificationsEmpty).setVisibility(
                 adapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+        boolean hasUnread = false;
+        for (NotificationBonus item : safeValues) {
+            if (item != null && !item.isRead) { hasUnread = true; break; }
+        }
+        findViewById(R.id.notificationsMarkAllRead).setEnabled(hasUnread);
+        notificationList.post(() -> {
+            for (int index = 0; index < notificationList.getChildCount(); index++) {
+                RecyclerView.ViewHolder holder = notificationList.getChildViewHolder(
+                        notificationList.getChildAt(index));
+                if (holder instanceof Holder) markRead(((Holder) holder).notificationId);
+            }
+        });
+    }
+
+    private void markRead(long notificationId) {
+        if (repository != null && notificationId > 0) repository.markRead(notificationId);
     }
 
     private void showInitializationError(Throwable error) {
@@ -135,16 +153,33 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
             holder.amounts.setText("Attendu : " + item.expectedBonus + " Ar   •   Reçu : "
                     + (item.detectedBonus == null ? "-" : item.detectedBonus + " Ar"));
             holder.explanation.setText(explanation(item.explanation));
-            holder.itemView.setOnClickListener(view -> showDetail(item));
-            holder.itemView.setContentDescription(label(item.anomalyType) + ", " + holder.client.getText());
+            holder.notificationId = item.id;
+            holder.newIndicator.setVisibility(item.isRead ? View.GONE : View.VISIBLE);
+            holder.card.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(),
+                    item.isRead ? R.color.notification_read_background
+                            : R.color.notification_unread_background));
+            int textStyle = item.isRead ? Typeface.NORMAL : Typeface.BOLD;
+            holder.title.setTypeface(holder.title.getTypeface(), textStyle);
+            holder.client.setTypeface(holder.client.getTypeface(), textStyle);
+            holder.amounts.setTypeface(holder.amounts.getTypeface(), textStyle);
+            holder.itemView.setOnClickListener(view -> {
+                markRead(item.id);
+                showDetail(item);
+            });
+            holder.itemView.setContentDescription(label(item.anomalyType) + ", "
+                    + holder.client.getText() + (item.isRead ? "" : ", nouveau"));
         }
         @Override public int getItemCount() { return items.size(); }
     }
     private static final class Holder extends RecyclerView.ViewHolder {
-        final ImageView icon; final TextView title, client, date, amounts, explanation;
-        Holder(View view) { super(view); icon=view.findViewById(R.id.notificationTypeIcon);
+        final MaterialCardView card; final ImageView icon;
+        final TextView title, client, date, amounts, explanation, newIndicator;
+        long notificationId;
+        Holder(View view) { super(view); card=(MaterialCardView) view;
+            icon=view.findViewById(R.id.notificationTypeIcon);
             title=view.findViewById(R.id.notificationType); client=view.findViewById(R.id.notificationClient);
             date=view.findViewById(R.id.notificationDate); amounts=view.findViewById(R.id.notificationAmounts);
-            explanation=view.findViewById(R.id.notificationExplanation); }
+            explanation=view.findViewById(R.id.notificationExplanation);
+            newIndicator=view.findViewById(R.id.notificationNew); }
     }
 }

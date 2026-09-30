@@ -8,7 +8,7 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-@Database(entities = {Transaction.class, SmsMessage.class, NotificationBonus.class}, version = 3, exportSchema = false)
+@Database(entities = {Transaction.class, SmsMessage.class, NotificationBonus.class}, version = 4, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase instance;
 
@@ -34,13 +34,26 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /** Renames the read-state column without losing existing inbox entries. */
+    static final Migration MIGRATION_3_4 = new Migration(3, 4) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE `bonus_notifications_new` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `createdAt` INTEGER NOT NULL, `transactionKey` TEXT NOT NULL, `transactionReference` TEXT, `clientNumber` TEXT, `anomalyType` TEXT NOT NULL, `expectedBonus` INTEGER NOT NULL, `detectedBonus` INTEGER, `explanation` TEXT NOT NULL, `transactionDate` INTEGER NOT NULL, `is_read` INTEGER NOT NULL DEFAULT 0)");
+            database.execSQL("INSERT INTO `bonus_notifications_new` (`id`, `createdAt`, `transactionKey`, `transactionReference`, `clientNumber`, `anomalyType`, `expectedBonus`, `detectedBonus`, `explanation`, `transactionDate`, `is_read`) SELECT `id`, `createdAt`, `transactionKey`, `transactionReference`, `clientNumber`, `anomalyType`, `expectedBonus`, `detectedBonus`, `explanation`, `transactionDate`, `isRead` FROM `bonus_notifications`");
+            database.execSQL("DROP TABLE `bonus_notifications`");
+            database.execSQL("ALTER TABLE `bonus_notifications_new` RENAME TO `bonus_notifications`");
+            database.execSQL("CREATE UNIQUE INDEX `index_bonus_notifications_transactionKey` ON `bonus_notifications` (`transactionKey`)");
+            database.execSQL("CREATE INDEX `index_bonus_notifications_is_read` ON `bonus_notifications` (`is_read`)");
+            database.execSQL("DELETE FROM `bonus_notifications` WHERE `id` NOT IN (SELECT `id` FROM `bonus_notifications` ORDER BY `transactionDate` DESC, `id` DESC LIMIT 50)");
+        }
+    };
+
     public static AppDatabase getInstance(Context context) {
         if (instance == null) {
             synchronized (AppDatabase.class) {
                 if (instance == null) {
                     instance = Room.databaseBuilder(context.getApplicationContext(),
                             AppDatabase.class, "sms-tracker.db")
-                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                             .build();
                 }
             }
