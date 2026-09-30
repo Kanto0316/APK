@@ -2,9 +2,11 @@ package com.netk.mvolatrack;
 
 import android.Manifest;
 import android.app.DatePickerDialog;
-import android.content.Intent;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
@@ -2797,6 +2799,7 @@ public class MainActivity extends AppCompatActivity {
         final TextView fees;
         final TextView balance;
         final View status;
+        private String boundReference;
         ClientMessageViewHolder(View itemView) {
             super(itemView);
             number = itemView.findViewById(R.id.clientMessageNumber);
@@ -2839,11 +2842,11 @@ public class MainActivity extends AppCompatActivity {
         transactionTable.getLayoutParams().width = scaledDimension(R.dimen.sms_table_width, tableZoom);
         transactionTable.requestLayout();
         smsTableHeader.getLayoutParams().height = dp(40f * tableZoom);
-        int[] widths = {R.dimen.sms_column_number_width, R.dimen.sms_column_datetime_width,
+        int[] widths = {R.dimen.sms_column_reference_width, R.dimen.sms_column_datetime_width,
                 R.dimen.sms_column_type_width, R.dimen.sms_column_sender_width,
                 R.dimen.sms_column_name_width, R.dimen.sms_column_money_width,
-                R.dimen.sms_column_reference_width, R.dimen.sms_column_money_width,
                 R.dimen.sms_column_money_width, R.dimen.sms_column_money_width,
+                R.dimen.sms_column_money_width,
                 R.dimen.sms_column_status_width};
         for (int index = 0; index < smsTableHeader.getChildCount(); index++) {
             View column = smsTableHeader.getChildAt(index);
@@ -2926,13 +2929,12 @@ public class MainActivity extends AppCompatActivity {
             SmsDateFilter.DisplayMessage displayed = items.get(position);
             SmsTableRow row = SmsTableRow.from(displayed,
                     verifications.get(displayed.message.uniqueKey));
-            holder.number.setText(String.valueOf(row.number));
+            holder.bindReference(row.reference);
             holder.dateTime.setText(row.dateTime);
             bindTypeBadge(holder.type, row.type);
             holder.sender.setText(SmsTableRow.display(row.numero));
             holder.name.setText(SmsTableRow.display(row.nom));
             holder.amount.setText(SmsTableRow.display(row.montant));
-            holder.reference.setText(SmsTableRow.display(row.reference));
             holder.bonus.setText(SmsTableRow.display(row.bonus));
             holder.fees.setText(SmsTableRow.displayFee(row.frais));
             holder.balance.setText(SmsTableRow.display(row.solde));
@@ -3022,13 +3024,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static class SmsViewHolder extends RecyclerView.ViewHolder {
-        final TextView number;
+        final TextView reference;
         final TextView dateTime;
         final TextView type;
         final TextView sender;
         final TextView name;
         final TextView amount;
-        final TextView reference;
         final TextView bonus;
         final TextView fees;
         final TextView balance;
@@ -3036,27 +3037,48 @@ public class MainActivity extends AppCompatActivity {
 
         SmsViewHolder(View itemView) {
             super(itemView);
-            number = itemView.findViewById(R.id.itemNumber);
+            reference = itemView.findViewById(R.id.itemReference);
             dateTime = itemView.findViewById(R.id.itemDateTime);
             type = itemView.findViewById(R.id.itemType);
             sender = itemView.findViewById(R.id.itemSender);
             name = itemView.findViewById(R.id.itemName);
             amount = itemView.findViewById(R.id.itemAmount);
-            reference = itemView.findViewById(R.id.itemReference);
             bonus = itemView.findViewById(R.id.itemBonus);
             fees = itemView.findViewById(R.id.itemFees);
             balance = itemView.findViewById(R.id.itemBalance);
             status = itemView.findViewById(R.id.itemStatus);
+            reference.setOnClickListener(view -> copyReference());
+        }
+
+        void bindReference(String value) {
+            boundReference = value;
+            reference.setText(SmsTableRow.display(value));
+        }
+
+        private void copyReference() {
+            String value = boundReference;
+            if (value == null || value.trim().isEmpty()) {
+                Toast.makeText(reference.getContext(), R.string.reference_unavailable,
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            ClipboardManager clipboard = (ClipboardManager) reference.getContext()
+                    .getSystemService(Context.CLIPBOARD_SERVICE);
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(ClipData.newPlainText("Référence", value));
+                Toast.makeText(reference.getContext(), R.string.reference_copied,
+                        Toast.LENGTH_SHORT).show();
+            }
         }
 
         void applyZoom(float zoom) {
-            int[] dimensions = {R.dimen.sms_column_number_width,
+            int[] dimensions = {R.dimen.sms_column_reference_width,
                     R.dimen.sms_column_datetime_width, R.dimen.sms_column_type_width,
                     R.dimen.sms_column_sender_width, R.dimen.sms_column_name_width,
-                    R.dimen.sms_column_money_width, R.dimen.sms_column_reference_width,
                     R.dimen.sms_column_money_width, R.dimen.sms_column_money_width,
+                    R.dimen.sms_column_money_width,
                     R.dimen.sms_column_money_width};
-            TextView[] columns = {number, dateTime, type, sender, name, amount, reference,
+            TextView[] columns = {reference, dateTime, type, sender, name, amount,
                     bonus, fees, balance};
             applyRowZoom(itemView, columns, dimensions, zoom);
             applyStatusZoom(status, zoom);
