@@ -4,7 +4,6 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,16 +13,18 @@ import androidx.core.content.ContextCompat;
 
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 
 /** Compact, touch-selectable line chart containing the intervals of one day. */
 public final class HourlyActivityChartView extends View {
+    private static final int MAX_VALUE_TICKS = 5;
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint linePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint pointPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint valuePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float density;
     private final NumberFormat numberFormat = NumberFormat.getIntegerInstance(Locale.FRENCH);
     private int[] values = new int[24];
@@ -47,10 +48,6 @@ public final class HourlyActivityChartView extends View {
         linePaint.setStyle(Paint.Style.STROKE);
         linePaint.setStrokeJoin(Paint.Join.ROUND);
         pointPaint.setColor(ContextCompat.getColor(context, R.color.sms_accent));
-        valuePaint.setColor(ContextCompat.getColor(context, R.color.sms_text_primary));
-        valuePaint.setTextSize(10 * getResources().getDisplayMetrics().scaledDensity);
-        valuePaint.setTextAlign(Paint.Align.CENTER);
-        valuePaint.setFakeBoldText(true);
         setFocusable(true);
     }
 
@@ -81,19 +78,20 @@ public final class HourlyActivityChartView extends View {
 
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        float left = getPaddingLeft() + dp(34);
+        List<Integer> referenceValues = referenceValues(values, MAX_VALUE_TICKS);
+        float left = chartLeft(referenceValues);
         float right = getWidth() - getPaddingRight() - dp(10);
-        // Keep enough headroom for value labels, including labels moved up to avoid a neighbour.
-        float top = getPaddingTop() + dp(52);
+        float top = getPaddingTop() + dp(30);
         float bottom = getHeight() - getPaddingBottom() - dp(35);
         float width = Math.max(1, right - left);
         float height = Math.max(1, bottom - top);
 
         textPaint.setTextAlign(Paint.Align.RIGHT);
-        for (int tick = 0; tick <= maximum; tick += Math.max(1, maximum)) {
-            float y = bottom - height * tick / maximum;
+        drawReferenceLine(canvas, 0, left, right, bottom, height);
+        for (int value : referenceValues) {
+            float y = bottom - height * value / maximum;
             canvas.drawLine(left, y, right, y, gridPaint);
-            canvas.drawText(String.valueOf(tick), left - dp(7), y + dp(4), textPaint);
+            canvas.drawText(numberFormat.format(value), left - dp(7), y + dp(4), textPaint);
         }
         Path path = new Path();
         for (int index = 0; index < values.length; index++) {
@@ -108,7 +106,6 @@ public final class HourlyActivityChartView extends View {
             float y = bottom - height * values[index] / maximum;
             canvas.drawCircle(x, y, index == selectedInterval ? dp(5) : normalRadius, pointPaint);
         }
-        drawValueLabels(canvas, left, width, bottom, height);
         textPaint.setTextAlign(Paint.Align.CENTER);
         int intervalsPerHour = 60 / intervalMinutes;
         for (int index = 0; index < values.length; index++) {
@@ -133,73 +130,33 @@ public final class HourlyActivityChartView extends View {
         }
     }
 
-    /** Draws every meaningful value and moves close labels into rows above their points. */
-    private void drawValueLabels(Canvas canvas, float left, float width, float chartBottom,
-                                 float chartHeight) {
-        List<RectF> occupied = new ArrayList<>();
-        Paint.FontMetrics metrics = valuePaint.getFontMetrics();
-        float labelHeight = metrics.descent - metrics.ascent;
-        float rowHeight = labelHeight + dp(2);
-        float highestBaseline = getPaddingTop() - metrics.ascent;
+    private void drawReferenceLine(Canvas canvas, int value, float left, float right,
+                                   float bottom, float height) {
+        float y = bottom - height * value / maximum;
+        canvas.drawLine(left, y, right, y, gridPaint);
+        canvas.drawText(numberFormat.format(value), left - dp(7), y + dp(4), textPaint);
+    }
 
-        for (int index = 0; index < values.length; index++) {
-            int value = values[index];
-            if (!shouldDrawValueLabel(value)) continue;
+    /** Returns distinct point levels to display on Y, capped to keep the chart readable. */
+    static List<Integer> referenceValues(int[] intervalValues, int maximumTickCount) {
+        if (intervalValues == null || maximumTickCount <= 0) return Collections.emptyList();
+        LinkedHashSet<Integer> distinct = new LinkedHashSet<>();
+        for (int value : intervalValues) if (value > 0) distinct.add(value);
+        List<Integer> sorted = new ArrayList<>(distinct);
+        Collections.sort(sorted);
+        if (sorted.size() <= maximumTickCount) return sorted;
 
-            String label = numberFormat.format(value);
-            float x = pointX(left, width, index);
-            float pointY = chartBottom - chartHeight * value / maximum;
-            float preferredBaseline = pointY - dp(7);
-            float baseline = preferredBaseline;
-            RectF bounds = null;
-
-            // Prefer the position immediately above the point. Only move farther upward when
-            // another visible value would overlap it.
-            int availableRows = Math.max(1,
-                    (int) ((preferredBaseline - highestBaseline) / rowHeight) + 1);
-            for (int row = 0; row < availableRows; row++) {
-                float candidateBaseline = preferredBaseline - row * rowHeight;
-                RectF candidate = labelBounds(label, x, candidateBaseline, metrics);
-                if (!intersectsAny(candidate, occupied)) {
-                    baseline = candidateBaseline;
-                    bounds = candidate;
-                    break;
-                }
-            }
-            if (bounds == null) {
-                // Extremely dense data can exhaust the vertical rows; retain every label and
-                // use a deterministic stagger rather than silently dropping values.
-                int staggerRows = intervalMinutes == 15 ? 4 : intervalMinutes == 30 ? 2 : 1;
-                baseline = Math.max(highestBaseline,
-                        preferredBaseline - (index % staggerRows) * rowHeight);
-                bounds = labelBounds(label, x, baseline, metrics);
-            }
-            canvas.drawText(label, x, baseline, valuePaint);
-            occupied.add(bounds);
+        List<Integer> selected = new ArrayList<>(maximumTickCount);
+        for (int index = 0; index < maximumTickCount; index++) {
+            int sourceIndex = Math.round(index * (sorted.size() - 1f) / (maximumTickCount - 1f));
+            selected.add(sorted.get(sourceIndex));
         }
-    }
-
-    private RectF labelBounds(String label, float centerX, float baseline,
-                              Paint.FontMetrics metrics) {
-        float halfWidth = valuePaint.measureText(label) / 2f + dp(2);
-        return new RectF(centerX - halfWidth, baseline + metrics.ascent - dp(1),
-                centerX + halfWidth, baseline + metrics.descent + dp(1));
-    }
-
-    private static boolean intersectsAny(RectF candidate, List<RectF> occupied) {
-        for (RectF bounds : occupied) {
-            if (RectF.intersects(candidate, bounds)) return true;
-        }
-        return false;
-    }
-
-    static boolean shouldDrawValueLabel(int value) {
-        return value > 0;
+        return selected;
     }
 
     @Override public boolean onTouchEvent(MotionEvent event) {
         if (event.getActionMasked() == MotionEvent.ACTION_UP) {
-            float left = getPaddingLeft() + dp(34);
+            float left = chartLeft(referenceValues(values, MAX_VALUE_TICKS));
             float width = Math.max(1, getWidth() - getPaddingRight() - dp(10) - left);
             selectedInterval = Math.max(0, Math.min(values.length - 1,
                     Math.round((event.getX() - left) * (values.length - 1) / width)));
@@ -207,6 +164,14 @@ public final class HourlyActivityChartView extends View {
             performClick();
         }
         return true;
+    }
+
+    private float chartLeft(List<Integer> references) {
+        float widestTick = textPaint.measureText("0");
+        for (int value : references) {
+            widestTick = Math.max(widestTick, textPaint.measureText(numberFormat.format(value)));
+        }
+        return getPaddingLeft() + widestTick + dp(9);
     }
 
     @Override public boolean performClick() { super.performClick(); return true; }
