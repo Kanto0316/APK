@@ -2799,7 +2799,6 @@ public class MainActivity extends AppCompatActivity {
         final TextView fees;
         final TextView balance;
         final View status;
-        private String boundReference;
         ClientMessageViewHolder(View itemView) {
             super(itemView);
             number = itemView.findViewById(R.id.clientMessageNumber);
@@ -3034,6 +3033,7 @@ public class MainActivity extends AppCompatActivity {
         final TextView fees;
         final TextView balance;
         final View status;
+        private String boundReference;
 
         SmsViewHolder(View itemView) {
             super(itemView);
