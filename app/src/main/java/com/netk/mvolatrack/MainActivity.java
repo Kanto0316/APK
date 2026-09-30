@@ -259,7 +259,7 @@ public class MainActivity extends AppCompatActivity {
     private ClientMessageAdapter clientMessageAdapter;
     private String selectedClientSender;
     private EditText clientSearchInput;
-    private TextView[] clientFilterChips;
+    private TextView clientFilterDropdown;
     private ClientMessageGrouper.Filter selectedClientFilter = ClientMessageGrouper.Filter.ALL;
     private int selectedSection = SECTION_HOME;
     private SmsDateFilter.Period selectedMessageFilter = SmsDateFilter.Period.ALL;
@@ -515,8 +515,7 @@ public class MainActivity extends AppCompatActivity {
         clientEmptyText = findViewById(R.id.clientEmptyText);
         clientDetailTitle = findViewById(R.id.clientDetailTitle);
         clientSearchInput = findViewById(R.id.clientSearchInput);
-        clientFilterChips = new TextView[]{findViewById(R.id.clientFilterAll),
-                findViewById(R.id.clientFilterNew), findViewById(R.id.clientFilterExisting)};
+        clientFilterDropdown = findViewById(R.id.clientFilterDropdown);
         selectedClientSender = savedInstanceState == null ? null
                 : savedInstanceState.getString(STATE_CLIENT_SENDER);
         if (savedInstanceState != null) {
@@ -1384,12 +1383,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void configureClientFilters() {
-        clientFilterChips[0].setOnClickListener(view ->
-                selectClientFilter(ClientMessageGrouper.Filter.ALL));
-        clientFilterChips[1].setOnClickListener(view ->
-                selectClientFilter(ClientMessageGrouper.Filter.NEW));
-        clientFilterChips[2].setOnClickListener(view ->
-                selectClientFilter(ClientMessageGrouper.Filter.EXISTING));
+        clientFilterDropdown.setOnClickListener(this::showClientFilterMenu);
         clientSearchInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence value, int start, int count,
                     int after) {}
@@ -1401,20 +1395,33 @@ public class MainActivity extends AppCompatActivity {
 
             @Override public void afterTextChanged(Editable value) {}
         });
-        updateClientFilterChips();
+        updateClientFilterDropdown();
+    }
+
+    private void showClientFilterMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        String[] labels = {"Tous", "Nouveau", "Ancien"};
+        ClientMessageGrouper.Filter[] filters = ClientMessageGrouper.Filter.values();
+        for (int index = 0; index < labels.length; index++) {
+            menu.getMenu().add(0, index, index, labels[index])
+                    .setCheckable(true).setChecked(selectedClientFilter == filters[index]);
+        }
+        menu.setOnMenuItemClickListener(item -> {
+            selectClientFilter(filters[item.getItemId()]);
+            return true;
+        });
+        menu.show();
     }
 
     private void selectClientFilter(ClientMessageGrouper.Filter filter) {
         selectedClientFilter = filter;
-        updateClientFilterChips();
+        updateClientFilterDropdown();
         renderClients();
     }
 
-    private void updateClientFilterChips() {
-        ClientMessageGrouper.Filter[] filters = ClientMessageGrouper.Filter.values();
-        for (int index = 0; index < clientFilterChips.length; index++) {
-            clientFilterChips[index].setSelected(selectedClientFilter == filters[index]);
-        }
+    private void updateClientFilterDropdown() {
+        String[] labels = {"Tous", "Nouveau", "Ancien"};
+        clientFilterDropdown.setText(labels[selectedClientFilter.ordinal()]);
     }
 
     @Override

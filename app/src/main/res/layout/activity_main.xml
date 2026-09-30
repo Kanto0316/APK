@@ -147,9 +147,9 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
+                android:layout_marginStart="12dp"
                 android:layout_marginTop="12dp"
-                android:layout_marginEnd="20dp"
+                android:layout_marginEnd="12dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -390,16 +390,17 @@
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="44dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginBottom="6dp"
+                    android:orientation="vertical">
 
-                    <TextView android:id="@+id/clientFilterAll" style="@style/SmsFilterChip"
+                    <TextView
+                        android:id="@+id/clientFilterDropdown"
+                        style="@style/TransactionFilterDropdown"
+                        android:layout_width="match_parent"
+                        android:contentDescription="Filtrer les clients"
                         android:text="Tous" />
-                    <TextView android:id="@+id/clientFilterNew" style="@style/SmsFilterChip"
-                        android:text="Nouveau" />
-                    <TextView android:id="@+id/clientFilterExisting" style="@style/SmsFilterChip"
-                        android:text="Ancien" />
                 </LinearLayout>
 
                 <TextView
