@@ -153,6 +153,36 @@ final class SmsStatistics {
         return intervalActivity(messages, selectedDay, timeZone, 60);
     }
 
+    /** Sums parsed bonus amounts in each interval of the selected business day. */
+    static int[] intervalBonus(List<SmsMessage> messages, long selectedDay,
+                               TimeZone timeZone, int intervalMinutes) {
+        if (intervalMinutes != 15 && intervalMinutes != 30 && intervalMinutes != 60) {
+            throw new IllegalArgumentException("Interval must be 15, 30 or 60 minutes");
+        }
+        int intervalsPerHour = 60 / intervalMinutes;
+        int[] amounts = new int[24 * intervalsPerHour];
+        if (messages == null) return amounts;
+
+        Calendar selected = Calendar.getInstance(timeZone);
+        selected.setTimeInMillis(selectedDay);
+        int year = selected.get(Calendar.YEAR);
+        int dayOfYear = selected.get(Calendar.DAY_OF_YEAR);
+        Calendar transactionDate = Calendar.getInstance(timeZone);
+        for (ParsedBusinessTransaction parsed : getParsedTransactions(messages)) {
+            Long bonus = parsed.transaction.bonus;
+            if (bonus == null || bonus <= 0) continue;
+            transactionDate.setTimeInMillis(parsed.timestamp);
+            if (transactionDate.get(Calendar.YEAR) == year
+                    && transactionDate.get(Calendar.DAY_OF_YEAR) == dayOfYear) {
+                int index = transactionDate.get(Calendar.HOUR_OF_DAY) * intervalsPerHour
+                        + transactionDate.get(Calendar.MINUTE) / intervalMinutes;
+                amounts[index] = (int) Math.min(Integer.MAX_VALUE,
+                        (long) amounts[index] + bonus);
+            }
+        }
+        return amounts;
+    }
+
     private static void startOfDay(Calendar calendar) {
         calendar.set(Calendar.HOUR_OF_DAY, 0);
         calendar.set(Calendar.MINUTE, 0);
