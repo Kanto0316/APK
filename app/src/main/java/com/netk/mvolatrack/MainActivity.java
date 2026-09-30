@@ -28,7 +28,6 @@ import android.graphics.Typeface;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.LayoutInflater;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
@@ -39,8 +38,6 @@ import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.LinearLayout;
-import android.widget.Button;
-import android.widget.RadioGroup;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -163,6 +160,8 @@ public class MainActivity extends AppCompatActivity {
     private View mainHeader;
     private View mainHeaderDivider;
     private ProgressBar loadingIndicator;
+    private View exportProgress;
+    private NavigationView navigationView;
     private SmsAdapter adapter;
     private float tableZoom = 1f;
     private LinearLayout transactionTable;
@@ -268,6 +267,7 @@ public class MainActivity extends AppCompatActivity {
     private DrawerLayout drawerLayout;
     private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor();
     private Future<?> exportTask;
+    private boolean exportInProgress;
     private volatile boolean activityDestroyed;
     private long lastResumeReloadAt;
 
@@ -384,6 +384,7 @@ public class MainActivity extends AppCompatActivity {
         mainHeader = findViewById(R.id.mainHeader);
         mainHeaderDivider = findViewById(R.id.mainHeaderDivider);
         loadingIndicator = findViewById(R.id.loadingIndicator);
+        exportProgress = findViewById(R.id.exportProgress);
         configureMessageFilters(savedInstanceState);
         backupManager = new SmsBackupManager(this);
         configureNavigationDrawer();
@@ -1672,7 +1673,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void configureNavigationDrawer() {
         drawerLayout = findViewById(R.id.drawerLayout);
-        NavigationView navigationView = findViewById(R.id.navigationView);
+        navigationView = findViewById(R.id.navigationView);
         int maximumWidth = Math.round(360 * getResources().getDisplayMetrics().density);
         int preferredWidth = Math.round(getResources().getDisplayMetrics().widthPixels * 0.84f);
         ViewGroup.LayoutParams layoutParams = navigationView.getLayoutParams();
@@ -1701,12 +1702,14 @@ public class MainActivity extends AppCompatActivity {
             else if (id == R.id.nav_about) showAboutDialog();
             return true;
         });
+        updateExportActions();
     }
 
     private void openExportSettings(boolean excel) {
         Log.i(EXPORT_TAG, "Clic utilisateur : Export " + (excel ? "Excel" : "PDF"));
+        if (exportInProgress) return;
         try {
-            showExportSettingsDialog(excel);
+            generateTransactionExport(excel);
         } catch (RuntimeException error) {
             logExportException("MainActivity", "openExportSettings", error);
             showExportFailure(() -> openExportSettings(excel));
@@ -1851,136 +1854,6 @@ public class MainActivity extends AppCompatActivity {
         backupExportLauncher.launch("MVolaCash_" + date + ".json");
     }
 
-    private void showTransactionExportDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("Exporter les transactions")
-                .setItems(new String[]{"Excel (.xlsx)", "PDF"}, (dialog, which) ->
-                        generateTransactionExport(which == 0))
-                .setNegativeButton("Annuler", null)
-                .show();
-    }
-
-    /** Configures both formats and delegates selection to the same filter used by Messages. */
-    private void showExportSettingsDialog(boolean excel) {
-        View content = LayoutInflater.from(this).inflate(R.layout.dialog_export_settings, null);
-        RadioGroup periodGroup = content.findViewById(R.id.exportPeriodGroup);
-        RadioGroup typeGroup = content.findViewById(R.id.exportTypeGroup);
-        View customDates = content.findViewById(R.id.exportCustomDates);
-        Button startButton = content.findViewById(R.id.exportStartDate);
-        Button endButton = content.findViewById(R.id.exportEndDate);
-        TextView preview = content.findViewById(R.id.exportPreview);
-        long today = System.currentTimeMillis();
-        long[] custom = {today, today};
-
-        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
-                .setTitle("Paramètres d’export")
-                .setView(content)
-                .setNegativeButton("Annuler", null)
-                .setPositiveButton("Exporter", null)
-                .create();
-
-        Runnable refresh = () -> {
-            customDates.setVisibility(periodGroup.getCheckedRadioButtonId()
-                    == R.id.exportPeriodCustom ? View.VISIBLE : View.GONE);
-            List<SmsDateFilter.DisplayMessage> selected = exportSelection(periodGroup,
-                    typeGroup, custom[0], custom[1]);
-            preview.setText(selected.size() + (selected.size() > 1
-                    ? " transactions sélectionnées" : " transaction sélectionnée"));
-            if (dialog.isShowing()) dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                    .setEnabled(!selected.isEmpty() && custom[0] <= custom[1]);
-        };
-        periodGroup.setOnCheckedChangeListener((group, checkedId) -> refresh.run());
-        typeGroup.setOnCheckedChangeListener((group, checkedId) -> refresh.run());
-        startButton.setOnClickListener(view -> showExportDatePicker(custom[0], value -> {
-            custom[0] = value;
-            startButton.setText(formatExportDate(value));
-            refresh.run();
-        }));
-        endButton.setOnClickListener(view -> showExportDatePicker(custom[1], value -> {
-            custom[1] = value;
-            endButton.setText(formatExportDate(value));
-            refresh.run();
-        }));
-        dialog.setOnShowListener(ignored -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
-                List<SmsDateFilter.DisplayMessage> selected = exportSelection(periodGroup,
-                        typeGroup, custom[0], custom[1]);
-                if (selected.isEmpty() || custom[0] > custom[1]) return;
-                SmsDateFilter.Period period = exportPeriod(periodGroup.getCheckedRadioButtonId());
-                SmsDateFilter.TransactionType type = exportType(typeGroup.getCheckedRadioButtonId());
-                String periodLabel = exportPeriodLabel(period, custom[0], custom[1]);
-                String typeLabel = type == SmsDateFilter.TransactionType.CREDIT_ENTRY
-                        ? "Crédit / Entrée" : type == SmsDateFilter.TransactionType.DEBIT_EXIT
-                        ? "Débit / Sortie" : "Tous";
-                generateTransactionExport(excel, selected, periodLabel, typeLabel, null,
-                        exportFileSuffix(period, type, custom[0], custom[1]));
-                dialog.dismiss();
-            });
-            refresh.run();
-        });
-        dialog.show();
-    }
-
-    private interface DateSelection { void selected(long value); }
-
-    private void showExportDatePicker(long initialMillis, DateSelection selection) {
-        Calendar initial = Calendar.getInstance();
-        initial.setTimeInMillis(initialMillis);
-        new DatePickerDialog(this, (picker, year, month, day) -> {
-            Calendar date = Calendar.getInstance();
-            date.clear(); date.set(year, month, day);
-            selection.selected(date.getTimeInMillis());
-        }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH),
-                initial.get(Calendar.DAY_OF_MONTH)).show();
-    }
-
-    private List<SmsDateFilter.DisplayMessage> exportSelection(RadioGroup periods,
-            RadioGroup types, long start, long end) {
-        return SmsDateFilter.apply(messages, exportPeriod(periods.getCheckedRadioButtonId()),
-                start, end, System.currentTimeMillis(), java.util.TimeZone.getDefault(), "",
-                exportType(types.getCheckedRadioButtonId()));
-    }
-
-    private SmsDateFilter.Period exportPeriod(int checkedId) {
-        if (checkedId == R.id.exportPeriodToday) return SmsDateFilter.Period.TODAY;
-        if (checkedId == R.id.exportPeriodWeek) return SmsDateFilter.Period.THIS_WEEK;
-        if (checkedId == R.id.exportPeriodMonth) return SmsDateFilter.Period.THIS_MONTH;
-        if (checkedId == R.id.exportPeriodCustom) return SmsDateFilter.Period.CUSTOM_RANGE;
-        return SmsDateFilter.Period.ALL;
-    }
-
-    private SmsDateFilter.TransactionType exportType(int checkedId) {
-        if (checkedId == R.id.exportTypeCredit) return SmsDateFilter.TransactionType.CREDIT_ENTRY;
-        if (checkedId == R.id.exportTypeDebit) return SmsDateFilter.TransactionType.DEBIT_EXIT;
-        return SmsDateFilter.TransactionType.ALL;
-    }
-
-    private String exportPeriodLabel(SmsDateFilter.Period period, long start, long end) {
-        if (period == SmsDateFilter.Period.TODAY) return "Aujourd’hui";
-        if (period == SmsDateFilter.Period.THIS_WEEK) return "Cette semaine";
-        if (period == SmsDateFilter.Period.THIS_MONTH) return "Ce mois";
-        if (period == SmsDateFilter.Period.CUSTOM_RANGE) {
-            return formatExportDate(start) + " – " + formatExportDate(end);
-        }
-        return "Toutes les périodes";
-    }
-
-    private String exportFileSuffix(SmsDateFilter.Period period,
-            SmsDateFilter.TransactionType type, long start, long end) {
-        SimpleDateFormat fileDate = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
-        if (period == SmsDateFilter.Period.CUSTOM_RANGE) {
-            return fileDate.format(new Date(start)) + "_" + fileDate.format(new Date(end));
-        }
-        String date = fileDate.format(new Date());
-        if (type == SmsDateFilter.TransactionType.CREDIT_ENTRY) return date + "_Credit";
-        if (type == SmsDateFilter.TransactionType.DEBIT_EXIT) return date + "_Debit";
-        return date + "_Toutes";
-    }
-
-    private String formatExportDate(long millis) {
-        return new SimpleDateFormat("dd/MM/yyyy", Locale.FRENCH).format(new Date(millis));
-    }
-
     private void showClientTransactionExportDialog() {
         if (selectedClientSender == null || clientMessageAdapter == null) {
             Log.w(TAG, "Client export ignored: client or adapter is unavailable");
@@ -2003,12 +1876,9 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    /** Uses exactly the list selected by Messages; filtering is deliberately not duplicated here. */
+    /** Snapshots the exact rows currently rendered by Messages; no export-time filtering. */
     private List<SmsDateFilter.DisplayMessage> filteredMessagesForExport() {
-        String query = messageSearchInput == null ? "" : messageSearchInput.getText().toString();
-        return SmsDateFilter.apply(messages, selectedMessageFilter, customFilterDate,
-                System.currentTimeMillis(), java.util.TimeZone.getDefault(), query,
-                selectedMessageType);
+        return adapter == null ? Collections.emptyList() : adapter.snapshot();
     }
 
     private void generateTransactionExport(boolean excel) {
@@ -2042,16 +1912,11 @@ public class MainActivity extends AppCompatActivity {
             showUserError("Aucune transaction à exporter.");
             return;
         }
+        if (exportInProgress) return;
+        setExportInProgress(true);
         List<ExportTransaction> rows = new ArrayList<>();
-        List<SmsMessage> messageSnapshot = messages == null
-                ? Collections.emptyList() : messages;
-        Map<String, TransactionBalanceVerification> verifications = Collections.emptyMap();
-        try {
-            verifications = HistoryTransaction.verificationsByMessageKey(messageSnapshot);
-        } catch (Exception error) {
-            // Verification is useful metadata, but must never prevent the document being created.
-            Log.e(EXPORT_TAG, "Vérification historique impossible; statut non vérifiable", error);
-        }
+        Map<String, TransactionBalanceVerification> verifications = messageVerifications == null
+                ? Collections.emptyMap() : new java.util.HashMap<>(messageVerifications);
         for (SmsDateFilter.DisplayMessage displayed : safeSource) {
             if (displayed == null || displayed.message == null) {
                 Log.w(EXPORT_TAG, "Skipping an invalid transaction row");
@@ -2089,6 +1954,7 @@ public class MainActivity extends AppCompatActivity {
         if (rows.isEmpty()) {
             Log.w(EXPORT_TAG, "Export ignored: no selected message could be parsed");
             showUserError("Aucune transaction à exporter.");
+            setExportInProgress(false);
             return;
         }
         long exportedAt = System.currentTimeMillis();
@@ -2139,13 +2005,29 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void setExportInProgress(boolean inProgress) {
+        exportInProgress = inProgress;
+        if (exportProgress != null) exportProgress.setVisibility(inProgress ? View.VISIBLE : View.GONE);
+        updateExportActions();
+    }
+
+    private void updateExportActions() {
+        if (navigationView == null) return;
+        boolean enabled = !exportInProgress && adapter != null && adapter.getItemCount() > 0;
+        navigationView.getMenu().findItem(R.id.nav_export_pdf).setEnabled(enabled);
+        navigationView.getMenu().findItem(R.id.nav_export_excel).setEnabled(enabled);
+    }
+
     private void handleExportFailure(String detail, Exception error, Runnable retry) {
         if (Thread.currentThread().isInterrupted()) {
             Log.i(EXPORT_TAG, detail + ": task cancelled", error);
             return;
         }
         logExportException("MainActivity", detail, error);
-        postToActiveUi(() -> showExportFailure(retry));
+        postToActiveUi(() -> {
+            setExportInProgress(false);
+            showExportFailure(retry);
+        });
     }
 
     private void logExportException(String className, String method, Throwable error) {
@@ -2193,6 +2075,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showExportCompleted(File file, String mime) {
+        setExportInProgress(false);
         if (!canUpdateUi() || file == null || !file.isFile()) {
             Log.w(EXPORT_TAG, "Completion dialog skipped: inactive Activity or missing file");
             return;
@@ -2702,6 +2585,7 @@ public class MainActivity extends AppCompatActivity {
                 messageSearchInput == null ? "" : messageSearchInput.getText().toString(),
                 selectedMessageType);
         adapter.submitList(displayed, messageVerifications);
+        updateExportActions();
         int displayedCount = displayed.size();
         transactionCountText.setText(displayedCount
                 + (displayedCount > 1 ? " transactions" : " transaction"));
@@ -3008,6 +2892,10 @@ public class MainActivity extends AppCompatActivity {
             items = new ArrayList<>(messages);
             this.verifications = verifications == null ? Collections.emptyMap() : verifications;
             notifyDataSetChanged();
+        }
+
+        List<SmsDateFilter.DisplayMessage> snapshot() {
+            return new ArrayList<>(items);
         }
 
         @Override
