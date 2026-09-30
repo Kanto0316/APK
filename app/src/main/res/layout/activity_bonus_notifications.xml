@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:background="@color/sms_screen_background">
     <com.google.android.material.appbar.MaterialToolbar
@@ -16,6 +17,31 @@
             android:layout_gravity="center_vertical" android:layout_marginStart="8dp"
             android:text="@string/notifications_title" android:textColor="@color/sms_text_primary"
             android:textSize="20sp" android:textStyle="bold" />
+    </com.google.android.material.appbar.MaterialToolbar>
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/notificationsSelectionToolbar"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:minHeight="?attr/actionBarSize" android:background="@color/sms_surface"
+        android:elevation="2dp" android:gravity="center_vertical" android:visibility="gone">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:gravity="center_vertical" android:orientation="horizontal">
+            <ImageButton android:id="@+id/notificationsSelectionClose" android:layout_width="48dp"
+                android:layout_height="48dp" android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/notifications_exit_selection" android:padding="12dp"
+                android:src="@drawable/ic_arrow_back_24" android:tint="@color/sms_text_primary" />
+            <TextView android:id="@+id/notificationsSelectionCount" android:layout_width="0dp"
+                android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="8dp"
+                android:textColor="@color/sms_text_primary" android:textSize="18sp" android:textStyle="bold" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/notificationsSelectAll" style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content" android:layout_height="48dp"
+                android:text="@string/notifications_select_all" android:textColor="@color/sms_accent" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/notificationsDelete" style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content" android:layout_height="48dp"
+                android:text="@string/notifications_delete" android:textColor="@color/verification_error"
+                app:icon="@drawable/ic_delete_24" app:iconTint="@color/verification_error" />
+        </LinearLayout>
     </com.google.android.material.appbar.MaterialToolbar>
     <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/bonusNotificationsList"

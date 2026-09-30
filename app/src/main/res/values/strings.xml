@@ -23,4 +23,13 @@
     <string name="notifications_new">Nouveau</string>
     <string name="notifications_empty_title">Aucune notification</string>
     <string name="notifications_empty_message">Les informations importantes de MVolaCash apparaîtront ici.</string>
+    <plurals name="notifications_selected">
+        <item quantity="one">%1$d sélectionnée</item>
+        <item quantity="other">%1$d sélectionnées</item>
+    </plurals>
+    <string name="notifications_select_all">Tout sélectionner</string>
+    <string name="notifications_delete">Supprimer</string>
+    <string name="notifications_delete_confirmation">Supprimer les notifications sélectionnées ?</string>
+    <string name="notifications_cancel">Annuler</string>
+    <string name="notifications_exit_selection">Quitter la sélection</string>
 </resources>

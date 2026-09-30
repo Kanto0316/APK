@@ -35,6 +35,9 @@ public abstract class NotificationBonusDao {
     @Query("UPDATE bonus_notifications SET is_read = 1 WHERE is_read = 0")
     public abstract int markAllRead();
 
+    @Query("DELETE FROM bonus_notifications WHERE id IN (:ids)")
+    public abstract int deleteByIds(List<Long> ids);
+
     @Query("DELETE FROM bonus_notifications WHERE id NOT IN "
             + "(SELECT id FROM bonus_notifications ORDER BY date DESC, id DESC LIMIT :limit)")
     abstract int deleteOutsideNewest(int limit);
