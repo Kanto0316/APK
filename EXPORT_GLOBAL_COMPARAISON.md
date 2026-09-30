@@ -2,9 +2,11 @@
 
 ## Fonction export détail client utilisée comme référence
 
-Le clic **Exporter** du détail client appelle `showClientTransactionExportDialog()`. Cette méthode
-prend un instantané de la liste déjà préparée par `clientMessageAdapter`, puis appelle
-`generateTransactionExport(...)` pour PDF comme pour Excel. Ce pipeline partagé :
+Les boutons d’export global et les trois points du détail client appellent désormais le même
+`showExportMenu(...)`. Ce menu contextuel propose, dans le même ordre, **Exporter en PDF** et
+**Exporter en Excel**. Pour le détail client, la méthode prend un instantané de la liste déjà
+préparée par `clientMessageAdapter`, puis appelle `generateTransactionExport(...)` pour PDF comme
+pour Excel. Ce pipeline partagé :
 
 1. copie la source dans une liste défensive ;
 2. ignore les lignes nulles, les SMS sans texte et les formats non reconnus ;

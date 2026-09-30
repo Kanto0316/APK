@@ -116,6 +116,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class MainActivity extends AppCompatActivity {
+    private enum ExportSource {
+        MESSAGES,
+        CLIENT
+    }
+
     private static final String TAG = "MVolaCash";
     private static final String EXPORT_TAG = "MVolaCash_EXPORT_DIAGNOSTIC";
     private static final String EXPORT_ERROR_MESSAGE =
@@ -1464,19 +1469,54 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showMessagesExportMenu(View anchor) {
+        showExportMenu(anchor, ExportSource.MESSAGES);
+    }
+
+    /** Displays the same export choices regardless of the transaction list being exported. */
+    private void showExportMenu(View anchor, ExportSource source) {
+        final List<SmsDateFilter.DisplayMessage> clientTransactions;
+        final String clientFileNumber;
+        final boolean canExport;
+        if (source == ExportSource.CLIENT) {
+            if (selectedClientSender == null || clientMessageAdapter == null) {
+                Log.w(TAG, "Client export ignored: client or adapter is unavailable");
+                showUserError("L’historique du client n’est pas encore disponible.");
+                return;
+            }
+            // Keep the exact rows and ordering displayed when the client menu was opened.
+            clientTransactions = clientMessageAdapter.snapshot();
+            String normalizedNumber = ClientNumberNormalizer.normalize(selectedClientSender);
+            clientFileNumber = normalizedNumber == null
+                    ? selectedClientSender.replaceAll("\\s+", "") : normalizedNumber;
+            canExport = !exportInProgress && !clientTransactions.isEmpty();
+        } else {
+            clientTransactions = null;
+            clientFileNumber = null;
+            canExport = !exportInProgress && adapter != null && adapter.getItemCount() > 0;
+        }
+
         PopupMenu menu = new PopupMenu(this, anchor);
-        boolean canExport = !exportInProgress && adapter != null && adapter.getItemCount() > 0;
         menu.getMenu().add("Exporter en PDF").setEnabled(canExport)
                 .setOnMenuItemClickListener(item -> {
-                    openMessagesExport(false);
+                    openExport(source, false, clientTransactions, clientFileNumber);
                     return true;
                 });
         menu.getMenu().add("Exporter en Excel").setEnabled(canExport)
                 .setOnMenuItemClickListener(item -> {
-                    openMessagesExport(true);
+                    openExport(source, true, clientTransactions, clientFileNumber);
                     return true;
                 });
         menu.show();
+    }
+
+    private void openExport(ExportSource source, boolean excel,
+            List<SmsDateFilter.DisplayMessage> clientTransactions, String clientFileNumber) {
+        if (source == ExportSource.CLIENT) {
+            generateTransactionExport(excel, clientTransactions, "Tous", "Tous",
+                    clientFileNumber);
+        } else {
+            openMessagesExport(excel);
+        }
     }
 
     private void showPeriodFilterMenu(View anchor) {
@@ -1916,12 +1956,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showClientDetailOverflowMenu(View anchor) {
-        PopupMenu menu = new PopupMenu(this, anchor);
-        menu.getMenu().add("Exporter").setOnMenuItemClickListener(item -> {
-            showClientTransactionExportDialog();
-            return true;
-        });
-        menu.show();
+        showExportMenu(anchor, ExportSource.CLIENT);
     }
 
     private void showOverlayPermissionDialog() {
@@ -1954,28 +1989,6 @@ public class MainActivity extends AppCompatActivity {
     private void launchExport() {
         String date = new SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.ROOT).format(new Date());
         backupExportLauncher.launch("MVolaCash_" + date + ".json");
-    }
-
-    private void showClientTransactionExportDialog() {
-        if (selectedClientSender == null || clientMessageAdapter == null) {
-            Log.w(TAG, "Client export ignored: client or adapter is unavailable");
-            showUserError("L’historique du client n’est pas encore disponible.");
-            return;
-        }
-        // This snapshot is the adapter's exact data source, including its current ordering.
-        List<SmsDateFilter.DisplayMessage> clientTransactions = clientMessageAdapter.snapshot();
-        String normalizedNumber = ClientNumberNormalizer.normalize(selectedClientSender);
-        if (normalizedNumber == null) {
-            normalizedNumber = selectedClientSender.replaceAll("\\s+", "");
-        }
-        String fileNumber = normalizedNumber;
-        new AlertDialog.Builder(this)
-                .setTitle("Exporter les transactions")
-                .setItems(new String[]{"Excel (.xlsx)", "PDF"}, (dialog, which) ->
-                        generateTransactionExport(which == 0, clientTransactions,
-                                "Tous", "Tous", fileNumber))
-                .setNegativeButton("Annuler", null)
-                .show();
     }
 
     /** Snapshots the exact rows currently rendered by Messages; no export-time filtering. */
