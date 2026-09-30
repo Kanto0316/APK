@@ -1060,12 +1060,6 @@
             android:textSize="10sp" />
     </FrameLayout>
 
-    <View
-        android:id="@+id/systemNavigationInset"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:background="@color/sms_bottom_bar"
-        android:importantForAccessibility="no" />
 </LinearLayout>
 
     <com.google.android.material.navigation.NavigationView
