@@ -25,12 +25,15 @@ import com.netk.mvolatrack.database.NotificationType;
 import com.netk.mvolatrack.repository.BonusNotificationRepository;
 import com.netk.mvolatrack.verification.VerificationStatus;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.checkbox.MaterialCheckBox;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /** Material-style persistent inbox for every application notification category. */
 public final class BonusNotificationsActivity extends AppCompatActivity {
@@ -38,13 +41,27 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
     private final Adapter adapter = new Adapter();
     private BonusNotificationRepository repository;
     private RecyclerView notificationList;
+    private View normalToolbar;
+    private View selectionToolbar;
+    private TextView selectionCount;
+    private View deleteAction;
+    private boolean selectionMode;
+    private final Set<Long> selectedIds = new HashSet<>();
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_bonus_notifications);
-        applyToolbarInsets(findViewById(R.id.notificationsToolbar));
+        normalToolbar = findViewById(R.id.notificationsToolbar);
+        selectionToolbar = findViewById(R.id.notificationsSelectionToolbar);
+        selectionCount = findViewById(R.id.notificationsSelectionCount);
+        deleteAction = findViewById(R.id.notificationsDelete);
+        applyToolbarInsets(normalToolbar);
+        applyToolbarInsets(selectionToolbar);
         findViewById(R.id.notificationsBack).setOnClickListener(view -> finish());
+        findViewById(R.id.notificationsSelectionClose).setOnClickListener(view -> exitSelectionMode());
+        findViewById(R.id.notificationsSelectAll).setOnClickListener(view -> selectAll());
+        deleteAction.setOnClickListener(view -> confirmDeletion());
         RecyclerView list = findViewById(R.id.bonusNotificationsList);
         notificationList = list;
         list.setLayoutManager(new LinearLayoutManager(this));
@@ -80,12 +97,72 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
     private void showNotifications(List<NotificationBonus> values) {
         List<NotificationBonus> safeValues = values == null ? Collections.emptyList() : values;
         adapter.submit(safeValues);
+        if (selectionMode) {
+            selectedIds.retainAll(adapter.itemIds());
+            if (adapter.getItemCount() == 0) exitSelectionMode();
+            else updateSelectionToolbar();
+        }
         findViewById(R.id.notificationsEmpty).setVisibility(
                 adapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
     }
 
     private void markRead(long notificationId) {
         if (repository != null && notificationId > 0) repository.markRead(notificationId);
+    }
+
+    private void enterSelectionMode(long notificationId) {
+        selectionMode = true;
+        selectedIds.add(notificationId);
+        normalToolbar.setVisibility(View.GONE);
+        selectionToolbar.setVisibility(View.VISIBLE);
+        adapter.notifyDataSetChanged();
+        updateSelectionToolbar();
+    }
+
+    private void exitSelectionMode() {
+        if (!selectionMode) return;
+        selectionMode = false;
+        selectedIds.clear();
+        selectionToolbar.setVisibility(View.GONE);
+        normalToolbar.setVisibility(View.VISIBLE);
+        adapter.notifyDataSetChanged();
+    }
+
+    private void toggleSelection(long notificationId) {
+        if (!selectedIds.add(notificationId)) selectedIds.remove(notificationId);
+        adapter.notifyDataSetChanged();
+        updateSelectionToolbar();
+    }
+
+    private void selectAll() {
+        selectedIds.clear();
+        selectedIds.addAll(adapter.itemIds());
+        adapter.notifyDataSetChanged();
+        updateSelectionToolbar();
+    }
+
+    private void updateSelectionToolbar() {
+        int count = selectedIds.size();
+        selectionCount.setText(getResources().getQuantityString(
+                R.plurals.notifications_selected, count, count));
+        deleteAction.setEnabled(!selectedIds.isEmpty());
+    }
+
+    private void confirmDeletion() {
+        if (selectedIds.isEmpty() || repository == null) return;
+        new AlertDialog.Builder(this)
+                .setMessage(R.string.notifications_delete_confirmation)
+                .setNegativeButton(R.string.notifications_cancel, null)
+                .setPositiveButton(R.string.notifications_delete, (dialog, which) -> {
+                    deleteAction.setEnabled(false);
+                    repository.deleteNotifications(new ArrayList<>(selectedIds),
+                            this::exitSelectionMode);
+                }).show();
+    }
+
+    @Override public void onBackPressed() {
+        if (selectionMode) exitSelectionMode();
+        else super.onBackPressed();
     }
 
     private void showInitializationError(Throwable error) {
@@ -162,6 +239,11 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
             }
             notifyDataSetChanged();
         }
+        List<Long> itemIds() {
+            List<Long> ids = new ArrayList<>(items.size());
+            for (NotificationBonus item : items) ids.add(item.id);
+            return ids;
+        }
         @NonNull @Override public Holder onCreateViewHolder(@NonNull ViewGroup parent, int type) {
             return new Holder(LayoutInflater.from(parent.getContext()).inflate(
                     R.layout.item_bonus_notification, parent, false));
@@ -187,6 +269,9 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
             holder.explanation.setText(bonus ? explanation(item.message) : "");
             holder.notificationId = item.id;
             holder.newIndicator.setVisibility(item.isRead ? View.GONE : View.VISIBLE);
+            holder.selected.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+            holder.selected.setChecked(selectedIds.contains(item.id));
+            holder.selected.setOnClickListener(view -> toggleSelection(item.id));
             holder.card.setCardBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(),
                     item.isRead ? R.color.notification_read_background
                             : R.color.notification_unread_background));
@@ -195,11 +280,20 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
             holder.client.setTypeface(holder.client.getTypeface(), textStyle);
             holder.amounts.setTypeface(holder.amounts.getTypeface(), textStyle);
             holder.itemView.setOnClickListener(view -> {
+                if (selectionMode) {
+                    toggleSelection(item.id);
+                    return;
+                }
                 item.isRead = true;
                 int currentPosition = holder.getBindingAdapterPosition();
                 if (currentPosition != RecyclerView.NO_POSITION) notifyItemChanged(currentPosition);
                 markRead(item.id);
                 showDetail(item);
+            });
+            holder.itemView.setOnLongClickListener(view -> {
+                if (!selectionMode) enterSelectionMode(item.id);
+                else toggleSelection(item.id);
+                return true;
             });
             holder.itemView.setContentDescription(item.title + ", "
                     + holder.client.getText() + (item.isRead ? "" : ", nouveau"));
@@ -208,10 +302,12 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
     }
     private static final class Holder extends RecyclerView.ViewHolder {
         final MaterialCardView card; final ImageView icon;
+        final MaterialCheckBox selected;
         final TextView title, client, date, amounts, explanation, newIndicator;
         long notificationId;
         Holder(View view) { super(view); card=(MaterialCardView) view;
             icon=view.findViewById(R.id.notificationTypeIcon);
+            selected=view.findViewById(R.id.notificationSelected);
             title=view.findViewById(R.id.notificationType); client=view.findViewById(R.id.notificationClient);
             date=view.findViewById(R.id.notificationDate); amounts=view.findViewById(R.id.notificationAmounts);
             explanation=view.findViewById(R.id.notificationExplanation);

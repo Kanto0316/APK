@@ -19,6 +19,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -73,6 +74,19 @@ public class NotificationBonusDaoTest {
     @Test public void emptyInboxHasNoRowsAndNoUnreadBadge() throws Exception {
         assertTrue(await(dao.observeAll()).isEmpty());
         assertEquals(0, (int) await(dao.observeUnreadCount()));
+    }
+
+    @Test public void deleteByIdsRemovesOnlySelectionAndUpdatesUnreadBadge() throws Exception {
+        long first = dao.insertAndTrim(notification(1));
+        long second = dao.insertAndTrim(notification(2));
+        long third = dao.insertAndTrim(notification(3));
+        dao.markRead(second);
+
+        assertEquals(2, dao.deleteByIds(Arrays.asList(first, second)));
+        List<NotificationBonus> remaining = await(dao.observeAll());
+        assertEquals(1, remaining.size());
+        assertEquals(third, remaining.get(0).id);
+        assertEquals(1, (int) await(dao.observeUnreadCount()));
     }
 
     @Test public void readStateSurvivesDatabaseRestart() throws Exception {

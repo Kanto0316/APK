@@ -1,6 +1,8 @@
 package com.netk.mvolatrack.repository;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -140,6 +142,26 @@ public final class BonusNotificationRepository {
                 dao.markRead(notificationId);
             } catch (Throwable error) {
                 logError("markRead", error);
+            }
+        });
+    }
+
+    /** Deletes only the explicitly selected inbox entries, without changing read state. */
+    public void deleteNotifications(List<Long> notificationIds, Runnable onComplete) {
+        if (dao == null || notificationIds == null || notificationIds.isEmpty()) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+        List<Long> ids = new java.util.ArrayList<>(notificationIds);
+        EXECUTOR.execute(() -> {
+            try {
+                dao.deleteByIds(ids);
+            } catch (Throwable error) {
+                logError("deleteNotifications", error);
+            } finally {
+                if (onComplete != null) {
+                    new Handler(Looper.getMainLooper()).post(onComplete);
+                }
             }
         });
     }
