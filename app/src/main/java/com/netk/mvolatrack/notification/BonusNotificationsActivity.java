@@ -1,6 +1,7 @@
 package com.netk.mvolatrack.notification;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,6 +27,7 @@ import java.util.Locale;
 
 /** Material-style persistent inbox for bonus verification anomalies. */
 public final class BonusNotificationsActivity extends AppCompatActivity {
+    private static final String TAG = "BonusNotification";
     private final Adapter adapter = new Adapter();
     private BonusNotificationRepository repository;
 
@@ -41,15 +43,23 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
             repository = new BonusNotificationRepository(this);
             LiveData<List<NotificationBonus>> notifications = repository.observeAll();
             if (notifications != null) notifications.observe(this, this::showNotifications);
-        } catch (RuntimeException ignored) {
-            // A damaged or temporarily unavailable database must not make the inbox crash.
-            showNotifications(Collections.emptyList());
+        } catch (Exception error) {
+            showInitializationError(error);
+        } catch (Throwable error) {
+            showInitializationError(error);
         }
     }
 
     @Override protected void onResume() {
         super.onResume();
-        if (repository != null) repository.markAllRead();
+        if (repository != null) {
+            try {
+                repository.markAllRead();
+            } catch (Throwable error) {
+                Log.e(TAG, "markAllRead failed (" + error.getClass().getName() + "): "
+                        + error.getMessage(), error);
+            }
+        }
     }
 
     private void showNotifications(List<NotificationBonus> values) {
@@ -57,6 +67,13 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         adapter.submit(safeValues);
         findViewById(R.id.notificationsEmpty).setVisibility(
                 adapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    private void showInitializationError(Throwable error) {
+        Log.e(TAG, "inbox initialization failed (" + error.getClass().getName() + "): "
+                + error.getMessage(), error);
+        repository = null;
+        showNotifications(Collections.emptyList());
     }
 
     private void showDetail(NotificationBonus item) {
@@ -74,7 +91,7 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
 
     private static String safe(String value) { return value == null || value.trim().isEmpty() ? "-" : value; }
     private static String explanation(String value) {
-        return value == null || value.trim().isEmpty() ? "Aucune information disponible" : value;
+        return value == null || value.trim().isEmpty() ? "Aucune information" : value;
     }
     private static String formatDate(long value) {
         return DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT,
@@ -84,7 +101,7 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         if (VerificationStatus.BONUS_SUPERIEUR.name().equals(type)) return "Bonus supérieur";
         if (VerificationStatus.BONUS_NON_CREDITE.name().equals(type)) return "Bonus non crédité";
         if (VerificationStatus.BONUS_PARTIEL.name().equals(type)) return "Bonus partiel";
-        return "Bonus non vérifiable";
+        return "Non vérifiable";
     }
     private static int icon(String type) {
         if (VerificationStatus.BONUS_SUPERIEUR.name().equals(type))
