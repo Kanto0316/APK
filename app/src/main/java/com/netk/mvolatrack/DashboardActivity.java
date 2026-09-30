@@ -87,7 +87,7 @@ public final class DashboardActivity extends AppCompatActivity {
                 "Total Dépôt", "Total Bonus"}, new String[]{formatAriary(data.creditTotal),
                 formatAriary(data.withdrawalTotal), formatAriary(data.depositTotal),
                 formatAriary(data.bonusTotal)});
-        addSection("Analyse bonus", new String[]{"Bonus vérifiés", "Bonus non vérifiables",
+        addSection("Résumé bonus", new String[]{"Bonus vérifiés", "Bonus non vérifiables",
                 "Bonus non reçus", "Bonus supérieur"}, new String[]{
                 String.valueOf(data.verifiedBonusCount), String.valueOf(data.unverifiableBonusCount),
                 String.valueOf(data.missingBonusCount), String.valueOf(data.superiorBonusCount)});
@@ -95,8 +95,9 @@ public final class DashboardActivity extends AppCompatActivity {
                 "Nombre de transactions"}, new String[]{String.valueOf(data.activeClientCount),
                 data.mostActiveClient, String.valueOf(data.mostActiveClientTransactions)});
         addSection("Alertes", new String[]{"Notifications importantes",
-                "Bonus nécessitant une vérification", "État licence"}, new String[]{
-                String.valueOf(unreadNotifications), String.valueOf(data.bonusAttentionCount),
+                "Bonus nécessitant une vérification"}, new String[]{
+                String.valueOf(unreadNotifications), String.valueOf(data.bonusAttentionCount)});
+        addSection("Licence", new String[]{"État licence"}, new String[]{
                 ActivationStore.hasValidActivation(this) ? "Active" : "À vérifier"});
 
         latestTransactions.removeAllViews();
@@ -124,7 +125,7 @@ public final class DashboardActivity extends AppCompatActivity {
     private void addSection(String title, String[] labels, String[] values) {
         TextView heading = label(title, true);
         heading.setTextSize(18);
-        heading.setPadding(0, dp(6), 0, dp(10));
+        heading.setPadding(0, dp(14), 0, dp(12));
         analysisCards.addView(heading);
         for (int index = 0; index < labels.length; index += 2) {
             View second = index + 1 < labels.length ? card(labels[index + 1], values[index + 1], "")
@@ -138,8 +139,9 @@ public final class DashboardActivity extends AppCompatActivity {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(android.view.Gravity.CENTER_VERTICAL);
         card.setPadding(dp(14), dp(14), dp(14), dp(14));
-        card.setBackgroundResource(R.drawable.bg_statistics_card);
-        card.setElevation(dp(1));
+        card.setBackgroundResource(R.drawable.bg_dashboard_card);
+        card.setElevation(dp(2));
+        card.setMinimumHeight(dp(116));
         card.addView(label(title, true));
         TextView primary = label(value, true);
         primary.setTextSize(22);
@@ -164,13 +166,13 @@ public final class DashboardActivity extends AppCompatActivity {
     private void addPair(LinearLayout parent, View first, View second) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(0, 0, 0, dp(10));
+        row.setPadding(0, 0, 0, dp(12));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1);
         first.setLayoutParams(params);
         row.addView(first);
         View gap = new View(this);
-        row.addView(gap, new LinearLayout.LayoutParams(dp(10), 1));
+        row.addView(gap, new LinearLayout.LayoutParams(dp(12), 1));
         second.setLayoutParams(new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         row.addView(second);
