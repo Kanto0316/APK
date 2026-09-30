@@ -1308,7 +1308,8 @@ public class MainActivity extends AppCompatActivity {
                 ? Collections.emptyList() : preparedClients;
         String query = clientSearchInput == null ? "" : clientSearchInput.getText().toString();
         List<ClientMessageGrouper.ClientGroup> visibleClients = ClientMessageGrouper.filter(
-                allClients, query, selectedClientFilter);
+                allClients, query, selectedClientFilter, System.currentTimeMillis(),
+                java.util.TimeZone.getDefault());
         clientAdapter.submitList(visibleClients);
         int clientCount = visibleClients.size();
         String clientCountLabel = clientCount + (clientCount > 1 ? " clients" : " client");

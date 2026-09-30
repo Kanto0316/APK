@@ -4,11 +4,12 @@ import com.netk.mvolatrack.database.SmsMessage;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 
 /** Builds the client presentation directly from the SMS source of truth. */
 final class ClientMessageGrouper {
@@ -47,27 +48,37 @@ final class ClientMessageGrouper {
 
     /** Filters the derived presentation without changing its newest-message-first order. */
     static List<ClientGroup> filter(List<ClientGroup> clients, String query, Filter filter) {
-        String normalizedQuery = normalizeForSearch(query);
+        return filter(clients, query, filter, System.currentTimeMillis(), TimeZone.getDefault());
+    }
+
+    /** Date-aware entry point: a client is new only on its first transaction's local day. */
+    static List<ClientGroup> filter(List<ClientGroup> clients, String query, Filter filter,
+                                    long nowMillis, TimeZone timeZone) {
+        String normalizedQuery = normalizeNumber(query);
+        boolean emptyQuery = query == null || query.trim().isEmpty();
         List<ClientGroup> result = new ArrayList<>();
         for (ClientGroup client : clients) {
-            int messageCount = client.messages.size();
+            boolean firstSeenToday = isSameLocalDay(client.firstAppearanceDate(), nowMillis,
+                    timeZone);
             boolean matchesFilter = filter == Filter.ALL
-                    || (filter == Filter.NEW && messageCount == 1)
-                    || (filter == Filter.EXISTING && messageCount >= 2);
-            if (matchesFilter && matchesSearch(client.sender, normalizedQuery)) {
+                    || (filter == Filter.NEW && firstSeenToday)
+                    || (filter == Filter.EXISTING && !firstSeenToday);
+            if (matchesFilter && matchesSearch(client.sender, normalizedQuery, emptyQuery)) {
                 result.add(client);
             }
         }
         return result;
     }
 
-    private static String normalizeForSearch(String value) {
-        return value == null ? "" : value.replaceAll("[^\\p{L}\\p{Nd}]", "")
-                .toLowerCase(Locale.ROOT);
+    private static String normalizeNumber(String value) {
+        return SmsDateFilter.normalizeNumber(value);
     }
 
-    private static boolean matchesSearch(String sender, String normalizedQuery) {
-        String normalizedSender = normalizeForSearch(sender);
+    private static boolean matchesSearch(String sender, String normalizedQuery,
+                                         boolean emptyQuery) {
+        if (emptyQuery) return true;
+        if (normalizedQuery.isEmpty()) return false;
+        String normalizedSender = normalizeNumber(sender);
         if (normalizedSender.contains(normalizedQuery)) return true;
         if (!isDigitsOnly(normalizedSender) || !isDigitsOnly(normalizedQuery)) return false;
 
@@ -90,6 +101,16 @@ final class ClientMessageGrouper {
         return value.length() > 1 && value.startsWith("0") ? value.substring(1) : value;
     }
 
+    private static boolean isSameLocalDay(long leftMillis, long rightMillis, TimeZone timeZone) {
+        Calendar left = Calendar.getInstance(timeZone);
+        left.setTimeInMillis(leftMillis);
+        Calendar right = Calendar.getInstance(timeZone);
+        right.setTimeInMillis(rightMillis);
+        return left.get(Calendar.ERA) == right.get(Calendar.ERA)
+                && left.get(Calendar.YEAR) == right.get(Calendar.YEAR)
+                && left.get(Calendar.DAY_OF_YEAR) == right.get(Calendar.DAY_OF_YEAR);
+    }
+
     static final class ClientGroup {
         final String sender;
         final List<SmsMessage> messages;
@@ -101,6 +122,17 @@ final class ClientMessageGrouper {
 
         long latestDate() {
             return messages.isEmpty() ? 0L : messages.get(0).receivedDate;
+        }
+
+        long firstAppearanceDate() {
+            long earliest = Long.MAX_VALUE;
+            for (SmsMessage message : messages) {
+                MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
+                        message.messageBody, message.receivedDate);
+                long transactionDate = parsed == null ? message.receivedDate : parsed.transactionAt;
+                earliest = Math.min(earliest, transactionDate);
+            }
+            return earliest == Long.MAX_VALUE ? 0L : earliest;
         }
     }
 }

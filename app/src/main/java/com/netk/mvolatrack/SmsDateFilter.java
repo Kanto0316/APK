@@ -3,12 +3,10 @@ package com.netk.mvolatrack;
 import com.netk.mvolatrack.database.SmsMessage;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
 
-import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.TimeZone;
 
 /** Pure display filtering for the messages table; stored messages are never mutated. */
@@ -106,7 +104,6 @@ final class SmsDateFilter {
         List<DisplayMessage> result = new ArrayList<>();
         int total = source.size();
         String normalizedNumberQuery = normalizeNumber(query);
-        String normalizedTextQuery = normalizeText(query);
         boolean emptyQuery = query == null || query.trim().isEmpty();
         for (int index = 0; index < total; index++) {
             SmsMessage message = source.get(index);
@@ -125,13 +122,8 @@ final class SmsDateFilter {
             boolean numberMatches = !normalizedNumberQuery.isEmpty()
                     && normalizeNumber(SmsDisplayFormatter.sender(searchableNumber))
                     .contains(normalizedNumberQuery);
-            String searchableName = parsed.clientName;
-            boolean nameMatches = !normalizedTextQuery.isEmpty() && searchableName != null
-                    && !searchableName.trim().isEmpty()
-                    && !"-".equals(searchableName.trim())
-                    && normalizeText(searchableName).contains(normalizedTextQuery);
             if (effectiveDate >= start && effectiveDate < end && typeMatches
-                    && (emptyQuery || numberMatches || nameMatches)) {
+                    && (emptyQuery || numberMatches)) {
                 result.add(new DisplayMessage(message, total - index));
             }
         }
@@ -156,20 +148,6 @@ final class SmsDateFilter {
             if (Character.isDigit(character)) normalized.append(character);
         }
         return normalized.toString();
-    }
-
-    /** Provides case- and accent-insensitive matching without searching the raw SMS body. */
-    static String normalizeText(String value) {
-        if (value == null || value.isEmpty()) return "";
-        String decomposed = Normalizer.normalize(value, Normalizer.Form.NFD);
-        StringBuilder normalized = new StringBuilder(decomposed.length());
-        for (int index = 0; index < decomposed.length(); index++) {
-            char character = decomposed.charAt(index);
-            if (Character.getType(character) != Character.NON_SPACING_MARK) {
-                normalized.append(character);
-            }
-        }
-        return normalized.toString().toLowerCase(Locale.ROOT).trim();
     }
 
     private static void startOfDay(Calendar calendar) {
