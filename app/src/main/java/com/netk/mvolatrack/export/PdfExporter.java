@@ -31,8 +31,16 @@ public final class PdfExporter {
 
     public static void write(OutputStream output, List<ExportTransaction> rows, String period,
                              String type, long exportedAt) throws IOException {
+        write(output, rows, period, type, exportedAt, ExportProgressListener.NONE);
+    }
+
+    public static void write(OutputStream output, List<ExportTransaction> rows, String period,
+                             String type, long exportedAt,
+                             ExportProgressListener progress) throws IOException {
         if (output == null) throw new IOException("Flux PDF indisponible");
         List<ExportTransaction> safeRows = rows == null ? Collections.emptyList() : rows;
+        ExportProgressListener safeProgress = progress == null
+                ? ExportProgressListener.NONE : progress;
         PdfDocument document = new PdfDocument();
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         int index = 0;
@@ -52,6 +60,7 @@ public final class PdfExporter {
                     if (row != null) drawRow(canvas, paint, y, row);
                     y += ROW_HEIGHT;
                     index++;
+                    safeProgress.onProgress(index, safeRows.size());
                 }
                 document.finishPage(page);
                 pageNumber++;

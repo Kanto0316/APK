@@ -21,8 +21,16 @@ public final class XlsxExporter {
 
     public static void write(OutputStream output, List<ExportTransaction> rows, String period,
                              String type, long exportedAt) throws IOException {
+        write(output, rows, period, type, exportedAt, ExportProgressListener.NONE);
+    }
+
+    public static void write(OutputStream output, List<ExportTransaction> rows, String period,
+                             String type, long exportedAt,
+                             ExportProgressListener progress) throws IOException {
         if (output == null) throw new IOException("Flux Excel indisponible");
         List<ExportTransaction> safeRows = rows == null ? Collections.emptyList() : rows;
+        ExportProgressListener safeProgress = progress == null
+                ? ExportProgressListener.NONE : progress;
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
             entry(zip, "[Content_Types].xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                     + "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
@@ -38,7 +46,7 @@ public final class XlsxExporter {
             entry(zip, "xl/_rels/workbook.xml.rels", "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                     + "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/><Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/></Relationships>");
             entry(zip, "xl/styles.xml", styles());
-            entry(zip, "xl/worksheets/sheet1.xml", sheet(safeRows, period, type, exportedAt));
+            sheet(zip, safeRows, period, type, exportedAt, safeProgress);
         }
     }
 
@@ -51,8 +59,10 @@ public final class XlsxExporter {
                 + "<cellXfs count=\"3\"><xf xfId=\"0\"/><xf xfId=\"0\" fontId=\"1\" applyFont=\"1\"/><xf xfId=\"0\" numFmtId=\"164\" applyNumberFormat=\"1\"/></cellXfs></styleSheet>";
     }
 
-    private static String sheet(List<ExportTransaction> rows, String period, String type,
-                                long exportedAt) {
+    private static void sheet(ZipOutputStream zip, List<ExportTransaction> rows, String period,
+                              String type, long exportedAt,
+                              ExportProgressListener progress) throws IOException {
+        zip.putNextEntry(new ZipEntry("xl/worksheets/sheet1.xml"));
         StringBuilder xml = new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?><worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><cols>");
         double[] widths = {22, 20, 13, 18, 15, 15, 15, 15, 24};
         for (int i = 0; i < widths.length; i++) xml.append("<col min=\"").append(i + 1)
@@ -68,9 +78,16 @@ public final class XlsxExporter {
         xml.append("<row r=\"7\">");
         for (int i = 0; i < HEADERS.length; i++) textCell(xml, cell(i, 7), HEADERS[i], 1);
         xml.append("</row>");
+        writeChunk(zip, xml);
+        xml.setLength(0);
         int rowNumber = 8;
-        for (ExportTransaction row : rows) {
-            if (row == null) continue;
+        for (int index = 0; index < rows.size(); index++) {
+            ExportTransaction row = rows.get(index);
+            if (row == null) {
+                progress.onProgress(index + 1, rows.size());
+                continue;
+            }
+            xml.setLength(0);
             xml.append("<row r=\"").append(rowNumber).append("\">");
             textCell(xml, cell(0, rowNumber), row.reference, 0);
             if (row.dateTime > 0) numberCell(xml, cell(1, rowNumber),
@@ -84,10 +101,15 @@ public final class XlsxExporter {
             nullableNumber(xml, cell(7, rowNumber), row.balance);
             textCell(xml, cell(8, rowNumber), row.verificationStatus, 0);
             xml.append("</row>"); rowNumber++;
+            writeChunk(zip, xml);
+            progress.onProgress(index + 1, rows.size());
         }
         int lastRow = Math.max(7, rowNumber - 1);
-        return xml.append("</sheetData><autoFilter ref=\"A7:I").append(lastRow)
-                .append("\"/></worksheet>").toString();
+        xml.setLength(0);
+        xml.append("</sheetData><autoFilter ref=\"A7:I").append(lastRow)
+                .append("\"/></worksheet>");
+        writeChunk(zip, xml);
+        zip.closeEntry();
     }
 
     private static double excelDate(long millis) { return millis / 86400000d + 25569d; }
@@ -129,5 +151,8 @@ public final class XlsxExporter {
     }
     private static void entry(ZipOutputStream zip, String name, String value) throws IOException {
         zip.putNextEntry(new ZipEntry(name)); zip.write(value.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
+    }
+    private static void writeChunk(ZipOutputStream zip, StringBuilder value) throws IOException {
+        zip.write(value.toString().getBytes(StandardCharsets.UTF_8));
     }
 }
