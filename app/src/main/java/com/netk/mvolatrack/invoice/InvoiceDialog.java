@@ -2,12 +2,10 @@ package com.netk.mvolatrack.invoice;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
-import android.print.PrintManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -163,13 +161,6 @@ public final class InvoiceDialog {
 
     private static void print(Activity activity, SavedInvoice state) {
         if (state.uri == null) return;
-        PrintManager printManager = (PrintManager) activity.getSystemService(Context.PRINT_SERVICE);
-        if (!PrintHelper.systemSupportsPrint() || printManager == null
-                || printManager.getPrintServices(PrintManager.ENABLED_SERVICES).isEmpty()) {
-            Toast.makeText(activity, "L’impression n’est pas prise en charge sur cet appareil.",
-                    Toast.LENGTH_LONG).show();
-            return;
-        }
         try {
             PrintHelper printer = new PrintHelper(activity);
             printer.setScaleMode(PrintHelper.SCALE_MODE_FIT);
