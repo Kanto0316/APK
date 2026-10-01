@@ -17,7 +17,7 @@ public final class DailySummaryTemplate {
             + "Bonus enregistrés : {bonus}";
     public static final String[] VARIABLES = {"date", "transactions", "clients", "depots",
             "retraits", "credits", "montant_depots", "montant_retraits",
-            "montant_credits", "bonus"};
+            "montant_credits", "bonus", "solde"};
     private static final Set<String> ALLOWED = new HashSet<>(Arrays.asList(VARIABLES));
     private static final Pattern TOKEN = Pattern.compile("\\{([^{}]+)\\}");
     private DailySummaryTemplate() {}
@@ -49,6 +49,7 @@ public final class DailySummaryTemplate {
         out = replace(out, "montant_retraits", money(s.withdrawalAmount));
         out = replace(out, "montant_credits", money(s.creditAmount));
         out = replace(out, "bonus", money(s.bonus) + (s.bonusPartial ? " (partiel)" : ""));
+        out = replace(out, "solde", s.balance == null ? "indisponible" : money(s.balance));
         return out;
     }
 

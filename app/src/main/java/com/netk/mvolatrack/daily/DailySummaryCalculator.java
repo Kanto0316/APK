@@ -37,6 +37,7 @@ public final class DailySummaryCalculator {
     public static DailySummary calculate(List<SmsMessage> messages, long dayStart) {
         DailySummary out = new DailySummary(dayStart);
         long end = nextDay(dayStart);
+        long latestBalanceAt = Long.MIN_VALUE;
         Set<String> clients = new HashSet<>(), seen = new HashSet<>();
         if (messages == null) return out;
         for (SmsMessage sms : messages) {
@@ -44,6 +45,10 @@ public final class DailySummaryCalculator {
             MvolaMessageParser.ParsedTransaction tx =
                     MvolaMessageParser.parse(sms.messageBody, sms.receivedDate, BUSINESS_ZONE);
             if (tx == null || tx.transactionAt < dayStart || tx.transactionAt >= end) continue;
+            if (tx.balance != null && tx.transactionAt > latestBalanceAt) {
+                out.balance = tx.balance;
+                latestBalanceAt = tx.transactionAt;
+            }
             out.transactions++;
             String number = ClientNumberNormalizer.normalize(tx.clientNumber);
             if (number != null) clients.add(number);
