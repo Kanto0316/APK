@@ -1,12 +1,18 @@
 package com.netk.mvolatrack.security;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.netk.mvolatrack.R;
 import java.util.Arrays;
 
@@ -20,7 +26,11 @@ public final class SecurityActivity extends AppCompatActivity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        }
         setContentView(R.layout.activity_security);
+        applyHeaderInsets(findViewById(R.id.securityHeader));
         store = new SecurityStore(this);
         lockSwitch = findViewById(R.id.appLockSwitch);
         biometricSwitch = findViewById(R.id.biometricSwitch);
@@ -41,6 +51,26 @@ public final class SecurityActivity extends AppCompatActivity {
         changePin.setOnClickListener(v -> authenticate(this::createPin));
         autoLock.setOnClickListener(v -> chooseTimeout());
         render();
+    }
+
+    private static void applyHeaderInsets(View header) {
+        final int initialHeight = header.getLayoutParams().height;
+        final int initialLeft = header.getPaddingLeft();
+        final int initialTop = header.getPaddingTop();
+        final int initialRight = header.getPaddingRight();
+        final int initialBottom = header.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(header, (view, windowInsets) -> {
+            Insets topInsets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.statusBars()
+                            | WindowInsetsCompat.Type.displayCutout());
+            ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+            layoutParams.height = initialHeight + topInsets.top;
+            view.setLayoutParams(layoutParams);
+            view.setPadding(initialLeft + topInsets.left, initialTop + topInsets.top,
+                    initialRight + topInsets.right, initialBottom);
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(header);
     }
 
     private void enableLock() {

@@ -2,12 +2,19 @@ package com.netk.mvolatrack;
 
 import android.content.ActivityNotFoundException;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -31,10 +38,34 @@ public final class SettingsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        }
         setContentView(R.layout.activity_settings);
+        applyHeaderInsets(findViewById(R.id.settingsHeader));
         findViewById(R.id.settingsBack).setOnClickListener(view -> finish());
         findViewById(R.id.exportDiagnosticReport).setOnClickListener(view ->
                 chooseDiagnosticDestination());
+    }
+
+    private static void applyHeaderInsets(View header) {
+        final int initialHeight = header.getLayoutParams().height;
+        final int initialLeft = header.getPaddingLeft();
+        final int initialTop = header.getPaddingTop();
+        final int initialRight = header.getPaddingRight();
+        final int initialBottom = header.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(header, (view, windowInsets) -> {
+            Insets topInsets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.statusBars()
+                            | WindowInsetsCompat.Type.displayCutout());
+            ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+            layoutParams.height = initialHeight + topInsets.top;
+            view.setLayoutParams(layoutParams);
+            view.setPadding(initialLeft + topInsets.left, initialTop + topInsets.top,
+                    initialRight + topInsets.right, initialBottom);
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(header);
     }
 
     private void chooseDiagnosticDestination() {
