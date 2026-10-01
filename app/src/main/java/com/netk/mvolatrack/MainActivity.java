@@ -2,8 +2,6 @@ package com.netk.mvolatrack;
 
 import android.Manifest;
 import android.app.DatePickerDialog;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -75,6 +73,7 @@ import com.netk.mvolatrack.export.ExportTransaction;
 import com.netk.mvolatrack.export.ExportProgressListener;
 import com.netk.mvolatrack.export.PdfExporter;
 import com.netk.mvolatrack.export.XlsxExporter;
+import com.netk.mvolatrack.invoice.InvoiceDialog;
 import com.netk.mvolatrack.sms.ClientNumberNormalizer;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
 import com.netk.mvolatrack.security.AppLockManager;
@@ -570,7 +569,7 @@ public class MainActivity extends AppCompatActivity {
         }
         transactionTable = findViewById(R.id.transactionTable);
         smsTableHeader = findViewById(R.id.smsTableHeader);
-        adapter = new SmsAdapter(tableZoom);
+        adapter = new SmsAdapter(tableZoom, this::showInvoice);
         list.setLayoutManager(new LinearLayoutManager(this));
         list.setAdapter(adapter);
         ZoomableTableScrollView tableScroll = findViewById(R.id.transactionTableScroll);
@@ -2379,7 +2378,7 @@ public class MainActivity extends AppCompatActivity {
     private void ensureRecyclerAdapters() {
         if (adapter == null) {
             RecyclerView list = findViewById(R.id.transactionsList);
-            adapter = new SmsAdapter(tableZoom);
+            adapter = new SmsAdapter(tableZoom, this::showInvoice);
             list.setLayoutManager(new LinearLayoutManager(this));
             list.setAdapter(adapter);
             Log.w(TAG, "Messages adapter recreated after lifecycle restoration");
@@ -3042,14 +3041,30 @@ public class MainActivity extends AppCompatActivity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
+    private void showInvoice(SmsDateFilter.DisplayMessage displayed) {
+        MvolaMessageParser.ParsedTransaction transaction = MvolaMessageParser.parse(
+                displayed.message.messageBody, displayed.message.receivedDate);
+        if (transaction == null) {
+            Toast.makeText(this, "Transaction indisponible", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new InvoiceDialog().show(this, transaction);
+    }
+
+    private interface InvoiceClickListener {
+        void onInvoiceClick(SmsDateFilter.DisplayMessage displayed);
+    }
+
     private static class SmsAdapter extends RecyclerView.Adapter<SmsViewHolder> {
         private List<SmsDateFilter.DisplayMessage> items = new ArrayList<>();
         private Map<String, TransactionBalanceVerification> verifications =
                 Collections.emptyMap();
         private float zoom;
+        private final InvoiceClickListener invoiceClickListener;
 
-        SmsAdapter(float zoom) {
+        SmsAdapter(float zoom, InvoiceClickListener invoiceClickListener) {
             this.zoom = zoom;
+            this.invoiceClickListener = invoiceClickListener;
         }
 
         void setZoom(float zoom) {
@@ -3072,7 +3087,7 @@ public class MainActivity extends AppCompatActivity {
         public SmsViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
             View view = android.view.LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.item_transaction, parent, false);
-            return new SmsViewHolder(view);
+            return new SmsViewHolder(view, invoiceClickListener);
         }
 
         @Override
@@ -3080,7 +3095,7 @@ public class MainActivity extends AppCompatActivity {
             SmsDateFilter.DisplayMessage displayed = items.get(position);
             SmsTableRow row = SmsTableRow.from(displayed,
                     verifications.get(displayed.message.uniqueKey));
-            holder.bindReference(row.reference);
+            holder.bindReference(row.reference, displayed);
             holder.dateTime.setText(row.dateTime);
             bindTypeBadge(holder.type, row.type);
             holder.sender.setText(SmsTableRow.display(row.numero));
@@ -3186,9 +3201,12 @@ public class MainActivity extends AppCompatActivity {
         final TextView balance;
         final View status;
         private String boundReference;
+        private SmsDateFilter.DisplayMessage boundMessage;
+        private final InvoiceClickListener invoiceClickListener;
 
-        SmsViewHolder(View itemView) {
+        SmsViewHolder(View itemView, InvoiceClickListener invoiceClickListener) {
             super(itemView);
+            this.invoiceClickListener = invoiceClickListener;
             reference = itemView.findViewById(R.id.itemReference);
             dateTime = itemView.findViewById(R.id.itemDateTime);
             type = itemView.findViewById(R.id.itemType);
@@ -3199,28 +3217,23 @@ public class MainActivity extends AppCompatActivity {
             fees = itemView.findViewById(R.id.itemFees);
             balance = itemView.findViewById(R.id.itemBalance);
             status = itemView.findViewById(R.id.itemStatus);
-            reference.setOnClickListener(view -> copyReference());
+            reference.setOnClickListener(view -> openInvoice());
         }
 
-        void bindReference(String value) {
+        void bindReference(String value, SmsDateFilter.DisplayMessage message) {
             boundReference = value;
+            boundMessage = message;
             reference.setText(SmsTableRow.display(value));
         }
 
-        private void copyReference() {
+        private void openInvoice() {
             String value = boundReference;
             if (value == null || value.trim().isEmpty()) {
                 Toast.makeText(reference.getContext(), R.string.reference_unavailable,
                         Toast.LENGTH_SHORT).show();
                 return;
             }
-            ClipboardManager clipboard = (ClipboardManager) reference.getContext()
-                    .getSystemService(Context.CLIPBOARD_SERVICE);
-            if (clipboard != null) {
-                clipboard.setPrimaryClip(ClipData.newPlainText("Référence", value));
-                Toast.makeText(reference.getContext(), R.string.reference_copied,
-                        Toast.LENGTH_SHORT).show();
-            }
+            if (boundMessage != null) invoiceClickListener.onInvoiceClick(boundMessage);
         }
 
         void applyZoom(float zoom) {
