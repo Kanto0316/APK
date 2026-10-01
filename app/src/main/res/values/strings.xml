@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="pin_length_error">Le code PIN doit contenir 4 à 6 chiffres.</string>
     <string name="sms_status_header">Statut</string>
     <string name="reference_copied">Référence copiée</string>
     <string name="reference_unavailable">Référence indisponible</string>

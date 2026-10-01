@@ -33,6 +33,11 @@ public final class LockActivity extends AppCompatActivity {
     private void verifyPin() {
         char[] candidate = pin.getText().toString().toCharArray();
         pin.getText().clear();
+        if (candidate.length < 4 || candidate.length > 6) {
+            java.util.Arrays.fill(candidate, '\0');
+            error.setText(com.netk.mvolatrack.R.string.pin_length_error);
+            return;
+        }
         if (store.verifyPin(candidate)) unlock(); else error.setText("Code PIN incorrect");
     }
     private void unlock() { AppLockManager.markUnlocked(); finish(); overridePendingTransition(0, 0); }

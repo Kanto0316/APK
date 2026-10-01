@@ -31,6 +31,10 @@ public final class PinHasher {
     }
 
     public static boolean verify(char[] pin, byte[] salt, byte[] expected, int iterations) {
+        if (pin.length == 0) {
+            java.util.Arrays.fill(pin, '\0');
+            return false;
+        }
         return MessageDigest.isEqual(hash(pin, salt, iterations), expected);
     }
 }

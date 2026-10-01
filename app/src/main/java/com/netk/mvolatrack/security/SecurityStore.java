@@ -29,6 +29,10 @@ public final class SecurityStore {
                 .putInt("pin_iterations", PinHasher.ITERATIONS).apply();
     }
     public boolean verifyPin(char[] pin) {
+        if (pin.length == 0) {
+            java.util.Arrays.fill(pin, '\0');
+            return false;
+        }
         String salt = preferences.getString("pin_salt", null);
         String hash = preferences.getString("pin_hash", null);
         if (salt == null || hash == null) {
