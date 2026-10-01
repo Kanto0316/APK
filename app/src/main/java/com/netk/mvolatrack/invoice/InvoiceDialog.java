@@ -2,11 +2,12 @@ package com.netk.mvolatrack.invoice;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.content.Intent;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
+import android.print.PrintManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +17,8 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.print.PrintHelper;
 
 import com.netk.mvolatrack.R;
 import com.netk.mvolatrack.database.NotificationType;
@@ -43,7 +46,7 @@ public final class InvoiceDialog {
         TextView amount = content.findViewById(R.id.invoiceAmount);
         LinearLayout rows = content.findViewById(R.id.invoiceRows);
         Button close = content.findViewById(R.id.invoiceClose);
-        Button share = content.findViewById(R.id.invoiceShare);
+        Button print = content.findViewById(R.id.invoicePrint);
         Button download = content.findViewById(R.id.invoiceDownload);
         InvoiceNumberStore store = new InvoiceNumberStore(activity);
         SavedInvoice savedInvoice = new SavedInvoice();
@@ -64,13 +67,13 @@ public final class InvoiceDialog {
         dialog.setContentView(content);
         dialog.setCanceledOnTouchOutside(false);
         close.setOnClickListener(v -> dialog.dismiss());
-        share.setOnClickListener(v -> saveOrReuse(activity, transaction, ticket, number, store,
-                savedInvoice, download, share, close, false));
+        print.setOnClickListener(v -> saveOrReuse(activity, transaction, ticket, number, store,
+                savedInvoice, download, print, close, false));
         download.setOnClickListener(v -> saveOrReuse(activity, transaction, ticket, number, store,
-                savedInvoice, download, share, close, true));
+                savedInvoice, download, print, close, true));
         dialog.setOnDismissListener(ignored -> {
             close.setEnabled(true);
-            share.setEnabled(true);
+            print.setEnabled(true);
             download.setEnabled(true);
         });
         dialog.show();
@@ -90,16 +93,16 @@ public final class InvoiceDialog {
 
     private static void saveOrReuse(Activity activity,
             MvolaMessageParser.ParsedTransaction transaction, View ticket, TextView number,
-            InvoiceNumberStore store, SavedInvoice state, Button download, Button share,
+            InvoiceNumberStore store, SavedInvoice state, Button download, Button print,
             Button close, boolean isDownload) {
         if (state.uri != null) {
             if (isDownload) announceDownload(activity, transaction, state);
-            else share(activity, state.uri);
+            else print(activity, state);
             return;
         }
         if (!EXPORTING.compareAndSet(false, true)) return;
         download.setEnabled(false);
-        share.setEnabled(false);
+        print.setEnabled(false);
         close.setEnabled(false);
         long assigned = store.peek();
         number.setText(InvoiceNumberStore.format(assigned));
@@ -107,7 +110,7 @@ public final class InvoiceDialog {
         try {
             bitmap = InvoiceImageWriter.render(ticket);
         } catch (RuntimeException error) {
-            finish(activity, download, share, close,
+            finish(activity, download, print, close,
                     "Impossible de générer l’image de la facture.");
             return;
         }
@@ -134,10 +137,10 @@ public final class InvoiceDialog {
             Uri result = saved;
             String failure = errorMessage;
             activity.runOnUiThread(() -> {
-                finish(activity, download, share, close, failure);
+                finish(activity, download, print, close, failure);
                 if (result != null && !activity.isFinishing() && !activity.isDestroyed()) {
                     if (isDownload) announceDownload(activity, transaction, state);
-                    else share(activity, result);
+                    else print(activity, state);
                 }
             });
         });
@@ -158,15 +161,23 @@ public final class InvoiceDialog {
                 Toast.LENGTH_SHORT).show();
     }
 
-    private static void share(Activity activity, Uri uri) {
-        Intent intent = new Intent(Intent.ACTION_SEND);
-        intent.setType("image/png");
-        intent.putExtra(Intent.EXTRA_STREAM, uri);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    private static void print(Activity activity, SavedInvoice state) {
+        if (state.uri == null) return;
+        PrintManager printManager = (PrintManager) activity.getSystemService(Context.PRINT_SERVICE);
+        if (!PrintHelper.systemSupportsPrint() || printManager == null
+                || printManager.getPrintServices(PrintManager.ENABLED_SERVICES).isEmpty()) {
+            Toast.makeText(activity, "L’impression n’est pas prise en charge sur cet appareil.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
         try {
-            activity.startActivity(Intent.createChooser(intent, "Partager la facture"));
-        } catch (android.content.ActivityNotFoundException error) {
-            Toast.makeText(activity, "Aucune application disponible pour partager l’image",
+            PrintHelper printer = new PrintHelper(activity);
+            printer.setScaleMode(PrintHelper.SCALE_MODE_FIT);
+            printer.setColorMode(PrintHelper.COLOR_MODE_COLOR);
+            printer.printBitmap("Facture MVolaCash n°" + InvoiceNumberStore.format(state.number),
+                    state.uri);
+        } catch (java.io.FileNotFoundException | RuntimeException error) {
+            Toast.makeText(activity, "Impossible d’ouvrir l’impression sur cet appareil.",
                     Toast.LENGTH_LONG).show();
         }
     }
@@ -182,12 +193,12 @@ public final class InvoiceDialog {
         boolean notificationCreated;
     }
 
-    private static void finish(Activity activity, Button download, Button share, Button close,
+    private static void finish(Activity activity, Button download, Button print, Button close,
                                String errorMessage) {
         EXPORTING.set(false);
         if (!activity.isFinishing() && !activity.isDestroyed()) {
             download.setEnabled(true);
-            share.setEnabled(true);
+            print.setEnabled(true);
             close.setEnabled(true);
             if (errorMessage != null)
                 Toast.makeText(activity, errorMessage, Toast.LENGTH_LONG).show();

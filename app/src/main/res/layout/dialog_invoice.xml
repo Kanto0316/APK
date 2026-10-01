@@ -52,8 +52,8 @@
         </com.netk.mvolatrack.invoice.PerforatedTicketLayout>
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:orientation="horizontal">
-            <Button android:id="@+id/invoiceShare" android:layout_width="0dp"
-                android:layout_height="52dp" android:layout_weight="1" android:text="Partager" />
+            <Button android:id="@+id/invoicePrint" android:layout_width="0dp"
+                android:layout_height="52dp" android:layout_weight="1" android:text="Imprimer" />
             <Button android:id="@+id/invoiceDownload" android:layout_width="0dp"
                 android:layout_height="52dp" android:layout_marginStart="10dp" android:layout_weight="1"
                 android:text="Télécharger" android:textColor="@android:color/white"
