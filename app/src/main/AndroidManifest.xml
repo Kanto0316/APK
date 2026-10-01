@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -45,6 +46,7 @@
         <activity android:name=".MainActivity" android:exported="false" />
         <activity android:name=".SettingsActivity" android:exported="false" />
         <activity android:name=".DashboardActivity" android:exported="false" />
+        <activity android:name=".daily.DailySummaryActivity" android:exported="false" />
         <activity android:name=".notification.BonusNotificationsActivity" android:exported="false" />
         <activity android:name=".invoice.InvoiceViewerActivity" android:exported="false" />
         <activity android:name=".security.SecurityActivity" android:exported="false"
@@ -72,5 +74,6 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+        <receiver android:name=".daily.DailySummarySentReceiver" android:exported="false" />
     </application>
 </manifest>

@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.util.Log;
 
 import androidx.core.content.ContextCompat;
+import com.netk.mvolatrack.daily.DailySummaryScheduler;
 
 /** Re-enables the manifest SMS receiver after a completed device boot. */
 public class BootReceiver extends BroadcastReceiver {
@@ -30,5 +31,6 @@ public class BootReceiver extends BroadcastReceiver {
                 == PackageManager.PERMISSION_GRANTED;
         Log.i(TAG, "Récepteur SMS réactivé après " + action
                 + (granted ? "; permission accordée" : "; permission SMS absente"));
+        DailySummaryScheduler.reconcile(context);
     }
 }

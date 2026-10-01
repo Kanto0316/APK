@@ -3,6 +3,7 @@
     <item android:title="GÉNÉRAL">
         <menu>
             <item android:id="@+id/nav_dashboard" android:icon="@drawable/ic_bar_chart_24" android:title="Dashboard" />
+            <item android:id="@+id/nav_daily_summary" android:icon="@drawable/ic_sms_24" android:title="Résumé quotidien" />
             <item android:id="@+id/nav_settings" android:icon="@drawable/ic_settings_24" android:title="Paramètres" />
             <item android:id="@+id/nav_security" android:icon="@drawable/ic_lock_24" android:title="Sécurité" />
         </menu>

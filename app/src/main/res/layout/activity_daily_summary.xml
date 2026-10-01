@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@color/sms_screen_background">
+    <LinearLayout android:id="@+id/dailyHeader" android:layout_width="match_parent"
+        android:layout_height="72dp" android:gravity="center_vertical" android:paddingHorizontal="12dp"
+        android:orientation="horizontal" android:background="@color/sms_surface">
+        <ImageButton android:id="@+id/dailyBack" android:layout_width="48dp" android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless" android:src="@drawable/ic_arrow_back_24"
+            android:tint="@color/sms_text_primary" android:contentDescription="Retour" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Résumé quotidien" android:textStyle="bold" android:textSize="20sp"
+            android:textColor="@color/sms_text_primary" />
+    </LinearLayout>
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="20dp">
+            <com.google.android.material.switchmaterial.SwitchMaterial android:id="@+id/dailyEnabled"
+                android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Envoi automatique"
+                android:textColor="@color/sms_text_primary" android:textSize="16sp" />
+            <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="14dp" android:hint="Numéro destinataire">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/dailyRecipient"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="phone" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <Button android:id="@+id/dailyTime" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" android:text="Heure d’envoi : 08:00" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" android:textColor="@color/sms_text_secondary"
+                android:text="Le résumé de la journée terminée est envoyé le lendemain matin. L’heure effective peut varier selon Android." />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginTop="22dp" android:text="Contenu du message" android:textStyle="bold"
+                android:textSize="18sp" android:textColor="@color/sms_text_primary" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="5dp" android:text="Touchez une variable pour l’insérer :"
+                android:textColor="@color/sms_text_secondary" />
+            <LinearLayout android:id="@+id/dailyVariables" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical" />
+            <com.google.android.material.textfield.TextInputLayout android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="10dp" android:hint="Modèle du SMS">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/dailyTemplate"
+                    android:layout_width="match_parent" android:layout_height="wrap_content" android:minLines="7"
+                    android:gravity="top|start" android:inputType="textMultiLine|textCapSentences" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <TextView android:id="@+id/dailyPreviewState" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="12dp" android:textStyle="bold"
+                android:textColor="@color/sms_text_primary" />
+            <TextView android:id="@+id/dailyPreview" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="6dp" android:padding="12dp"
+                android:background="@drawable/bg_history_card" android:textColor="@color/sms_text_primary" />
+            <TextView android:id="@+id/dailySegments" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="5dp" android:textColor="@color/sms_text_secondary" />
+            <Button android:id="@+id/dailySave" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="16dp" android:text="Enregistrer" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginTop="24dp" android:text="Historique des résumés" android:textStyle="bold"
+                android:textSize="18sp" android:textColor="@color/sms_text_primary" />
+            <TextView android:id="@+id/dailyHistoryEmpty" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:paddingVertical="16dp" android:text="Aucun résumé enregistré."
+                android:textColor="@color/sms_text_secondary" />
+            <LinearLayout android:id="@+id/dailyHistory" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

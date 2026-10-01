@@ -45,13 +45,18 @@ public final class MvolaMessageParser {
      * always come from the SMS body.
      */
     public static ParsedTransaction parse(String rawMessage, long receivedAt) {
+        return parse(rawMessage, receivedAt, TimeZone.getDefault());
+    }
+
+    /** Parses business dates in an explicit zone (daily reports use Antananarivo). */
+    public static ParsedTransaction parse(String rawMessage, long receivedAt, TimeZone timeZone) {
         if (rawMessage == null) return null;
         String message = Normalizer.normalize(rawMessage, Normalizer.Form.NFKC);
         Matcher match = RECEIVED.matcher(message);
-        if (match.find()) return parseReceived(match, message, rawMessage);
+        if (match.find()) return parseReceived(match, message, rawMessage, timeZone);
 
         match = DEPOSIT.matcher(message);
-        if (match.find()) return parseDeposit(match, message, rawMessage, receivedAt);
+        if (match.find()) return parseDeposit(match, message, rawMessage, receivedAt, timeZone);
 
         match = CREDIT_PURCHASE.matcher(message);
         if (match.find()) return parseCredit(match, message, rawMessage, receivedAt);
@@ -59,7 +64,8 @@ public final class MvolaMessageParser {
     }
 
     private static ParsedTransaction parseDeposit(Matcher match, String message,
-                                                   String rawMessage, long receivedAt) {
+                                                   String rawMessage, long receivedAt,
+                                                   TimeZone timeZone) {
         String clientNumber = ClientNumberNormalizer.normalize(match.group(2));
         Long amount = number(match.group(3));
         if (clientNumber == null || amount == null) return null;
@@ -68,7 +74,7 @@ public final class MvolaMessageParser {
         Matcher dateMatch = TRANSACTION_DATE.matcher(message);
         if (dateMatch.find()) {
             Long parsedDate = date(dateMatch.group(1), dateMatch.group(2), dateMatch.group(3),
-                    dateMatch.group(4), dateMatch.group(5), TimeZone.getDefault());
+                    dateMatch.group(4), dateMatch.group(5), timeZone);
             if (parsedDate != null) transactionAt = parsedDate;
         }
         String clientName = match.group(1).trim().replaceAll("\\s+", " ");
@@ -78,11 +84,11 @@ public final class MvolaMessageParser {
     }
 
     private static ParsedTransaction parseReceived(Matcher match, String message,
-                                                    String rawMessage) {
+                                                    String rawMessage, TimeZone timeZone) {
         Long amount = number(match.group(1));
         String clientNumber = ClientNumberNormalizer.normalize(match.group(3));
         Long transactionAt = date(match.group(4), match.group(5), match.group(6),
-                match.group(7), match.group(8), TimeZone.getDefault());
+                match.group(7), match.group(8), timeZone);
         if (amount == null || clientNumber == null || transactionAt == null) return null;
 
         return new ParsedTransaction("Retrait", clientNumber, match.group(2).trim(), amount,
