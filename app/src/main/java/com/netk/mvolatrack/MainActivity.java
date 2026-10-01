@@ -1834,7 +1834,8 @@ public class MainActivity extends AppCompatActivity {
             int id = item.getItemId();
             if (id == R.id.nav_dashboard)
                 startActivity(new Intent(this, DashboardActivity.class));
-            else if (id == R.id.nav_settings) showSettingsPage();
+            else if (id == R.id.nav_settings)
+                startActivity(new Intent(this, SettingsActivity.class));
             else if (id == R.id.nav_security)
                 startActivity(new Intent(this, SecurityActivity.class));
             else if (id == R.id.nav_export_json) launchExport();
@@ -1872,37 +1873,6 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage(message)
                 .setPositiveButton("Fermer", null)
                 .show();
-    }
-
-    private void showSettingsPage() {
-        new AlertDialog.Builder(this)
-                .setTitle("Paramètres")
-                .setItems(new String[]{"Exporter le rapport diagnostic"}, (dialog, which) ->
-                        shareDiagnosticReport())
-                .setNegativeButton("Fermer", null)
-                .show();
-    }
-
-    private void shareDiagnosticReport() {
-        File report = CrashLogger.getReportFile(this);
-        if (report == null || !report.isFile()) {
-            Toast.makeText(this, "Aucun rapport diagnostic disponible.", Toast.LENGTH_LONG).show();
-            return;
-        }
-        try {
-            Uri uri = FileProvider.getUriForFile(this,
-                    getPackageName() + ".fileprovider", report);
-            Intent send = new Intent(Intent.ACTION_SEND)
-                    .setType("text/plain")
-                    .putExtra(Intent.EXTRA_STREAM, uri)
-                    .putExtra(Intent.EXTRA_SUBJECT, CrashLogger.FILE_NAME)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            startActivity(Intent.createChooser(send, "Exporter le rapport diagnostic"));
-        } catch (RuntimeException error) {
-            CrashLogger.recordException(this, error);
-            Toast.makeText(this, "Impossible de partager le rapport diagnostic.",
-                    Toast.LENGTH_LONG).show();
-        }
     }
 
     private void showHelpPage() {
