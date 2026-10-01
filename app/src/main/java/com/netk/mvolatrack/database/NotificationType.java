@@ -4,5 +4,6 @@ package com.netk.mvolatrack.database;
 public enum NotificationType {
     BONUS,
     LICENCE,
+    FACTURE,
     SYSTEME
 }

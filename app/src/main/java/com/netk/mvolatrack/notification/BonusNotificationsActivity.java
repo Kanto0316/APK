@@ -1,5 +1,6 @@
 package com.netk.mvolatrack.notification;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.graphics.Typeface;
 import android.util.Log;
@@ -22,6 +23,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.netk.mvolatrack.R;
 import com.netk.mvolatrack.database.NotificationBonus;
 import com.netk.mvolatrack.database.NotificationType;
+import com.netk.mvolatrack.invoice.InvoiceViewerActivity;
 import com.netk.mvolatrack.repository.BonusNotificationRepository;
 import com.netk.mvolatrack.verification.VerificationStatus;
 import com.google.android.material.card.MaterialCardView;
@@ -175,6 +177,12 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
 
     private void showDetail(NotificationBonus item) {
         if (item == null) return;
+        if (NotificationType.FACTURE.name().equals(item.type)) {
+            Intent intent = new Intent(this, InvoiceViewerActivity.class);
+            intent.putExtra(InvoiceViewerActivity.EXTRA_IMAGE_URI, item.metadata);
+            startActivity(intent);
+            return;
+        }
         if (!NotificationType.BONUS.name().equals(item.type)) {
             new AlertDialog.Builder(this).setTitle(item.title).setMessage(item.message
                     + (item.metadata == null || item.metadata.trim().isEmpty() ? ""
@@ -253,7 +261,9 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
             NotificationBonus item = items.get(position);
             boolean bonus = NotificationType.BONUS.name().equals(item.type);
             boolean licence = NotificationType.LICENCE.name().equals(item.type);
-            holder.icon.setImageResource(licence ? R.drawable.ic_verified_24
+            boolean invoice = NotificationType.FACTURE.name().equals(item.type);
+            holder.icon.setImageResource(invoice ? R.drawable.ic_file_download_24
+                    : licence ? R.drawable.ic_verified_24
                     : bonus ? icon(item.anomalyType) : R.drawable.ic_info_24);
             holder.icon.setColorFilter(ContextCompat.getColor(holder.itemView.getContext(),
                     licence ? R.color.notification_license : bonus
