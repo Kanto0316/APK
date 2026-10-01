@@ -1,6 +1,7 @@
 package com.netk.mvolatrack;
 
 import com.netk.mvolatrack.database.SmsMessage;
+import com.netk.mvolatrack.sms.ClientNumberNormalizer;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
 
 import java.util.ArrayList;
@@ -44,6 +45,34 @@ final class ClientMessageGrouper {
         MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
                 message.messageBody, message.receivedDate);
         return parsed == null ? null : parsed.clientNumber;
+    }
+
+    /**
+     * Finds the client represented by a transaction. Prefer the stored SMS identity so a
+     * malformed or subsequently reformatted number can never select another client. Only when
+     * that identity is unavailable do we compare canonical telephone numbers.
+     */
+    static ClientGroup findClient(List<ClientGroup> clients, SmsMessage transactionMessage,
+                                  String clientNumber) {
+        if (clients == null || transactionMessage == null) return null;
+        for (ClientGroup client : clients) {
+            for (SmsMessage message : client.messages) {
+                if ((transactionMessage.id > 0L && transactionMessage.id == message.id)
+                        || (transactionMessage.uniqueKey != null
+                        && transactionMessage.uniqueKey.equals(message.uniqueKey))) {
+                    return client;
+                }
+            }
+        }
+
+        String normalizedTarget = ClientNumberNormalizer.normalize(clientNumber);
+        if (normalizedTarget == null) return null;
+        for (ClientGroup client : clients) {
+            if (normalizedTarget.equals(ClientNumberNormalizer.normalize(client.sender))) {
+                return client;
+            }
+        }
+        return null;
     }
 
     /** Filters the derived presentation without changing its newest-message-first order. */

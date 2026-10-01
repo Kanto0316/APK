@@ -135,6 +135,13 @@ public class MainActivity extends AppCompatActivity {
     private static final String STATE_CLIENT_SENDER = "client_sender";
     private static final String STATE_CLIENT_QUERY = "client_query";
     private static final String STATE_CLIENT_FILTER = "client_filter";
+    private static final String STATE_MESSAGE_QUERY = "message_query";
+    private static final String STATE_TRANSACTION_PAGE = "transaction_page";
+    private static final String STATE_CLIENT_FROM_TRANSACTIONS = "client_from_transactions";
+    private static final String STATE_TRANSACTION_LIST_POSITION = "transaction_list_position";
+    private static final String STATE_TRANSACTION_LIST_OFFSET = "transaction_list_offset";
+    private static final String STATE_TRANSACTION_HORIZONTAL_SCROLL =
+            "transaction_horizontal_scroll";
     private static final String STATE_SHOW_ALL_HISTORY = "show_all_history";
     private static final int SECTION_MESSAGES = 0;
     private static final int SECTION_HOME = 1;
@@ -168,7 +175,12 @@ public class MainActivity extends AppCompatActivity {
     private View transactionPreviousPage;
     private View transactionNextPage;
     private RecyclerView transactionsList;
+    private ZoomableTableScrollView transactionTableScroll;
     private int transactionPage;
+    private boolean clientOpenedFromTransactions;
+    private int savedTransactionListPosition;
+    private int savedTransactionListOffset;
+    private int savedTransactionHorizontalScroll;
     private TextView balanceTitle;
     private ImageButton balanceVisibilityButton;
     private String visibleBalanceTitle = "0 Ar";
@@ -388,6 +400,17 @@ public class MainActivity extends AppCompatActivity {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
         applySystemBarInsets(findViewById(R.id.mainRoot));
+        if (savedInstanceState != null) {
+            transactionPage = savedInstanceState.getInt(STATE_TRANSACTION_PAGE, 0);
+            clientOpenedFromTransactions = savedInstanceState.getBoolean(
+                    STATE_CLIENT_FROM_TRANSACTIONS, false);
+            savedTransactionListPosition = savedInstanceState.getInt(
+                    STATE_TRANSACTION_LIST_POSITION, 0);
+            savedTransactionListOffset = savedInstanceState.getInt(
+                    STATE_TRANSACTION_LIST_OFFSET, 0);
+            savedTransactionHorizontalScroll = savedInstanceState.getInt(
+                    STATE_TRANSACTION_HORIZONTAL_SCROLL, 0);
+        }
 
         permissionText = findViewById(R.id.permissionText);
         permissionText.setOnClickListener(view -> requestRequiredPermissions());
@@ -546,10 +569,11 @@ public class MainActivity extends AppCompatActivity {
         configureClientFilters();
         messagesNavigationItem.setOnClickListener(view -> showSection(SECTION_MESSAGES));
         clientNavigationItem.setOnClickListener(view -> {
+            clientOpenedFromTransactions = false;
             selectedClientSender = null;
             showSection(SECTION_CLIENT);
         });
-        findViewById(R.id.clientBackButton).setOnClickListener(view -> showClientList());
+        findViewById(R.id.clientBackButton).setOnClickListener(view -> navigateBackFromClient());
         findViewById(R.id.clientDetailOverflowButton).setOnClickListener(
                 this::showClientDetailOverflowMenu);
         homeButton.setOnClickListener(view -> showSection(SECTION_HOME));
@@ -560,8 +584,9 @@ public class MainActivity extends AppCompatActivity {
             selectStatisticsTab(STATISTICS_TAB_BONUS);
             showSection(SECTION_STATISTICS);
         });
-        showSection(savedInstanceState == null ? SECTION_HOME
-                : savedInstanceState.getInt(STATE_SELECTED_SECTION, SECTION_HOME));
+        int initialSection = savedInstanceState == null ? SECTION_HOME
+                : savedInstanceState.getInt(STATE_SELECTED_SECTION, SECTION_HOME);
+        showSection(initialSection, savedInstanceState == null);
         RecyclerView list = findViewById(R.id.transactionsList);
         transactionsList = list;
         if (savedInstanceState != null) {
@@ -569,11 +594,11 @@ public class MainActivity extends AppCompatActivity {
         }
         transactionTable = findViewById(R.id.transactionTable);
         smsTableHeader = findViewById(R.id.smsTableHeader);
-        adapter = new SmsAdapter(tableZoom, this::showInvoice);
+        adapter = new SmsAdapter(tableZoom, this::showInvoice, this::showClientFromTransaction);
         list.setLayoutManager(new LinearLayoutManager(this));
         list.setAdapter(adapter);
-        ZoomableTableScrollView tableScroll = findViewById(R.id.transactionTableScroll);
-        tableScroll.setZoomListener(new ZoomableTableScrollView.ZoomListener() {
+        transactionTableScroll = findViewById(R.id.transactionTableScroll);
+        transactionTableScroll.setZoomListener(new ZoomableTableScrollView.ZoomListener() {
             @Override public void onZoom(float scaleFactor) {
                 setTableZoom(tableZoom * scaleFactor);
             }
@@ -1240,6 +1265,14 @@ public class MainActivity extends AppCompatActivity {
 
     /** Switches the content in place; transfer actions and the fixed bottom bar stay untouched. */
     private void showSection(int section) {
+        showSection(section, true);
+    }
+
+    private void showSectionWithoutReset(int section) {
+        showSection(section, false);
+    }
+
+    private void showSection(int section, boolean resetTransactionContext) {
         selectedSection = section;
         boolean messagesSelected = section == SECTION_MESSAGES;
         boolean clientSelected = section == SECTION_CLIENT;
@@ -1279,8 +1312,10 @@ public class MainActivity extends AppCompatActivity {
         historyNavigationItem.setSelected(historySelected);
         statisticsNavigationItem.setSelected(statisticsSelected);
         if (messagesSelected) {
-            restoreMessageFilters();
-            if (messageSearchInput != null) messageSearchInput.setText("");
+            if (resetTransactionContext) {
+                restoreMessageFilters();
+                if (messageSearchInput != null) messageSearchInput.setText("");
+            }
             updateFilterChips();
             if (adapter != null) renderState();
         }
@@ -1375,8 +1410,59 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showClientDetail(ClientMessageGrouper.ClientGroup client) {
+        clientOpenedFromTransactions = false;
         selectedClientSender = client.sender;
         renderClients();
+    }
+
+    private void showClientFromTransaction(SmsDateFilter.DisplayMessage displayed) {
+        MvolaMessageParser.ParsedTransaction parsed = MvolaMessageParser.parse(
+                displayed.message.messageBody, displayed.message.receivedDate);
+        ClientMessageGrouper.ClientGroup client = ClientMessageGrouper.findClient(
+                preparedClients, displayed.message, parsed == null ? null : parsed.clientNumber);
+        if (client == null) {
+            Toast.makeText(this, R.string.client_not_found, Toast.LENGTH_LONG).show();
+            return;
+        }
+        saveTransactionViewport();
+        clientOpenedFromTransactions = true;
+        selectedClientSender = client.sender;
+        showSection(SECTION_CLIENT);
+    }
+
+    private void saveTransactionViewport() {
+        savedTransactionHorizontalScroll = transactionTableScroll == null
+                ? 0 : transactionTableScroll.getScrollX();
+        RecyclerView.LayoutManager manager = transactionsList == null
+                ? null : transactionsList.getLayoutManager();
+        if (manager instanceof LinearLayoutManager) {
+            LinearLayoutManager linear = (LinearLayoutManager) manager;
+            savedTransactionListPosition = linear.findFirstVisibleItemPosition();
+            View first = linear.findViewByPosition(savedTransactionListPosition);
+            savedTransactionListOffset = first == null ? 0 : first.getTop();
+        }
+    }
+
+    private void navigateBackFromClient() {
+        if (!clientOpenedFromTransactions) {
+            showClientList();
+            return;
+        }
+        clientOpenedFromTransactions = false;
+        selectedClientSender = null;
+        // Do not use showSection here: its normal bottom-navigation behavior intentionally resets
+        // the transaction search. The return path must restore the exact transaction context.
+        showSectionWithoutReset(SECTION_MESSAGES);
+        transactionsList.post(() -> {
+            RecyclerView.LayoutManager manager = transactionsList.getLayoutManager();
+            if (manager instanceof LinearLayoutManager) {
+                ((LinearLayoutManager) manager).scrollToPositionWithOffset(
+                        Math.max(0, savedTransactionListPosition), savedTransactionListOffset);
+            }
+            if (transactionTableScroll != null) {
+                transactionTableScroll.scrollTo(savedTransactionHorizontalScroll, 0);
+            }
+        });
     }
 
     /** Keeps the number assigned in the unfiltered Messages table when viewing one client. */
@@ -1445,7 +1531,7 @@ public class MainActivity extends AppCompatActivity {
         if (drawerLayout != null && drawerLayout.isDrawerOpen(android.view.Gravity.START)) {
             drawerLayout.closeDrawer(android.view.Gravity.START);
         } else if (selectedSection == SECTION_CLIENT && selectedClientSender != null) {
-            showClientList();
+            navigateBackFromClient();
         } else {
             super.onBackPressed();
         }
@@ -1464,6 +1550,14 @@ public class MainActivity extends AppCompatActivity {
             outState.putString(STATE_CLIENT_QUERY, clientSearchInput.getText().toString());
         }
         outState.putString(STATE_CLIENT_FILTER, selectedClientFilter.name());
+        if (messageSearchInput != null) {
+            outState.putString(STATE_MESSAGE_QUERY, messageSearchInput.getText().toString());
+        }
+        outState.putInt(STATE_TRANSACTION_PAGE, transactionPage);
+        outState.putBoolean(STATE_CLIENT_FROM_TRANSACTIONS, clientOpenedFromTransactions);
+        outState.putInt(STATE_TRANSACTION_LIST_POSITION, savedTransactionListPosition);
+        outState.putInt(STATE_TRANSACTION_LIST_OFFSET, savedTransactionListOffset);
+        outState.putInt(STATE_TRANSACTION_HORIZONTAL_SCROLL, savedTransactionHorizontalScroll);
         outState.putBoolean(STATE_SHOW_ALL_HISTORY, showAllHistory);
         super.onSaveInstanceState(outState);
     }
@@ -1474,6 +1568,9 @@ public class MainActivity extends AppCompatActivity {
         periodFilterDropdown = findViewById(R.id.periodFilterDropdown);
         typeFilterDropdown = findViewById(R.id.typeFilterDropdown);
         restoreMessageFilters();
+        if (savedInstanceState != null) {
+            messageSearchInput.setText(savedInstanceState.getString(STATE_MESSAGE_QUERY, ""));
+        }
         periodFilterDropdown.setOnClickListener(this::showPeriodFilterMenu);
         typeFilterDropdown.setOnClickListener(this::showTypeFilterMenu);
         messageSearchInput.addTextChangedListener(new TextWatcher() {
@@ -3025,16 +3122,23 @@ public class MainActivity extends AppCompatActivity {
         void onInvoiceClick(SmsDateFilter.DisplayMessage displayed);
     }
 
+    private interface TransactionClientClickListener {
+        void onClientClick(SmsDateFilter.DisplayMessage displayed);
+    }
+
     private static class SmsAdapter extends RecyclerView.Adapter<SmsViewHolder> {
         private List<SmsDateFilter.DisplayMessage> items = new ArrayList<>();
         private Map<String, TransactionBalanceVerification> verifications =
                 Collections.emptyMap();
         private float zoom;
         private final InvoiceClickListener invoiceClickListener;
+        private final TransactionClientClickListener clientClickListener;
 
-        SmsAdapter(float zoom, InvoiceClickListener invoiceClickListener) {
+        SmsAdapter(float zoom, InvoiceClickListener invoiceClickListener,
+                   TransactionClientClickListener clientClickListener) {
             this.zoom = zoom;
             this.invoiceClickListener = invoiceClickListener;
+            this.clientClickListener = clientClickListener;
         }
 
         void setZoom(float zoom) {
@@ -3057,7 +3161,7 @@ public class MainActivity extends AppCompatActivity {
         public SmsViewHolder onCreateViewHolder(android.view.ViewGroup parent, int viewType) {
             View view = android.view.LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.item_transaction, parent, false);
-            return new SmsViewHolder(view, invoiceClickListener);
+            return new SmsViewHolder(view, invoiceClickListener, clientClickListener);
         }
 
         @Override
@@ -3066,6 +3170,7 @@ public class MainActivity extends AppCompatActivity {
             SmsTableRow row = SmsTableRow.from(displayed,
                     verifications.get(displayed.message.uniqueKey));
             holder.bindReference(row.reference, displayed);
+            holder.bindClient(displayed);
             holder.dateTime.setText(row.dateTime);
             bindTypeBadge(holder.type, row.type);
             holder.sender.setText(SmsTableRow.display(row.numero));
@@ -3173,10 +3278,13 @@ public class MainActivity extends AppCompatActivity {
         private String boundReference;
         private SmsDateFilter.DisplayMessage boundMessage;
         private final InvoiceClickListener invoiceClickListener;
+        private final TransactionClientClickListener clientClickListener;
 
-        SmsViewHolder(View itemView, InvoiceClickListener invoiceClickListener) {
+        SmsViewHolder(View itemView, InvoiceClickListener invoiceClickListener,
+                      TransactionClientClickListener clientClickListener) {
             super(itemView);
             this.invoiceClickListener = invoiceClickListener;
+            this.clientClickListener = clientClickListener;
             reference = itemView.findViewById(R.id.itemReference);
             dateTime = itemView.findViewById(R.id.itemDateTime);
             type = itemView.findViewById(R.id.itemType);
@@ -3188,12 +3296,21 @@ public class MainActivity extends AppCompatActivity {
             balance = itemView.findViewById(R.id.itemBalance);
             status = itemView.findViewById(R.id.itemStatus);
             reference.setOnClickListener(view -> openInvoice());
+            sender.setOnClickListener(view -> openClient());
         }
 
         void bindReference(String value, SmsDateFilter.DisplayMessage message) {
             boundReference = value;
             boundMessage = message;
             reference.setText(SmsTableRow.display(value));
+        }
+
+        void bindClient(SmsDateFilter.DisplayMessage message) {
+            boundMessage = message;
+        }
+
+        private void openClient() {
+            if (boundMessage != null) clientClickListener.onClientClick(boundMessage);
         }
 
         private void openInvoice() {

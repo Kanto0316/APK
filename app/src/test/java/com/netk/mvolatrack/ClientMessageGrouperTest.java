@@ -2,6 +2,7 @@ package com.netk.mvolatrack;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 import com.netk.mvolatrack.database.SmsMessage;
 import org.junit.Test;
@@ -70,6 +71,32 @@ public class ClientMessageGrouperTest {
                 ClientMessageGrouper.Filter.NEW, october1, zone).size());
         assertEquals(2, ClientMessageGrouper.filter(groups, "",
                 ClientMessageGrouper.Filter.EXISTING, october1, zone).size());
+    }
+
+    @Test public void findClient_prefersMessageIdentifierOverSuppliedNumber() {
+        SmsMessage expectedMessage = transaction("0343242318", "client", 100L);
+        ClientMessageGrouper.ClientGroup expected = ClientMessageGrouper.group(
+                Collections.singletonList(expectedMessage)).get(0);
+
+        assertSame(expected, ClientMessageGrouper.findClient(
+                Collections.singletonList(expected), expectedMessage, "0384900247"));
+    }
+
+    @Test public void findClient_fallsBackToNormalizedPhoneFormat() {
+        ClientMessageGrouper.ClientGroup expected = ClientMessageGrouper.group(
+                Collections.singletonList(transaction("0343242318", "client", 100L))).get(0);
+        SmsMessage unrelated = transaction("0384900247", "autre", 200L);
+
+        assertSame(expected, ClientMessageGrouper.findClient(
+                Collections.singletonList(expected), unrelated, "+261 34 32 423 18"));
+    }
+
+    @Test public void findClient_returnsNullInsteadOfOpeningAnotherClient() {
+        ClientMessageGrouper.ClientGroup existing = ClientMessageGrouper.group(
+                Collections.singletonList(transaction("0343242318", "client", 100L))).get(0);
+
+        assertNull(ClientMessageGrouper.findClient(Collections.singletonList(existing),
+                transaction("0384900247", "absent", 200L), "038 49 002 47"));
     }
 
     private static SmsMessage transaction(String number, String label, long receivedAt) {

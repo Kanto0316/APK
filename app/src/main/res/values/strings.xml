@@ -17,6 +17,7 @@
     <string name="hide_balance">Masquer le solde</string>
     <string name="show_balance">Afficher le solde</string>
     <string name="nav_transactions">Transactions</string>
+    <string name="client_not_found">Aucun client correspondant à ce numéro.</string>
     <string name="backup_transactions">Sauvegarder les Transactions</string>
     <string name="restore_transactions">Restaurer les Transactions</string>
     <string name="notifications_title">Notifications</string>
