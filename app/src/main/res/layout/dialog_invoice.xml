@@ -4,6 +4,11 @@
     android:fillViewport="false" android:padding="12dp" android:clipToPadding="false">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="vertical">
+        <Button android:id="@+id/invoiceClose" android:layout_width="48dp"
+            android:layout_height="48dp" android:layout_gravity="start"
+            android:layout_marginBottom="4dp" android:minWidth="48dp" android:minHeight="48dp"
+            android:padding="0dp" android:text="×" android:textSize="28sp"
+            android:contentDescription="Fermer la facture" />
         <com.netk.mvolatrack.invoice.PerforatedTicketLayout
             android:id="@+id/invoiceTicket" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:orientation="vertical"
@@ -46,8 +51,8 @@
         </com.netk.mvolatrack.invoice.PerforatedTicketLayout>
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:orientation="horizontal">
-            <Button android:id="@+id/invoiceClose" android:layout_width="0dp"
-                android:layout_height="52dp" android:layout_weight="1" android:text="Fermer" />
+            <Button android:id="@+id/invoiceShare" android:layout_width="0dp"
+                android:layout_height="52dp" android:layout_weight="1" android:text="Partager" />
             <Button android:id="@+id/invoiceDownload" android:layout_width="0dp"
                 android:layout_height="52dp" android:layout_marginStart="10dp" android:layout_weight="1"
                 android:text="Télécharger" android:textColor="@android:color/white"
