@@ -2445,7 +2445,11 @@ public class MainActivity extends AppCompatActivity {
     private void ensureRecyclerAdapters() {
         if (adapter == null) {
             RecyclerView list = findViewById(R.id.transactionsList);
-            adapter = new SmsAdapter(tableZoom, this::showInvoice);
+            adapter = new SmsAdapter(
+                    tableZoom,
+                    this::showInvoice,
+                    this::showClientFromTransaction
+            );
             list.setLayoutManager(new LinearLayoutManager(this));
             list.setAdapter(adapter);
             Log.w(TAG, "Messages adapter recreated after lifecycle restoration");
