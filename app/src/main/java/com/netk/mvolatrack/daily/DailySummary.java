@@ -5,6 +5,7 @@ public final class DailySummary {
     public final long dayStart;
     public int transactions, clients, deposits, withdrawals, credits;
     public long depositAmount, withdrawalAmount, creditAmount, bonus;
+    public Long balance;
     public boolean bonusPartial;
 
     DailySummary(long dayStart) { this.dayStart = dayStart; }
