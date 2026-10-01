@@ -76,7 +76,6 @@ import com.netk.mvolatrack.export.XlsxExporter;
 import com.netk.mvolatrack.invoice.InvoiceDialog;
 import com.netk.mvolatrack.sms.ClientNumberNormalizer;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
-import com.netk.mvolatrack.security.AppLockManager;
 import com.netk.mvolatrack.security.SecurityActivity;
 import com.netk.mvolatrack.activation.ActivationActivity;
 import com.netk.mvolatrack.activation.ActivationStore;
@@ -416,7 +415,6 @@ public class MainActivity extends AppCompatActivity {
             finish();
             return;
         }
-        AppLockManager.showLockIfRequired(this);
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
         applySystemBarInsets(findViewById(R.id.mainRoot));
@@ -2709,7 +2707,6 @@ public class MainActivity extends AppCompatActivity {
             finish();
             return;
         }
-        AppLockManager.showLockIfRequired(this);
         refreshPermissionState();
         // Room remains the source of truth. Throttle the asynchronous snapshot read so returning
         // from a picker/settings page never parses hundreds of messages on the UI thread.
