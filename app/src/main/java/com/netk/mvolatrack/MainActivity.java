@@ -166,6 +166,18 @@ public class MainActivity extends AppCompatActivity {
     private static final String MESSAGES_FILTER_PERIOD = "messages_filter_period";
     private static final String MESSAGES_FILTER_TYPE = "messages_filter_type";
     private static final String MESSAGES_FILTER_CUSTOM_DATE = "messages_filter_custom_date";
+    private static final String[] TRANSACTION_PERIOD_LABELS = {"Toutes les périodes",
+            "Aujourd’hui", "Hier", "7 derniers jours", "30 derniers jours",
+            "Date personnalisée"};
+    private static final SmsDateFilter.Period[] TRANSACTION_PERIODS = {
+            SmsDateFilter.Period.ALL, SmsDateFilter.Period.TODAY,
+            SmsDateFilter.Period.YESTERDAY, SmsDateFilter.Period.SEVEN_DAYS,
+            SmsDateFilter.Period.THIRTY_DAYS, SmsDateFilter.Period.CUSTOM_DATE};
+    private static final String[] TRANSACTION_TYPE_LABELS = {"Tous", "Dépôt", "Retrait",
+            "Crédit"};
+    private static final SmsDateFilter.TransactionType[] TRANSACTION_TYPES = {
+            SmsDateFilter.TransactionType.ALL, SmsDateFilter.TransactionType.DEPOSIT,
+            SmsDateFilter.TransactionType.WITHDRAWAL, SmsDateFilter.TransactionType.CREDIT};
     private TextView permissionText;
     private TextView backgroundExecutionText;
     private TextView emptyText;
@@ -197,6 +209,8 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout smsTableHeader;
     private LinearLayout clientTransactionTable;
     private LinearLayout clientTableHeader;
+    private ZoomableTableScrollView clientTableScroll;
+    private TextView clientTransactionEmptyText;
     private SmsViewModel viewModel;
     private SmsBackupManager backupManager;
     private List<SmsMessage> messages = new ArrayList<>();
@@ -275,12 +289,18 @@ public class MainActivity extends AppCompatActivity {
     private TextView clientEmptyText;
     private TextView clientCountText;
     private TextView clientDetailTitle;
+    private TextView clientPeriodFilterDropdown;
+    private TextView clientTypeFilterDropdown;
     private ClientAdapter clientAdapter;
     private ClientMessageAdapter clientMessageAdapter;
     private String selectedClientSender;
     private EditText clientSearchInput;
     private TextView clientFilterDropdown;
     private ClientMessageGrouper.Filter selectedClientFilter = ClientMessageGrouper.Filter.ALL;
+    private SmsDateFilter.Period selectedClientPeriod = SmsDateFilter.Period.ALL;
+    private SmsDateFilter.TransactionType selectedClientType =
+            SmsDateFilter.TransactionType.ALL;
+    private Long clientCustomFilterDate;
     private int selectedSection = SECTION_HOME;
     private SmsDateFilter.Period selectedMessageFilter = SmsDateFilter.Period.ALL;
     private SmsDateFilter.TransactionType selectedMessageType = SmsDateFilter.TransactionType.ALL;
@@ -552,6 +572,9 @@ public class MainActivity extends AppCompatActivity {
         homeButton = findViewById(R.id.homeButton);
         clientEmptyText = findViewById(R.id.clientEmptyText);
         clientDetailTitle = findViewById(R.id.clientDetailTitle);
+        clientPeriodFilterDropdown = findViewById(R.id.clientPeriodFilterDropdown);
+        clientTypeFilterDropdown = findViewById(R.id.clientTypeFilterDropdown);
+        clientTransactionEmptyText = findViewById(R.id.clientTransactionEmptyText);
         clientSearchInput = findViewById(R.id.clientSearchInput);
         clientFilterDropdown = findViewById(R.id.clientFilterDropdown);
         selectedClientSender = savedInstanceState == null ? null
@@ -567,6 +590,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         configureClientFilters();
+        configureClientTransactionFilters();
         messagesNavigationItem.setOnClickListener(view -> showSection(SECTION_MESSAGES));
         clientNavigationItem.setOnClickListener(view -> {
             clientOpenedFromTransactions = false;
@@ -613,12 +637,12 @@ public class MainActivity extends AppCompatActivity {
         clientList.setLayoutManager(new LinearLayoutManager(this));
         clientList.setAdapter(clientAdapter);
         RecyclerView clientMessages = findViewById(R.id.clientMessageList);
-        clientMessageAdapter = new ClientMessageAdapter();
+        clientMessageAdapter = new ClientMessageAdapter(this::showInvoice);
         clientMessages.setLayoutManager(new LinearLayoutManager(this));
         clientMessages.setAdapter(clientMessageAdapter);
         clientTransactionTable = findViewById(R.id.clientTransactionTable);
         clientTableHeader = findViewById(R.id.clientTableHeader);
-        ZoomableTableScrollView clientTableScroll = findViewById(R.id.clientTableScroll);
+        clientTableScroll = findViewById(R.id.clientTableScroll);
         clientTableScroll.setZoomListener(new ZoomableTableScrollView.ZoomListener() {
             @Override public void onZoom(float scaleFactor) {
                 setTableZoom(tableZoom * scaleFactor);
@@ -1396,8 +1420,13 @@ public class MainActivity extends AppCompatActivity {
         for (ClientMessageGrouper.ClientGroup client : allClients) {
             if (selectedClientSender.equals(client.sender)) {
                 clientDetailTitle.setText(SmsDisplayFormatter.sender(client.sender));
-                clientMessageAdapter.submitList(clientMessagesWithOriginalNumbers(client.sender),
-                        messageVerifications);
+                List<SmsDateFilter.DisplayMessage> clientTransactions =
+                        clientMessagesWithOriginalNumbers(client.sender);
+                clientMessageAdapter.submitList(clientTransactions, messageVerifications);
+                boolean noMatchingTransactions = clientTransactions.isEmpty();
+                clientTransactionEmptyText.setVisibility(noMatchingTransactions
+                        ? View.VISIBLE : View.GONE);
+                clientTableScroll.setVisibility(noMatchingTransactions ? View.GONE : View.VISIBLE);
                 clientListContent.setVisibility(View.GONE);
                 clientDetailContent.setVisibility(View.VISIBLE);
                 return;
@@ -1411,6 +1440,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showClientDetail(ClientMessageGrouper.ClientGroup client) {
         clientOpenedFromTransactions = false;
+        resetClientTransactionFilters();
         selectedClientSender = client.sender;
         renderClients();
     }
@@ -1426,6 +1456,7 @@ public class MainActivity extends AppCompatActivity {
         }
         saveTransactionViewport();
         clientOpenedFromTransactions = true;
+        resetClientTransactionFilters();
         selectedClientSender = client.sender;
         showSection(SECTION_CLIENT);
     }
@@ -1469,14 +1500,87 @@ public class MainActivity extends AppCompatActivity {
     private List<SmsDateFilter.DisplayMessage> clientMessagesWithOriginalNumbers(String sender) {
         List<SmsDateFilter.DisplayMessage> result = new ArrayList<>();
         List<SmsDateFilter.DisplayMessage> all = SmsDateFilter.apply(messages,
-                SmsDateFilter.Period.ALL, null, System.currentTimeMillis(),
-                java.util.TimeZone.getDefault());
+                selectedClientPeriod, clientCustomFilterDate, System.currentTimeMillis(),
+                java.util.TimeZone.getDefault(), "", selectedClientType);
         for (SmsDateFilter.DisplayMessage displayed : all) {
             if (sender.equals(ClientMessageGrouper.clientKey(displayed.message))) {
                 result.add(displayed);
             }
         }
         return result;
+    }
+
+    private void configureClientTransactionFilters() {
+        clientPeriodFilterDropdown.setOnClickListener(this::showClientPeriodFilterMenu);
+        clientTypeFilterDropdown.setOnClickListener(this::showClientTypeFilterMenu);
+        updateClientTransactionFilterDropdowns();
+    }
+
+    private void resetClientTransactionFilters() {
+        selectedClientPeriod = SmsDateFilter.Period.ALL;
+        selectedClientType = SmsDateFilter.TransactionType.ALL;
+        clientCustomFilterDate = null;
+        updateClientTransactionFilterDropdowns();
+    }
+
+    private void showClientPeriodFilterMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        for (int index = 0; index < TRANSACTION_PERIOD_LABELS.length; index++) {
+            menu.getMenu().add(0, index, index, TRANSACTION_PERIOD_LABELS[index])
+                    .setCheckable(true)
+                    .setChecked(selectedClientPeriod == TRANSACTION_PERIODS[index]);
+        }
+        menu.setOnMenuItemClickListener(item -> {
+            SmsDateFilter.Period period = TRANSACTION_PERIODS[item.getItemId()];
+            if (period == SmsDateFilter.Period.CUSTOM_DATE) {
+                showClientDateFilterPicker();
+            } else {
+                selectedClientPeriod = period;
+                clientCustomFilterDate = null;
+                updateClientTransactionFilterDropdowns();
+                renderClients();
+            }
+            return true;
+        });
+        menu.show();
+    }
+
+    private void showClientTypeFilterMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        for (int index = 0; index < TRANSACTION_TYPE_LABELS.length; index++) {
+            menu.getMenu().add(0, index, index, TRANSACTION_TYPE_LABELS[index])
+                    .setCheckable(true)
+                    .setChecked(selectedClientType == TRANSACTION_TYPES[index]);
+        }
+        menu.setOnMenuItemClickListener(item -> {
+            selectedClientType = TRANSACTION_TYPES[item.getItemId()];
+            updateClientTransactionFilterDropdowns();
+            renderClients();
+            return true;
+        });
+        menu.show();
+    }
+
+    private void showClientDateFilterPicker() {
+        Calendar initial = Calendar.getInstance();
+        if (clientCustomFilterDate != null) initial.setTimeInMillis(clientCustomFilterDate);
+        new DatePickerDialog(this, (picker, year, month, day) -> {
+            Calendar selected = Calendar.getInstance();
+            selected.clear();
+            selected.set(year, month, day);
+            clientCustomFilterDate = selected.getTimeInMillis();
+            selectedClientPeriod = SmsDateFilter.Period.CUSTOM_DATE;
+            updateClientTransactionFilterDropdowns();
+            renderClients();
+        }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH),
+                initial.get(Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private void updateClientTransactionFilterDropdowns() {
+        if (clientPeriodFilterDropdown == null || clientTypeFilterDropdown == null) return;
+        clientPeriodFilterDropdown.setText(transactionPeriodLabel(selectedClientPeriod,
+                clientCustomFilterDate));
+        clientTypeFilterDropdown.setText(transactionTypeLabel(selectedClientType));
     }
 
     private void showClientList() {
@@ -1633,8 +1737,9 @@ public class MainActivity extends AppCompatActivity {
     private void openExport(ExportSource source, boolean excel,
             List<SmsDateFilter.DisplayMessage> clientTransactions, String clientFileNumber) {
         if (source == ExportSource.CLIENT) {
-            generateTransactionExport(excel, clientTransactions, "Tous", "Tous",
-                    clientFileNumber);
+            generateTransactionExport(excel, clientTransactions,
+                    transactionPeriodLabel(selectedClientPeriod, clientCustomFilterDate),
+                    transactionTypeLabel(selectedClientType), clientFileNumber);
         } else {
             openMessagesExport(excel);
         }
@@ -1642,15 +1747,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void showPeriodFilterMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
-        String[] labels = {"Toutes les périodes", "Aujourd’hui", "Hier",
-                "7 derniers jours", "30 derniers jours", "Date personnalisée"};
-        SmsDateFilter.Period[] periods = SmsDateFilter.Period.values();
-        for (int index = 0; index < labels.length; index++) {
-            menu.getMenu().add(0, index, index, labels[index])
-                    .setCheckable(true).setChecked(selectedMessageFilter == periods[index]);
+        for (int index = 0; index < TRANSACTION_PERIOD_LABELS.length; index++) {
+            menu.getMenu().add(0, index, index, TRANSACTION_PERIOD_LABELS[index])
+                    .setCheckable(true)
+                    .setChecked(selectedMessageFilter == TRANSACTION_PERIODS[index]);
         }
         menu.setOnMenuItemClickListener(item -> {
-            SmsDateFilter.Period period = periods[item.getItemId()];
+            SmsDateFilter.Period period = TRANSACTION_PERIODS[item.getItemId()];
             if (period == SmsDateFilter.Period.CUSTOM_DATE) showDateFilterPicker();
             else selectMessageFilter(period);
             return true;
@@ -1660,14 +1763,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void showTypeFilterMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
-        String[] labels = {"Tous", "Dépôt", "Retrait", "Crédit"};
-        SmsDateFilter.TransactionType[] types = SmsDateFilter.TransactionType.values();
-        for (int index = 0; index < labels.length; index++) {
-            menu.getMenu().add(0, index, index, labels[index])
-                    .setCheckable(true).setChecked(selectedMessageType == types[index]);
+        for (int index = 0; index < TRANSACTION_TYPE_LABELS.length; index++) {
+            menu.getMenu().add(0, index, index, TRANSACTION_TYPE_LABELS[index])
+                    .setCheckable(true)
+                    .setChecked(selectedMessageType == TRANSACTION_TYPES[index]);
         }
         menu.setOnMenuItemClickListener(item -> {
-            selectMessageType(types[item.getItemId()]);
+            selectMessageType(TRANSACTION_TYPES[item.getItemId()]);
             return true;
         });
         menu.show();
@@ -1743,17 +1845,27 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateFilterChips() {
         if (periodFilterDropdown == null || typeFilterDropdown == null) return;
-        String[] periodLabels = {"Toutes les périodes", "Aujourd’hui", "Hier",
-                "7 derniers jours", "30 derniers jours", "Date personnalisée"};
-        String periodLabel = periodLabels[selectedMessageFilter.ordinal()];
-        if (selectedMessageFilter == SmsDateFilter.Period.CUSTOM_DATE
-                && customFilterDate != null) {
-            periodLabel = new SimpleDateFormat("dd/MM/yy", Locale.FRENCH)
-                    .format(customFilterDate);
+        periodFilterDropdown.setText(transactionPeriodLabel(selectedMessageFilter,
+                customFilterDate));
+        typeFilterDropdown.setText(transactionTypeLabel(selectedMessageType));
+    }
+
+    private static String transactionPeriodLabel(SmsDateFilter.Period period,
+            Long customDate) {
+        if (period == SmsDateFilter.Period.CUSTOM_DATE && customDate != null) {
+            return new SimpleDateFormat("dd/MM/yy", Locale.FRENCH).format(customDate);
         }
-        periodFilterDropdown.setText(periodLabel);
-        String[] typeLabels = {"Tous", "Dépôt", "Retrait", "Crédit"};
-        typeFilterDropdown.setText(typeLabels[selectedMessageType.ordinal()]);
+        for (int index = 0; index < TRANSACTION_PERIODS.length; index++) {
+            if (TRANSACTION_PERIODS[index] == period) return TRANSACTION_PERIOD_LABELS[index];
+        }
+        return TRANSACTION_PERIOD_LABELS[0];
+    }
+
+    private static String transactionTypeLabel(SmsDateFilter.TransactionType type) {
+        for (int index = 0; index < TRANSACTION_TYPES.length; index++) {
+            if (TRANSACTION_TYPES[index] == type) return TRANSACTION_TYPE_LABELS[index];
+        }
+        return TRANSACTION_TYPE_LABELS[0];
     }
 
     private void renderStatistics() {
@@ -2968,7 +3080,12 @@ public class MainActivity extends AppCompatActivity {
         private List<SmsDateFilter.DisplayMessage> items = new ArrayList<>();
         private Map<String, TransactionBalanceVerification> verifications =
                 Collections.emptyMap();
+        private final InvoiceClickListener invoiceClickListener;
         private float zoom = 1f;
+
+        ClientMessageAdapter(InvoiceClickListener invoiceClickListener) {
+            this.invoiceClickListener = invoiceClickListener;
+        }
 
         void setZoom(float zoom) {
             this.zoom = zoom;
@@ -2998,6 +3115,8 @@ public class MainActivity extends AppCompatActivity {
             SmsTableRow row = SmsTableRow.from(displayed,
                     verifications.get(displayed.message.uniqueKey));
             holder.reference.setText(SmsTableRow.display(row.reference));
+            holder.reference.setOnClickListener(view -> invoiceClickListener.onInvoiceClick(
+                    displayed));
             holder.dateTime.setText(row.dateTime);
             bindTypeBadge(holder.type, row.type);
             holder.name.setText(SmsTableRow.display(row.nom));
