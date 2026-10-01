@@ -73,6 +73,30 @@ public class ClientMessageGrouperTest {
                 ClientMessageGrouper.Filter.EXISTING, october1, zone).size());
     }
 
+    @Test public void mostActive_sortsByCountThenRecencyAndKeepsTiesStableWithSearch() {
+        SmsMessage tiedFirst = transaction("0340000001", "égalité un", 300L);
+        SmsMessage tiedSecond = transaction("0340000002", "égalité deux", 300L);
+        List<ClientMessageGrouper.ClientGroup> groups = ClientMessageGrouper.group(Arrays.asList(
+                tiedFirst,
+                tiedSecond,
+                transaction("0340000003", "récent", 250L),
+                transaction("0340000003", "ancien", 100L),
+                transaction("0340000005", "moins récent", 150L),
+                transaction("0380000004", "un", 400L),
+                transaction("0380000004", "deux", 350L),
+                transaction("0380000004", "trois", 200L)));
+
+        List<ClientMessageGrouper.ClientGroup> ranked = ClientMessageGrouper.filter(
+                groups, "034", ClientMessageGrouper.Filter.MOST_ACTIVE);
+
+        assertEquals(4, ranked.size());
+        assertEquals("0340000003", ranked.get(0).sender);
+        assertEquals("0340000001", ranked.get(1).sender);
+        assertEquals("0340000002", ranked.get(2).sender);
+        assertEquals("0340000005", ranked.get(3).sender);
+        assertEquals(2, ranked.get(0).messages.size());
+    }
+
     @Test public void findClient_prefersMessageIdentifierOverSuppliedNumber() {
         SmsMessage expectedMessage = transaction("0343242318", "client", 100L);
         ClientMessageGrouper.ClientGroup expected = ClientMessageGrouper.group(

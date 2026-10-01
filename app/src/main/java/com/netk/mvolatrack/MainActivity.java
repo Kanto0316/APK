@@ -291,6 +291,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView clientPeriodFilterDropdown;
     private TextView clientTypeFilterDropdown;
     private ClientAdapter clientAdapter;
+    private RecyclerView clientList;
     private ClientMessageAdapter clientMessageAdapter;
     private String selectedClientSender;
     private EditText clientSearchInput;
@@ -630,7 +631,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         applyTableZoom();
-        RecyclerView clientList = findViewById(R.id.clientList);
+        clientList = findViewById(R.id.clientList);
         clientAdapter = new ClientAdapter(this::showClientDetail);
         clientList.setLayoutManager(new LinearLayoutManager(this));
         clientList.setAdapter(clientAdapter);
@@ -1604,7 +1605,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showClientFilterMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
-        String[] labels = {"Tous", "Nouveau", "Ancien"};
+        String[] labels = {"Tous", "Nouveau", "Ancien", "Le plus actif"};
         ClientMessageGrouper.Filter[] filters = ClientMessageGrouper.Filter.values();
         for (int index = 0; index < labels.length; index++) {
             menu.getMenu().add(0, index, index, labels[index])
@@ -1618,13 +1619,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void selectClientFilter(ClientMessageGrouper.Filter filter) {
+        if (selectedClientFilter == filter) return;
         selectedClientFilter = filter;
         updateClientFilterDropdown();
         renderClients();
+        if (clientList != null) clientList.scrollToPosition(0);
     }
 
     private void updateClientFilterDropdown() {
-        String[] labels = {"Tous", "Nouveau", "Ancien"};
+        String[] labels = {"Tous", "Nouveau", "Ancien", "Le plus actif"};
         clientFilterDropdown.setText(labels[selectedClientFilter.ordinal()]);
     }
 

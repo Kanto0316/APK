@@ -14,7 +14,7 @@ import java.util.TimeZone;
 
 /** Builds the client presentation directly from the SMS source of truth. */
 final class ClientMessageGrouper {
-    enum Filter { ALL, NEW, EXISTING }
+    enum Filter { ALL, NEW, EXISTING, MOST_ACTIVE }
 
     private ClientMessageGrouper() {}
 
@@ -89,12 +89,22 @@ final class ClientMessageGrouper {
         for (ClientGroup client : clients) {
             boolean firstSeenToday = isSameLocalDay(client.firstAppearanceDate(), nowMillis,
                     timeZone);
-            boolean matchesFilter = filter == Filter.ALL
+            boolean matchesFilter = filter == Filter.ALL || filter == Filter.MOST_ACTIVE
                     || (filter == Filter.NEW && firstSeenToday)
                     || (filter == Filter.EXISTING && !firstSeenToday);
             if (matchesFilter && matchesSearch(client.sender, normalizedQuery, emptyQuery)) {
                 result.add(client);
             }
+        }
+        if (filter == Filter.MOST_ACTIVE) {
+            // List.sort is stable: clients with the same count and latest transaction keep the
+            // deterministic newest-message-first order established by group().
+            result.sort((left, right) -> {
+                int byTransactionCount = Integer.compare(
+                        right.messages.size(), left.messages.size());
+                return byTransactionCount != 0 ? byTransactionCount
+                        : Long.compare(right.latestDate(), left.latestDate());
+            });
         }
         return result;
     }
