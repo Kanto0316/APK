@@ -18,6 +18,10 @@ import java.util.List;
     int beginAttempt(long id, long at);
     @Query("UPDATE daily_summary_reports SET status=:status, failureReason=:reason, confirmedAt=:confirmed WHERE id=:id")
     void finish(long id, String status, String reason, Long confirmed);
-    @Query("UPDATE daily_summary_reports SET successfulParts=successfulParts+1 WHERE id=:id")
+    @Query("UPDATE daily_summary_reports SET successfulParts=successfulParts+1 WHERE id=:id AND status='INCERTAIN'")
     void partSucceeded(long id);
+    @Query("UPDATE daily_summary_reports SET status='ENVOYE', failureReason=NULL, confirmedAt=:confirmed WHERE id=:id AND status='INCERTAIN' AND successfulParts>=segmentCount")
+    int finishSent(long id, long confirmed);
+    @Query("UPDATE daily_summary_reports SET status='ECHEC', failureReason=:reason, confirmedAt=:confirmed WHERE id=:id AND status='INCERTAIN'")
+    int finishFailed(long id, String reason, long confirmed);
 }
