@@ -9,13 +9,14 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(entities = {Transaction.class, SmsMessage.class, NotificationBonus.class,
-        DeletedNotification.class}, version = 6, exportSchema = false)
+        DeletedNotification.class, DailySummaryReport.class}, version = 7, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase instance;
 
     public abstract TransactionDao transactionDao();
     public abstract SmsDao smsDao();
     public abstract NotificationBonusDao notificationBonusDao();
+    public abstract DailySummaryDao dailySummaryDao();
 
     private static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
@@ -71,6 +72,14 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override public void migrate(SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `daily_summary_reports` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `coveredDate` INTEGER NOT NULL, `timezone` TEXT NOT NULL, `recipient` TEXT NOT NULL, `exactText` TEXT NOT NULL, `scheduledAt` INTEGER NOT NULL, `attemptedAt` INTEGER, `confirmedAt` INTEGER, `status` TEXT NOT NULL, `failureReason` TEXT, `segmentCount` INTEGER NOT NULL, `successfulParts` INTEGER NOT NULL)");
+            database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_daily_summary_reports_coveredDate_recipient` ON `daily_summary_reports` (`coveredDate`, `recipient`)");
+            database.execSQL("CREATE INDEX IF NOT EXISTS `index_daily_summary_reports_scheduledAt` ON `daily_summary_reports` (`scheduledAt`)");
+        }
+    };
+
     public static AppDatabase getInstance(Context context) {
         if (instance == null) {
             synchronized (AppDatabase.class) {
@@ -78,7 +87,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     instance = Room.databaseBuilder(context.getApplicationContext(),
                             AppDatabase.class, "sms-tracker.db")
                             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                                    MIGRATION_4_5, MIGRATION_5_6)
+                                    MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                             .build();
                 }
             }

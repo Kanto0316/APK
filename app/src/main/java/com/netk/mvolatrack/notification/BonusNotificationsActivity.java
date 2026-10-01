@@ -24,6 +24,7 @@ import com.netk.mvolatrack.R;
 import com.netk.mvolatrack.database.NotificationBonus;
 import com.netk.mvolatrack.database.NotificationType;
 import com.netk.mvolatrack.invoice.InvoiceViewerActivity;
+import com.netk.mvolatrack.daily.DailySummaryActivity;
 import com.netk.mvolatrack.repository.BonusNotificationRepository;
 import com.netk.mvolatrack.verification.VerificationStatus;
 import com.google.android.material.card.MaterialCardView;
@@ -180,6 +181,14 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         if (NotificationType.FACTURE.name().equals(item.type)) {
             Intent intent = new Intent(this, InvoiceViewerActivity.class);
             intent.putExtra(InvoiceViewerActivity.EXTRA_IMAGE_URI, item.metadata);
+            startActivity(intent);
+            return;
+        }
+        if (item.metadata != null && item.metadata.startsWith("daily_summary:")) {
+            Intent intent = new Intent(this, DailySummaryActivity.class);
+            try { intent.putExtra(DailySummaryActivity.EXTRA_REPORT_ID,
+                    Long.parseLong(item.metadata.substring("daily_summary:".length()))); }
+            catch (NumberFormatException ignored) { }
             startActivity(intent);
             return;
         }

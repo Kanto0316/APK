@@ -2043,6 +2043,8 @@ public class MainActivity extends AppCompatActivity {
             int id = item.getItemId();
             if (id == R.id.nav_dashboard)
                 startActivity(new Intent(this, DashboardActivity.class));
+            else if (id == R.id.nav_daily_summary)
+                startActivity(new Intent(this, com.netk.mvolatrack.daily.DailySummaryActivity.class));
             else if (id == R.id.nav_settings)
                 startActivity(new Intent(this, SettingsActivity.class));
             else if (id == R.id.nav_security)
