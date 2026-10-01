@@ -184,10 +184,10 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
             startActivity(intent);
             return;
         }
-        if (item.metadata != null && item.metadata.startsWith("daily_summary:")) {
+        if (NotificationMessagePresentation.isDailySummary(item.metadata)) {
             Intent intent = new Intent(this, DailySummaryActivity.class);
             try { intent.putExtra(DailySummaryActivity.EXTRA_REPORT_ID,
-                    Long.parseLong(item.metadata.substring("daily_summary:".length()))); }
+                    Long.parseLong(NotificationMessagePresentation.dailySummaryId(item.metadata))); }
             catch (NumberFormatException ignored) { }
             startActivity(intent);
             return;
@@ -235,6 +235,9 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
         return DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT,
                 Locale.getDefault()).format(new Date(value));
     }
+    private static String displayedMessage(NotificationBonus item) {
+        return NotificationMessagePresentation.displayedMessage(item.metadata, item.message);
+    }
     private static String label(String type) {
         if (VerificationStatus.BONUS_SUPERIEUR.name().equals(type)) return "Bonus supérieur";
         if (VerificationStatus.BONUS_NON_CREDITE.name().equals(type)) return "Bonus non crédité";
@@ -280,7 +283,7 @@ public final class BonusNotificationsActivity extends AppCompatActivity {
                     ? R.color.verification_error : R.color.verification_warning) : R.color.sms_accent));
             holder.title.setText(item.title);
             holder.client.setText(bonus ? "Client " + safe(item.clientNumber) + "  •  Réf. "
-                    + safe(item.transactionReference) : item.message);
+                    + safe(item.transactionReference) : displayedMessage(item));
             holder.date.setText(formatDate(item.date));
             holder.amounts.setVisibility(bonus ? View.VISIBLE : View.GONE);
             holder.amounts.setText(bonus ? "Attendu : " + item.expectedBonus + " Ar   •   Reçu : "

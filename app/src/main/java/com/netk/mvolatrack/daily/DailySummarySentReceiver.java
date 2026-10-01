@@ -33,7 +33,7 @@ public final class DailySummarySentReceiver extends BroadcastReceiver {
     }
     private static void notify(Context context,long id,boolean success,String reason){
         long now=System.currentTimeMillis();String title=success?"Résumé quotidien envoyé":"Échec du résumé quotidien";
-        String message=success?"Le SMS a été accepté par Android.":reason;
+        String message=success?"Le SMS a été envoyé avec succès.":reason;
         AppDatabase.getInstance(context).notificationBonusDao().insertAndTrim(
                 NotificationBonus.general(now,"daily-summary-"+id+"-"+success,
                         NotificationType.SYSTEME,title,message,"daily_summary:"+id));
