@@ -41,11 +41,12 @@
                 android:layout_marginTop="18dp" android:background="@drawable/bg_invoice_amount"
                 android:gravity="center_vertical" android:minHeight="76dp" android:orientation="horizontal"
                 android:padding="14dp">
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:text="Montant de la transaction"
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Montant"
                     android:textColor="#405A72" android:textSize="15sp" />
-                <TextView android:id="@+id/invoiceAmount" android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" android:gravity="end" android:maxWidth="190dp"
+                <TextView android:id="@+id/invoiceAmount" android:layout_width="0dp"
+                    android:layout_height="wrap_content" android:layout_marginStart="16dp"
+                    android:layout_weight="1" android:gravity="end"
                     android:textColor="#123C5C" android:textSize="23sp" android:textStyle="bold" />
             </LinearLayout>
         </com.netk.mvolatrack.invoice.PerforatedTicketLayout>
