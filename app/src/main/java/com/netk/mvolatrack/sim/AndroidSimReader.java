@@ -39,9 +39,7 @@ public final class AndroidSimReader {
             List<SimOperatorVerifier.SimIdentity> result = new ArrayList<>();
             for (SubscriptionInfo subscription : subscriptions) {
                 int simState = telephony.getSimState(subscription.getSimSlotIndex());
-                if (simState != TelephonyManager.SIM_STATE_READY
-                        && (Build.VERSION.SDK_INT < Build.VERSION_CODES.O
-                        || simState != TelephonyManager.SIM_STATE_LOADED)) {
+                if (simState != TelephonyManager.SIM_STATE_READY) {
                     return null;
                 }
                 CharSequence carrier = subscription.getCarrierName();
