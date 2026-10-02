@@ -12,6 +12,7 @@ import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.provider.Settings;
 import android.provider.OpenableColumns;
+import android.telephony.SubscriptionManager;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Build;
@@ -77,6 +78,9 @@ import com.netk.mvolatrack.invoice.InvoiceDialog;
 import com.netk.mvolatrack.sms.ClientNumberNormalizer;
 import com.netk.mvolatrack.sms.MvolaMessageParser;
 import com.netk.mvolatrack.security.SecurityActivity;
+import com.netk.mvolatrack.sim.AndroidSimReader;
+import com.netk.mvolatrack.sim.SimOperatorVerifier;
+import com.netk.mvolatrack.sim.SimStatusLabel;
 import com.netk.mvolatrack.activation.ActivationActivity;
 import com.netk.mvolatrack.activation.ActivationStore;
 import com.netk.mvolatrack.activation.ActivationVerifier;
@@ -202,6 +206,13 @@ public class MainActivity extends AppCompatActivity {
     private View exportProgress;
     private TextView exportProgressText;
     private NavigationView navigationView;
+    private AndroidSimReader simReader;
+    private SubscriptionManager subscriptionManager;
+    private boolean simListenerRegistered;
+    private final SubscriptionManager.OnSubscriptionsChangedListener subscriptionsListener =
+            new SubscriptionManager.OnSubscriptionsChangedListener() {
+                @Override public void onSubscriptionsChanged() { refreshSimStatus(); }
+            };
     private SmsAdapter adapter;
     private float tableZoom = 1f;
     private LinearLayout transactionTable;
@@ -329,6 +340,7 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
         TransactionOverlayCoordinator.get(this).attach(this);
         handleTransactionIntent(getIntent());
+        registerSimListener();
     }
 
     @Override
@@ -349,6 +361,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onStop() {
         Log.d(TAG, "onStop: detaching transaction overlay");
         TransactionOverlayCoordinator.get(this).detach(this);
+        unregisterSimListener();
         super.onStop();
     }
 
@@ -386,6 +399,8 @@ public class MainActivity extends AppCompatActivity {
     private final ActivityResultLauncher<String[]> permissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
                 refreshPermissionState();
+                refreshSimStatus();
+                registerSimListener();
                 if (!hasSmsPermissions()) {
                     Toast.makeText(this,
                             "Capture SMS inactive : accordez l’autorisation SMS dans les réglages.",
@@ -2032,12 +2047,16 @@ public class MainActivity extends AppCompatActivity {
         layoutParams.width = Math.min(preferredWidth, maximumWidth);
         navigationView.setLayoutParams(layoutParams);
         drawerLayout.setScrimColor(0x66000000);
+        simReader = new AndroidSimReader(this);
+        subscriptionManager = getSystemService(SubscriptionManager.class);
 
         View header = navigationView.getHeaderView(0);
         ((TextView) header.findViewById(R.id.drawerVersion))
                 .setText("Version " + applicationVersionName());
-        findViewById(R.id.drawerButton).setOnClickListener(view ->
-                drawerLayout.openDrawer(android.view.Gravity.START));
+        findViewById(R.id.drawerButton).setOnClickListener(view -> {
+            refreshSimStatus();
+            drawerLayout.openDrawer(android.view.Gravity.START);
+        });
         navigationView.setNavigationItemSelectedListener(item -> {
             drawerLayout.closeDrawer(android.view.Gravity.START);
             int id = item.getItemId();
@@ -2056,6 +2075,36 @@ public class MainActivity extends AppCompatActivity {
             else if (id == R.id.nav_about) showAboutDialog();
             return true;
         });
+        refreshSimStatus();
+    }
+
+    private void refreshSimStatus() {
+        if (navigationView == null || simReader == null) return;
+        SimOperatorVerifier.Result result = SimOperatorVerifier.verify(
+                simReader.readActiveSims(), simReader.hasPermission());
+        navigationView.getMenu().findItem(R.id.nav_sim_status)
+                .setTitle(SimStatusLabel.from(result));
+    }
+
+    private void registerSimListener() {
+        if (subscriptionManager == null || simReader == null || !simReader.hasPermission()
+                || simListenerRegistered) return;
+        try {
+            subscriptionManager.addOnSubscriptionsChangedListener(subscriptionsListener);
+            simListenerRegistered = true;
+        } catch (SecurityException ignored) {
+            refreshSimStatus();
+        }
+    }
+
+    private void unregisterSimListener() {
+        if (subscriptionManager == null || !simListenerRegistered) return;
+        try {
+            subscriptionManager.removeOnSubscriptionsChangedListener(subscriptionsListener);
+        } catch (RuntimeException ignored) {
+            // The platform may already have discarded the listener.
+        }
+        simListenerRegistered = false;
     }
 
     private void openMessagesExport(boolean excel) {
@@ -2126,6 +2175,8 @@ public class MainActivity extends AppCompatActivity {
                 == PackageManager.PERMISSION_GRANTED;
         boolean phoneAllowed = ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
                 == PackageManager.PERMISSION_GRANTED;
+        boolean simAllowed = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
+                == PackageManager.PERMISSION_GRANTED;
         boolean notificationsAllowed = NotificationManagerCompat.from(this)
                 .areNotificationsEnabled();
         boolean overlayAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.M
@@ -2133,14 +2184,15 @@ public class MainActivity extends AppCompatActivity {
         String[] entries = new String[]{
                 permissionLabel("SMS", smsAllowed),
                 permissionLabel("Téléphone (USSD)", phoneAllowed),
+                permissionLabel("Vérification de la SIM", simAllowed),
                 permissionLabel("Notifications", notificationsAllowed),
                 permissionLabel("Affichage superposé", overlayAllowed)
         };
         new AlertDialog.Builder(this)
                 .setTitle("État des permissions")
                 .setItems(entries, (dialog, which) -> {
-                    if (which == 3) showOverlayPermissionDialog();
-                    else openApplicationPermissionSettings(which == 2);
+                    if (which == 4) showOverlayPermissionDialog();
+                    else openApplicationPermissionSettings(which == 3);
                 })
                 .setNegativeButton("Fermer", null)
                 .show();
@@ -2713,6 +2765,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         refreshPermissionState();
+        refreshSimStatus();
+        registerSimListener();
         // Room remains the source of truth. Throttle the asynchronous snapshot read so returning
         // from a picker/settings page never parses hundreds of messages on the UI thread.
         long now = System.currentTimeMillis();
@@ -2758,6 +2812,9 @@ public class MainActivity extends AppCompatActivity {
     private void requestRequiredPermissions() {
         List<String> missing = new ArrayList<>();
         if (!hasPermission(Manifest.permission.RECEIVE_SMS)) missing.add(Manifest.permission.RECEIVE_SMS);
+        if (!hasPermission(Manifest.permission.READ_PHONE_STATE)) {
+            missing.add(Manifest.permission.READ_PHONE_STATE);
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && !hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
             missing.add(Manifest.permission.POST_NOTIFICATIONS);
