@@ -16,8 +16,8 @@
             android:paddingEnd="22dp" android:paddingBottom="28dp">
             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:gravity="top" android:orientation="horizontal">
-                <TextView android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:text="MVolaCash" android:textColor="#285F86"
+                <TextView android:id="@+id/invoiceCashPoint" android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:textColor="#285F86"
                     android:textSize="20sp" android:textStyle="bold" />
                 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:gravity="end" android:orientation="vertical">

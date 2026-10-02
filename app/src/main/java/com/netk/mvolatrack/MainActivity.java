@@ -85,6 +85,8 @@ import com.netk.mvolatrack.activation.ActivationActivity;
 import com.netk.mvolatrack.activation.ActivationStore;
 import com.netk.mvolatrack.activation.ActivationVerifier;
 import com.netk.mvolatrack.activation.LicenseDisplay;
+import com.netk.mvolatrack.account.AccountActivity;
+import com.netk.mvolatrack.account.AccountStore;
 
 import androidx.appcompat.app.AlertDialog;
 
@@ -427,6 +429,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         if (!ActivationStore.hasValidActivation(this)) {
             startActivity(new Intent(this, ActivationActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
+            finish();
+            return;
+        }
+        if (!AccountStore.hasName(this)) {
+            startActivity(new Intent(this, AccountActivity.class)
+                    .putExtra(AccountActivity.EXTRA_REQUIRED, true)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
             finish();
             return;
@@ -2065,6 +2074,8 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(this, DashboardActivity.class));
             else if (id == R.id.nav_daily_summary)
                 startActivity(new Intent(this, com.netk.mvolatrack.daily.DailySummaryActivity.class));
+            else if (id == R.id.nav_account)
+                startActivity(new Intent(this, AccountActivity.class));
             else if (id == R.id.nav_settings)
                 startActivity(new Intent(this, SettingsActivity.class));
             else if (id == R.id.nav_security)
