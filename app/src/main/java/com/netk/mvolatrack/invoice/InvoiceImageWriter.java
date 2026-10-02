@@ -5,6 +5,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
@@ -14,6 +15,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 public final class InvoiceImageWriter {
+    private static final int PRINT_SIDE_MARGIN = 48;
+    private static final int PRINT_VERTICAL_MARGIN = 96;
+    private static final int PRINT_BACKGROUND = Color.rgb(246, 246, 246);
     private InvoiceImageWriter() {}
 
     /** Renders the receipt view alone at print-friendly resolution, never a screen capture. */
@@ -25,6 +29,20 @@ public final class InvoiceImageWriter {
         Bitmap bitmap = Bitmap.createBitmap(width, invoice.getMeasuredHeight(), Bitmap.Config.ARGB_8888);
         invoice.draw(new Canvas(bitmap));
         return bitmap;
+    }
+
+    /**
+     * Adds a subtle non-white surround for printing. The source keeps its transparent perforation
+     * cut-outs, so the unchanged white ticket silhouette remains visible in an A4/PDF preview.
+     */
+    public static Bitmap surroundForPrint(Bitmap ticket) {
+        if (ticket == null) throw new IllegalArgumentException("ticket == null");
+        Bitmap result = Bitmap.createBitmap(ticket.getWidth() + PRINT_SIDE_MARGIN * 2,
+                ticket.getHeight() + PRINT_VERTICAL_MARGIN * 2, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(result);
+        canvas.drawColor(PRINT_BACKGROUND);
+        canvas.drawBitmap(ticket, PRINT_SIDE_MARGIN, PRINT_VERTICAL_MARGIN, null);
+        return result;
     }
 
     public static Uri save(Context context, Bitmap bitmap, String displayName) throws IOException {

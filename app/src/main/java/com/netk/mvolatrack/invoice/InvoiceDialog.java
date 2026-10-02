@@ -16,8 +16,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.print.PrintHelper;
-
 import com.netk.mvolatrack.R;
 import com.netk.mvolatrack.database.NotificationType;
 import com.netk.mvolatrack.repository.BonusNotificationRepository;
@@ -95,7 +93,7 @@ public final class InvoiceDialog {
             Button close, boolean isDownload) {
         if (state.uri != null) {
             if (isDownload) announceDownload(activity, transaction, state);
-            else print(activity, state);
+            else print(activity, transaction, state);
             return;
         }
         if (!EXPORTING.compareAndSet(false, true)) return;
@@ -138,7 +136,7 @@ public final class InvoiceDialog {
                 finish(activity, download, print, close, failure);
                 if (result != null && !activity.isFinishing() && !activity.isDestroyed()) {
                     if (isDownload) announceDownload(activity, transaction, state);
-                    else print(activity, state);
+                    else print(activity, transaction, state);
                 }
             });
         });
@@ -159,15 +157,13 @@ public final class InvoiceDialog {
                 Toast.LENGTH_SHORT).show();
     }
 
-    private static void print(Activity activity, SavedInvoice state) {
+    private static void print(Activity activity, MvolaMessageParser.ParsedTransaction transaction,
+            SavedInvoice state) {
         if (state.uri == null) return;
         try {
-            PrintHelper printer = new PrintHelper(activity);
-            printer.setScaleMode(PrintHelper.SCALE_MODE_FIT);
-            printer.setColorMode(PrintHelper.COLOR_MODE_COLOR);
-            printer.printBitmap("Facture MVolaCash n°" + InvoiceNumberStore.format(state.number),
-                    state.uri);
-        } catch (java.io.FileNotFoundException | RuntimeException error) {
+            InvoicePrintTracker.print(activity, state.uri, state.number, transaction.reference,
+                    transaction.transactionAt);
+        } catch (RuntimeException error) {
             Toast.makeText(activity, "Impossible d’ouvrir l’impression sur cet appareil.",
                     Toast.LENGTH_LONG).show();
         }

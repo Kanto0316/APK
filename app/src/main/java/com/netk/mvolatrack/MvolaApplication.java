@@ -3,6 +3,7 @@ package com.netk.mvolatrack;
 import android.app.Application;
 import com.netk.mvolatrack.security.AppLockManager;
 import com.netk.mvolatrack.daily.DailySummaryScheduler;
+import com.netk.mvolatrack.invoice.InvoicePrintTracker;
 
 public class MvolaApplication extends Application {
     @Override public void onCreate() {
@@ -10,5 +11,6 @@ public class MvolaApplication extends Application {
         CrashLogger.initialize(this);
         registerActivityLifecycleCallbacks(new AppLockManager(this));
         DailySummaryScheduler.reconcile(this);
+        InvoicePrintTracker.install(this);
     }
 }
