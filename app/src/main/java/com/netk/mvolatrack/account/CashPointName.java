@@ -2,7 +2,7 @@ package com.netk.mvolatrack.account;
 
 /** Validation shared by the account screen and its tests. */
 public final class CashPointName {
-    public static final int MAX_LENGTH = 60;
+    public static final int MAX_LENGTH = 18;
 
     private CashPointName() {}
 

@@ -2,6 +2,7 @@ package com.netk.mvolatrack.account;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
@@ -21,7 +22,9 @@ public final class AccountActivity extends AppCompatActivity {
     public static final String EXTRA_REQUIRED = "cash_point_name_required";
     private boolean required;
     private EditText name;
-    private TextView error;
+    private EditText number;
+    private TextView nameError;
+    private TextView numberError;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -31,9 +34,17 @@ public final class AccountActivity extends AppCompatActivity {
         setContentView(R.layout.activity_account);
         applyInsets(findViewById(R.id.accountRoot));
         name = findViewById(R.id.cashPointName);
-        error = findViewById(R.id.cashPointNameError);
+        number = findViewById(R.id.cashPointNumber);
+        nameError = findViewById(R.id.cashPointNameError);
+        numberError = findViewById(R.id.cashPointNumberError);
+        // Do not truncate a legacy value merely by opening this screen. The restored filter
+        // still requires it to be shortened before the account can next be saved.
+        name.setFilters(new InputFilter[0]);
         name.setText(AccountStore.getName(this));
+        name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(CashPointName.MAX_LENGTH)});
         name.setSelection(name.length());
+        number.setText(CashPointNumber.format(AccountStore.getNumber(this)));
+        number.setSelection(number.length());
         findViewById(R.id.accountBack).setVisibility(required ? View.INVISIBLE : View.VISIBLE);
         findViewById(R.id.accountBack).setOnClickListener(view -> finish());
         findViewById(R.id.saveCashPointName).setOnClickListener(view -> save());
@@ -46,15 +57,23 @@ public final class AccountActivity extends AppCompatActivity {
 
     private void save() {
         String normalized = CashPointName.normalize(name.getText().toString());
+        nameError.setVisibility(View.GONE);
+        numberError.setVisibility(View.GONE);
         if (!CashPointName.isValid(normalized)) {
-            error.setText(normalized.isEmpty() ? "Le nom du cash point est obligatoire."
+            nameError.setText(normalized.isEmpty() ? "Le nom du cash point est obligatoire."
                     : "Le nom ne peut pas dépasser " + CashPointName.MAX_LENGTH + " caractères.");
-            error.setVisibility(View.VISIBLE);
+            nameError.setVisibility(View.VISIBLE);
             return;
         }
-        if (!AccountStore.saveName(this, normalized)) {
-            error.setText("Impossible d’enregistrer le nom. Réessayez.");
-            error.setVisibility(View.VISIBLE);
+        String normalizedNumber = CashPointNumber.normalize(number.getText().toString());
+        if (normalizedNumber == null) {
+            numberError.setText("Saisissez un numéro malgache valide (0XXXXXXXXX ou +261XXXXXXXXX).");
+            numberError.setVisibility(View.VISIBLE);
+            return;
+        }
+        if (!AccountStore.save(this, normalized, normalizedNumber)) {
+            nameError.setText("Impossible d’enregistrer le compte. Réessayez.");
+            nameError.setVisibility(View.VISIBLE);
             return;
         }
         if (required) {
