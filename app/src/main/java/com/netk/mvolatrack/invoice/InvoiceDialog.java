@@ -16,6 +16,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.netk.mvolatrack.CashPointStore;
 import com.netk.mvolatrack.R;
 import com.netk.mvolatrack.database.NotificationType;
 import com.netk.mvolatrack.repository.BonusNotificationRepository;
@@ -38,6 +39,8 @@ public final class InvoiceDialog {
         if (activity.isFinishing()) return;
         View content = LayoutInflater.from(activity).inflate(R.layout.dialog_invoice, null, false);
         View ticket = content.findViewById(R.id.invoiceTicket);
+        TextView brand = content.findViewById(R.id.invoiceBrand);
+        brand.setText(CashPointStore.invoiceBrand(activity));
         TextView number = content.findViewById(R.id.invoiceNumber);
         TextView amount = content.findViewById(R.id.invoiceAmount);
         LinearLayout rows = content.findViewById(R.id.invoiceRows);
