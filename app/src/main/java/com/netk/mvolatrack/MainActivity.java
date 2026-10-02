@@ -3109,16 +3109,14 @@ public class MainActivity extends AppCompatActivity {
                                                                      int viewType) {
             View view = android.view.LayoutInflater.from(parent.getContext())
                     .inflate(R.layout.item_client_message, parent, false);
-            return new ClientMessageViewHolder(view);
+            return new ClientMessageViewHolder(view, invoiceClickListener);
         }
 
         @Override public void onBindViewHolder(ClientMessageViewHolder holder, int position) {
             SmsDateFilter.DisplayMessage displayed = items.get(position);
             SmsTableRow row = SmsTableRow.from(displayed,
                     verifications.get(displayed.message.uniqueKey));
-            holder.reference.setText(SmsTableRow.display(row.reference));
-            holder.reference.setOnClickListener(view -> invoiceClickListener.onInvoiceClick(
-                    displayed));
+            holder.bindReference(row.reference, displayed);
             holder.dateTime.setText(row.dateTime);
             bindTypeBadge(holder.type, row.type);
             holder.name.setText(SmsTableRow.display(row.nom));
@@ -3143,8 +3141,13 @@ public class MainActivity extends AppCompatActivity {
         final TextView fees;
         final TextView balance;
         final View status;
-        ClientMessageViewHolder(View itemView) {
+        private String boundReference;
+        private SmsDateFilter.DisplayMessage boundMessage;
+        private final InvoiceClickListener invoiceClickListener;
+
+        ClientMessageViewHolder(View itemView, InvoiceClickListener invoiceClickListener) {
             super(itemView);
+            this.invoiceClickListener = invoiceClickListener;
             reference = itemView.findViewById(R.id.clientMessageReference);
             dateTime = itemView.findViewById(R.id.clientMessageDateTime);
             type = itemView.findViewById(R.id.clientMessageType);
@@ -3154,6 +3157,23 @@ public class MainActivity extends AppCompatActivity {
             fees = itemView.findViewById(R.id.clientMessageFees);
             balance = itemView.findViewById(R.id.clientMessageBalance);
             status = itemView.findViewById(R.id.clientMessageStatus);
+            reference.setOnClickListener(view -> openInvoice());
+        }
+
+        void bindReference(String value, SmsDateFilter.DisplayMessage message) {
+            boundReference = value;
+            boundMessage = message;
+            reference.setText(SmsTableRow.display(value));
+        }
+
+        private void openInvoice() {
+            String value = boundReference;
+            if (value == null || value.trim().isEmpty() || boundMessage == null) {
+                Toast.makeText(reference.getContext(), R.string.reference_unavailable,
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            invoiceClickListener.onInvoiceClick(boundMessage);
         }
 
         void applyZoom(float zoom) {
