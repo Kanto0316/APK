@@ -16,4 +16,10 @@ public class CashPointNameTest {
         assertEquals("Cash point Ravaka", CashPointName.normalize("  Cash   point\nRavaka  "));
         assertTrue(CashPointName.isValid(" Ravaka "));
     }
+
+    @Test public void normalizedNameIsLimitedToEighteenCharacters() {
+        assertTrue(CashPointName.isValid("123456789012345678"));
+        assertFalse(CashPointName.isValid("1234567890123456789"));
+        assertTrue(CashPointName.isValid("  123456789   12345678  "));
+    }
 }

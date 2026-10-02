@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 import com.netk.mvolatrack.R;
 import com.netk.mvolatrack.account.AccountStore;
+import com.netk.mvolatrack.account.CashPointNumber;
 import com.netk.mvolatrack.database.NotificationType;
 import com.netk.mvolatrack.repository.BonusNotificationRepository;
 import com.netk.mvolatrack.sms.ClientNumberNormalizer;
@@ -41,6 +42,7 @@ public final class InvoiceDialog {
         View ticket = content.findViewById(R.id.invoiceTicket);
         TextView number = content.findViewById(R.id.invoiceNumber);
         TextView cashPoint = content.findViewById(R.id.invoiceCashPoint);
+        TextView cashPointNumber = content.findViewById(R.id.invoiceCashPointNumber);
         TextView amount = content.findViewById(R.id.invoiceAmount);
         LinearLayout rows = content.findViewById(R.id.invoiceRows);
         Button close = content.findViewById(R.id.invoiceClose);
@@ -52,6 +54,13 @@ public final class InvoiceDialog {
         // The ticket is rendered to one immutable PNG. Capturing the name now ensures that
         // changing the account later cannot alter an already created invoice.
         cashPoint.setText("Cash point " + AccountStore.getName(activity));
+        String savedCashPointNumber = AccountStore.getNumber(activity);
+        if (CashPointNumber.isValid(savedCashPointNumber)) {
+            cashPointNumber.setText(CashPointNumber.format(savedCashPointNumber));
+            cashPointNumber.setVisibility(View.VISIBLE);
+        } else {
+            cashPointNumber.setVisibility(View.GONE);
+        }
         number.setText(InvoiceNumberStore.format(store.peek()));
         addRow(rows, "Référence", transaction.reference);
         addRow(rows, "Date et heure", new SimpleDateFormat("dd/MM/yyyy  ·  HH:mm", Locale.FRENCH)

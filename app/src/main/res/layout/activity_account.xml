@@ -28,9 +28,20 @@
                 android:textColor="@color/sms_text_secondary" android:textSize="14sp" />
             <EditText android:id="@+id/cashPointName" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:layout_marginTop="20dp"
-                android:hint="Ex. Ravaka" android:imeOptions="actionDone"
-                android:inputType="textCapWords" android:maxLength="60" android:maxLines="1" />
+                android:hint="Ex. Ravaka" android:imeOptions="actionNext"
+                android:inputType="textCapWords" android:maxLength="18" android:maxLines="1" />
             <TextView android:id="@+id/cashPointNameError" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                android:textColor="#B3261E" android:textSize="13sp" android:visibility="gone" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="20dp" android:text="Numéro du cash point"
+                android:textColor="@color/sms_text_primary" android:textSize="16sp"
+                android:textStyle="bold" />
+            <EditText android:id="@+id/cashPointNumber" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="8dp"
+                android:hint="034 12 345 67" android:imeOptions="actionDone"
+                android:inputType="phone" android:maxLines="1" />
+            <TextView android:id="@+id/cashPointNumberError" android:layout_width="match_parent"
                 android:layout_height="wrap_content" android:layout_marginTop="6dp"
                 android:textColor="#B3261E" android:textSize="13sp" android:visibility="gone" />
             <Button android:id="@+id/saveCashPointName" android:layout_width="match_parent"
