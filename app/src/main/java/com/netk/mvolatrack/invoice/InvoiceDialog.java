@@ -117,6 +117,7 @@ public final class InvoiceDialog {
             String errorMessage = null;
             try {
                 saved = InvoiceImageWriter.save(activity.getApplicationContext(), bitmap, fileName);
+                InvoiceImageWriter.requireReadable(activity.getApplicationContext(), saved);
                 if (!store.consume(assigned)) {
                     InvoiceImageWriter.delete(activity.getApplicationContext(), saved);
                     saved = null;
@@ -149,9 +150,12 @@ public final class InvoiceDialog {
         String formatted = InvoiceNumberStore.format(state.number);
         String reference = transaction.reference == null || transaction.reference.trim().isEmpty()
                 ? "-" : transaction.reference.trim();
+        String resultKey = "invoice-download-" + state.uri;
+        String message = "Facture n°" + formatted + " — Réf. " + reference;
         new BonusNotificationRepository(activity.getApplicationContext()).addNotification(
-                NotificationType.FACTURE, "invoice-download-" + state.uri,
-                "Facture téléchargée", "Facture n°" + formatted + " — Réf. " + reference,
+                NotificationType.FACTURE, resultKey, "Facture téléchargée", message,
+                state.uri.toString());
+        InvoiceResultNotificationHelper.show(activity, resultKey, "Facture téléchargée", message,
                 state.uri.toString());
         Toast.makeText(activity, "Facture n°" + formatted + " enregistrée dans l’appareil",
                 Toast.LENGTH_SHORT).show();
