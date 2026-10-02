@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/accountRoot" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:background="@color/sms_screen_background"
+    android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="72dp"
+        android:background="@color/sms_surface" android:gravity="center_vertical"
+        android:orientation="horizontal" android:paddingHorizontal="12dp">
+        <ImageButton android:id="@+id/accountBack" android:layout_width="48dp"
+            android:layout_height="48dp" android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Retour" android:src="@drawable/ic_arrow_back_24"
+            android:tint="@color/sms_text_primary" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Compte" android:textColor="@color/sms_text_primary"
+            android:textSize="20sp" android:textStyle="bold" />
+    </LinearLayout>
+    <View android:layout_width="match_parent" android:layout_height="1dp"
+        android:background="@color/sms_divider" />
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:fillViewport="true">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="24dp">
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:text="Nom du cash point" android:textColor="@color/sms_text_primary"
+                android:textSize="16sp" android:textStyle="bold" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="8dp" android:text="Ce nom identifie cette installation et apparaîtra sur les nouvelles factures."
+                android:textColor="@color/sms_text_secondary" android:textSize="14sp" />
+            <EditText android:id="@+id/cashPointName" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="20dp"
+                android:hint="Ex. Ravaka" android:imeOptions="actionDone"
+                android:inputType="textCapWords" android:maxLength="60" android:maxLines="1" />
+            <TextView android:id="@+id/cashPointNameError" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                android:textColor="#B3261E" android:textSize="13sp" android:visibility="gone" />
+            <Button android:id="@+id/saveCashPointName" android:layout_width="match_parent"
+                android:layout_height="52dp" android:layout_marginTop="24dp"
+                android:text="Enregistrer" android:textColor="@android:color/white"
+                android:backgroundTint="@color/sms_accent" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
