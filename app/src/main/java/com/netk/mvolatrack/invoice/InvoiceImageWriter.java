@@ -74,6 +74,15 @@ public final class InvoiceImageWriter {
         return uri;
     }
 
+    /** Confirms that the published MediaStore image can actually be reopened by the app. */
+    public static void requireReadable(Context context, Uri uri) throws IOException {
+        if (uri == null) throw new IOException("Image absente");
+        try (android.os.ParcelFileDescriptor descriptor =
+                     context.getContentResolver().openFileDescriptor(uri, "r")) {
+            if (descriptor == null) throw new IOException("Image inaccessible");
+        }
+    }
+
     public static void delete(Context context, Uri uri) {
         if (uri != null) context.getContentResolver().delete(uri, null, null);
     }

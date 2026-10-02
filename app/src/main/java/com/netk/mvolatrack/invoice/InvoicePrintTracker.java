@@ -140,7 +140,7 @@ public final class InvoicePrintTracker implements Application.ActivityLifecycleC
         PrintJobInfo info = job.getInfo();
         if (info == null) return;
         int state = info.getState();
-        if (state == PrintJobInfo.STATE_COMPLETED) {
+        if (isCompleted(state)) {
             // Remove synchronously first so recreation and later polls cannot duplicate the event.
             pending.edit().remove(attempt).commit();
             liveJobs.remove(attempt);
@@ -148,6 +148,10 @@ public final class InvoicePrintTracker implements Application.ActivityLifecycleC
         } else if (state == PrintJobInfo.STATE_CANCELED || state == PrintJobInfo.STATE_FAILED) {
             forget(attempt);
         }
+    }
+
+    static boolean isCompleted(int state) {
+        return state == PrintJobInfo.STATE_COMPLETED;
     }
 
     private void forget(String attempt) {
@@ -170,9 +174,12 @@ public final class InvoicePrintTracker implements Application.ActivityLifecycleC
             long transactionAt = value.getLong("transactionAt");
             String date = new java.text.SimpleDateFormat("dd/MM/yyyy · HH:mm", java.util.Locale.FRENCH)
                     .format(new java.util.Date(transactionAt));
+            String resultKey = "invoice-print-" + attempt;
+            String title = "Tâche d’impression terminée";
+            String message = "Facture n°" + number + " — Réf. " + reference + " — " + date;
             new BonusNotificationRepository(context).addNotification(NotificationType.FACTURE,
-                    "invoice-print-" + attempt, "Facture traitée par l’impression",
-                    "Facture n°" + number + " — Réf. " + reference + " — " + date,
+                    resultKey, title, message, value.getString("uri"));
+            InvoiceResultNotificationHelper.show(context, resultKey, title, message,
                     value.getString("uri"));
         } catch (JSONException ignored) {
             // Corrupt persisted state is not proof of a successful invoice that can be reopened.
