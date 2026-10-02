@@ -49,73 +49,9 @@
             android:padding="24dp">
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Vérification de l’opérateur"
-                android:textColor="@color/sms_text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Cette vérification identifie uniquement la SIM ; elle ne confirme pas l’activation d’un compte MVola."
-                android:textColor="@color/sms_text_secondary"
-                android:textSize="14sp" />
-
-            <AutoCompleteTextView
-                android:id="@+id/expectedOperator"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:hint="Opérateur attendu"
-                android:inputType="textCapWords"
-                android:minHeight="56dp"
-                android:paddingHorizontal="12dp"
-                android:singleLine="true" />
-
-            <EditText
-                android:id="@+id/acceptedOperatorNames"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:hint="Autres noms acceptés (séparés par des virgules)"
-                android:inputType="textCapWords"
-                android:minHeight="56dp"
-                android:paddingHorizontal="12dp"
-                android:singleLine="true" />
-
-            <Button
-                android:id="@+id/saveOperatorConfiguration"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="Enregistrer" />
-
-            <TextView
-                android:id="@+id/operatorVerificationStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="Opérateur non configuré"
-                android:textColor="@color/sms_text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/requestPhonePermission"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Autoriser la vérification des SIM"
-                android:visibility="gone" />
-
-            <TextView
                 android:id="@+id/exportDiagnosticReport"
                 android:layout_width="match_parent"
                 android:layout_height="72dp"
-                android:layout_marginTop="24dp"
                 android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
