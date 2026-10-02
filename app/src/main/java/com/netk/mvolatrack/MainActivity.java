@@ -2051,6 +2051,7 @@ public class MainActivity extends AppCompatActivity {
         subscriptionManager = getSystemService(SubscriptionManager.class);
 
         View header = navigationView.getHeaderView(0);
+        applyDrawerHeaderInsets(header);
         ((TextView) header.findViewById(R.id.drawerVersion))
                 .setText("Version " + applicationVersionName());
         findViewById(R.id.drawerButton).setOnClickListener(view -> {
@@ -2082,8 +2083,25 @@ public class MainActivity extends AppCompatActivity {
         if (navigationView == null || simReader == null) return;
         SimOperatorVerifier.Result result = SimOperatorVerifier.verify(
                 simReader.readActiveSims(), simReader.hasPermission());
-        navigationView.getMenu().findItem(R.id.nav_sim_status)
-                .setTitle(SimStatusLabel.from(result));
+        View header = navigationView.getHeaderView(0);
+        ((TextView) header.findViewById(R.id.drawerSimStatus))
+                .setText(SimStatusLabel.from(result));
+    }
+
+    private static void applyDrawerHeaderInsets(View header) {
+        int initialLeft = header.getPaddingLeft();
+        int initialTop = header.getPaddingTop();
+        int initialRight = header.getPaddingRight();
+        int initialBottom = header.getPaddingBottom();
+        ViewCompat.setOnApplyWindowInsetsListener(header, (view, windowInsets) -> {
+            Insets topInsets = windowInsets.getInsets(
+                    WindowInsetsCompat.Type.statusBars()
+                            | WindowInsetsCompat.Type.displayCutout());
+            view.setPadding(initialLeft + topInsets.left, initialTop + topInsets.top,
+                    initialRight + topInsets.right, initialBottom);
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(header);
     }
 
     private void registerSimListener() {
