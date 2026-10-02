@@ -431,6 +431,12 @@ public class MainActivity extends AppCompatActivity {
             finish();
             return;
         }
+        if (!CashPointStore.isConfigured(this)) {
+            startActivity(new Intent(this, AccountActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
+            finish();
+            return;
+        }
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_main);
         applySystemBarInsets(findViewById(R.id.mainRoot));
@@ -2062,6 +2068,8 @@ public class MainActivity extends AppCompatActivity {
             int id = item.getItemId();
             if (id == R.id.nav_dashboard)
                 startActivity(new Intent(this, DashboardActivity.class));
+            else if (id == R.id.nav_account)
+                startActivity(new Intent(this, AccountActivity.class));
             else if (id == R.id.nav_daily_summary)
                 startActivity(new Intent(this, com.netk.mvolatrack.daily.DailySummaryActivity.class));
             else if (id == R.id.nav_settings)

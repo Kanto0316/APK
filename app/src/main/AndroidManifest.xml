@@ -45,6 +45,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".MainActivity" android:exported="false" />
+        <activity android:name=".AccountActivity" android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
         <activity android:name=".SettingsActivity" android:exported="false" />
         <activity android:name=".DashboardActivity" android:exported="false" />
         <activity android:name=".daily.DailySummaryActivity" android:exported="false" />
